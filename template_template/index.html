@@ -55,28 +55,34 @@ Kris Jusiak, Quantlab Financial
 ### Background
 
 ```cpp
-template<auto>      // value
+template<class>                    // type        (C++98)
+template<typename>                 // type        (C++98)
 ```
 <!-- .element: class="fragment" -->
 
 ```cpp
-template<typename>  // type
+template<int>                      // value       (C++98)
 ```
 <!-- .element: class="fragment" -->
 
 ```cpp
-template<class>     // type
+template<auto>                     // non-type    (C++17)
 ```
 <!-- .element: class="fragment" -->
 
 ```cpp
-template<Concept>   // concept
+template<std::basic_fixed_string>  // class type  (C++20)
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+template<Concept>                  // concept     (C++20)
 ```
 <!-- .element: class="fragment" -->
 
 ----
 
-### Problem
+### Problem 1
 
 ```cpp
 template<typename...> struct type_list{};
@@ -100,7 +106,7 @@ type_list<int, 42>;      // 👎 Oops
 
 ----
 
-### Problem
+### Problem 2
 
 ```cpp
 template<template<typename...> typename T>
@@ -109,11 +115,17 @@ constexpr auto to();
 <!-- .element: class="fragment" -->
 
 ```cpp
-to<std::vector>(); // 👍 Okay
+/**
+ * template<class T, class Allocator> class vector;
+ */
+to<std::vector>(); // 👍 Okay 
 ```
 <!-- .element: class="fragment" -->
 
 ```cpp
+/**
+ * template<class T, std::size_t N> struct array;
+ */
 to<std::array>();  // 👎 Oops
 ```
 <!-- .element: class="fragment" -->
@@ -123,7 +135,7 @@ to<std::array>();  // 👎 Oops
 
 ----
 
-### Problem
+### Problem 3
 
 ```cpp
 template<typename> concept Concept = true;
@@ -131,8 +143,17 @@ template<typename> concept Concept = true;
 <!-- .element: class="fragment" -->
 
 ```cpp
-template<template<typename...> typename T>
-constexpr auto to();
+template<Concept T>  // requires Concept<T>
+constexpr auto to(); // 👍 Okay
+```
+<!-- .element: class="fragment" -->
+
+----
+
+### Problem 3
+
+```cpp
+template<template<typename...> typename T> constexpr auto to();
 ```
 <!-- .element: class="fragment" -->
 
@@ -142,6 +163,26 @@ to<Concept>(); // 👎 Oops
 <!-- .element: class="fragment" -->
 
 > Error: use of concept 'Concept' requires template arguments
+<!-- .element: class="fragment" -->
+
+----
+
+### Problem 3
+
+```cpp
+/**
+ * With Class Types in Non-Type Template Parameters (C++20)
+ */
+template<class T> constexpr auto to();
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+to<Concept>(); // 👎 Oops
+```
+<!-- .element: class="fragment" -->
+
+> Error: invalid use of 'Concept' in template argument
 <!-- .element: class="fragment" -->
 
 ----
@@ -202,10 +243,6 @@ constexpr auto to();
 to<Concept>(); //  👍 Okay
 ```
 <!-- .element: class="fragment" -->
-
-----
-
-# 👍 or 👎
 
 ----
 
