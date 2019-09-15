@@ -51,7 +51,8 @@ Kris Jusiak, Quantlab Financial
 
 ----
 
-### Disclaimer - All presented examples are compiling/working 👍
+### Disclaimer - All presented examples are compiling/working
+✔️
 
 ---
 
@@ -117,7 +118,7 @@ template<class... Ts>
 constexpr auto unique_foo_ptrs = list<Ts...>
   | filter<is_same<foo>>
   | transform<add_pointer>;
-  | unique
+  | unique;
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
@@ -213,10 +214,9 @@ constexpr auto sum = [](auto... args) {
 <!-- .element: class="fragment" data-fragment-index="4" -->
 
 ```cpp
-    (
-      to_tuple(args) |
-      filter([](auto t) { return requires { t.i; }; }) |
-      unique
+    (to_tuple(args)
+      | filter([](auto t) { return requires { t.i; }; })
+      | unique
     )
 ```
 <!-- .element: class="fragment" data-fragment-index="3" -->
@@ -245,13 +245,10 @@ struct foo {
 <!-- .element: class="fragment" data-fragment-index="2" -->
 
 ```cpp
-int main() {
-  "should sum over unique structs with i"_test = [] {
-    static_expect(
-      4 + 2 == sum(foo{.bar1 = {.i = 4}, .bar3 = {.i = 2}})
-    );
-  }
-}
+"should sum over unique structs with i"_test = [] {
+  static_expect("sum") <<
+    4 + 2 == sum(foo{.bar1 = {.i = 4}, .bar3 = {.i = 2}});
+};
 ```
 <!-- .element: class="fragment" data-fragment-index="3" -->
 
@@ -261,6 +258,8 @@ https://godbolt.org/z/5zEnBB
 ----
 
 ## Let's embrace Postmodern Meta C++!
+
+👍
 
 ---
 
