@@ -63,7 +63,7 @@ Kris Jusiak, Quantlab Financial
 
 ----
 
-### C++17 - Reflection
+### C++17 - Reflection (structure bindings)
 
 ```cpp
 struct foo {
@@ -101,6 +101,9 @@ https://godbolt.org/z/BJH2SR
 ```cpp
 static_assert(4  == tuple[0_c] and 4  == tuple[int{}]);
 static_assert(2. == tuple[1_c] and 2. == tuple[double{}]);
+
+// static_assert(4  == tuple["int"_t] and 
+//               2. == tuple["double"_t]);
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
@@ -207,6 +210,7 @@ constexpr auto sum = [](auto... args) {
 <!-- .element: class="fragment" data-fragment-index="2" -->
 
 ```cpp
+    // hand-written std::apply
     []<template<class...> class T, class... Ts>(T<Ts...> t) { 
       return (0 + ... + t[Ts{}].i); 
     }
@@ -376,20 +380,20 @@ https://godbolt.org/z/5zEnBB
         ]
       });
 
-      window.addEventListener("mousedown", handleClick, false);
-      window.addEventListener("contextmenu", function(e) { e.preventDefault(); }, false);
+      <!--window.addEventListener("mousedown", handleClick, false);-->
+      <!--window.addEventListener("contextmenu", function(e) { e.preventDefault(); }, false);-->
 
-      function handleClick(e) {
-        if (1 >= outerHeight - innerHeight) {
-          document.querySelector( '.reveal' ).style.cursor = 'none';
-        } else {
-          document.querySelector( '.reveal' ).style.cursor = '';
-        }
+      <!--function handleClick(e) {-->
+        <!--if (1 >= outerHeight - innerHeight) {-->
+          <!--document.querySelector( '.reveal' ).style.cursor = 'none';-->
+        <!--} else {-->
+          <!--document.querySelector( '.reveal' ).style.cursor = '';-->
+        <!--}-->
 
-        e.preventDefault();
-        if(e.button === 0) Reveal.next();
-        if(e.button === 2) Reveal.prev();
-      }
+        <!--e.preventDefault();-->
+        <!--if(e.button === 0) Reveal.next();-->
+        <!--if(e.button === 2) Reveal.prev();-->
+      <!--}-->
     </script>
 
   </body>
