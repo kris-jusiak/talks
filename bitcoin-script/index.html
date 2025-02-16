@@ -74,18 +74,13 @@
 
 ----
 
-#### Bitcion
+#### Bitcoin
 
 - #### Bitcoin: A Peer-to-Peer Electronic Cash System - https://bitcoin.org/bitcoin.pdf
 <!-- .element: class="fragment" -->
 
 - #### Bitcoin Script - https://github.com/bitcoin/bitcoin/blob/main/src/script (C++20)
 <!-- .element: class="fragment" -->
-
----
-
-#### Bitcoin = Simplicity
-<!-- .element: class="fragment" style="text-align:center" -->
 
 ----
 
@@ -104,19 +99,6 @@
    RPN: 2 2 + 4 =
 ```
 <!-- .element: class="fragment" -->
-
-#### - Forth-like - https://en.wikipedia.org/wiki/Forth_(programming_language)
-<!-- .element: class="fragment" style="text-align:left" -->
-
-```cpp
-int add(int a, int b) { return a + b; } // C
-```
-<!-- .element: class="fragment" style="text-align:left" -->
-
-```cpp
-: add ( a b -- sum ) + ; // Forth
-```
-<!-- .element: class="fragment" style="text-align:left" -->
 
 ----
 
@@ -310,9 +292,6 @@ BOOST_AUTO_TEST_CASE(script_PushData) {
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
-#### Different levels of tests (well covered)
-<!-- .element: class="fragment" data-fragment-index="4" -->
-
 ----
 
 #### Bitcoin Script - Execution
@@ -478,7 +457,7 @@ OP_ENDIF    104        0x68     <expression>  endif
 
 ----
 
-#### Programmable Money / Bitcoin
+### Programmable Money / Bitcoin
 
 ---
 
@@ -573,7 +552,7 @@ ScriptSig:    OP_4                        # unlocking
 <!-- .element: class="fragment" style="text-align:left" -->
 
 
-#### Valid transaction 👍
+#### Valid transaction
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ----
@@ -607,26 +586,36 @@ ScriptSig:    OP_5                        # unlocking
 ```
 <!-- .element: class="fragment" style="text-align:left" -->
 
-#### Invalid transaction 👎
+#### Invalid transaction
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ----
 
-#### Bitcoin Script - Examples
+### Evolution
+
+#### Bitcoin Improvement Proposals (BIPs) - https://github.com/bitcoin/bips
+<!-- .element: class="fragment" -->
 
 ----
 
-#### Bitcoin Script - P2PK (Pay To PubKey)
+#### January 2009
+<!-- .element: style="text-align:left" -->
+##### https://github.com/bitcoin/bitcoin/tree/4405b78d6059e536c36974088a8ed4d9f0f29898
 
-#### Introduced: January 2009 (with the launch of Bitcoin)
+---
+
+#### P2PK (Pay To PubKey)
 <!-- .element: class="fragment" style="text-align:left" -->
+
+#### P2PKH (Pay To PubKey Hash)
+<!-- .element: class="fragment" style="text-align:left" -->
+
+----
+
+#### P2PK (Pay To PubKey)
 
 #### Use case: Traditional transaction
 <!-- .element: class="fragment" style="text-align:left" -->
-
-----
-
-#### Bitcoin Script - P2PK (Pay To PubKey)
 
 ```cpp
 ScriptSig:    <Sig>
@@ -646,7 +635,7 @@ ScriptPubKey: <PubKey> OP_CHECKSIG
 
 ----
 
-#### Bitcoin Script - P2PK (Pay To PubKey)
+#### P2PK (Pay To PubKey)
 
 ```cpp
 Word            Opcode    Hex      Input        Output
@@ -679,7 +668,7 @@ static bool EvalChecksig(...) { // simplified
 
 ----
 
-#### Bitcoin Script - P2PK (Pay To PubKey)
+#### P2PK (Pay To PubKey)
 
 ```cpp
 [asm] <Sig> <PubKey> OP_CHECKSIG
@@ -704,7 +693,7 @@ static bool EvalChecksig(...) { // simplified
 
 -----
 
-#### Bitcoin Script - P2PK (Pay To PubKey)
+#### P2PK (Pay To PubKey)
 
 #### Exposes full public key of the receipent in the transaction
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -714,17 +703,10 @@ static bool EvalChecksig(...) { // simplified
 
 ----
 
-#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
-
-#### Introduced: January 2009 (with the launch of Bitcoin)
-<!-- .element: class="fragment" style="text-align:left" -->
+#### P2PKH (Pay To PubKey Hash)
 
 #### Use case: Traditional transaction
 <!-- .element: class="fragment" style="text-align:left" -->
-
-----
-
-#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 ```cpp
 ScriptSig:    <Sig> <PubKey>
@@ -741,7 +723,7 @@ ScriptPubkey: OP_DUP OP_HASH160 <PubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
 
 ----
 
-#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### P2PKH (Pay To PubKey Hash)
 
 ```cpp
 Word      Opcode    Hex     Input       Output
@@ -767,7 +749,7 @@ case OP_DUP: {
 
 ----
 
-#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### P2PKH (Pay To PubKey Hash)
 
 ```cpp
 Word            Opcode    Hex      Input       Output
@@ -799,7 +781,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### P2PKH (Pay To PubKey Hash)
 
 ```cpp
 <Sig>         6e132
@@ -826,7 +808,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### P2PKH (Pay To PubKey Hash)
 
 <img src="images/transaction2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 <!-- .element: class="fragment" -->
@@ -836,7 +818,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### P2PKH (Pay To PubKey Hash)
 
 #### Uses Hashed Public Key (full public key is only exposed when transaction is being spent)
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -846,31 +828,14 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-### Evolution
-
-#### Bitcoin Improvement Proposals (BIPs) - https://github.com/bitcoin/bips
-<!-- .element: class="fragment" -->
-
-----
-
-#### January 2009
-#### https://github.com/bitcoin/bitcoin/tree/4405b78d6059e536c36974088a8ed4d9f0f29898
-
----
-
-#### - P2PKH (Pay To PubKey Hash)
-<!-- .element: class="fragment" style="text-align:left" -->
-#### - P2PKH (Pay To PubKey Hash)
-<!-- .element: class="fragment" style="text-align:left" -->
-
-----
-
 #### February 2012
-#### https://github.com/bitcoin/bips/tree/master/bip-0016
+<!-- .element: style="text-align:left" -->
+##### https://github.com/bitcoin/bips/tree/master/bip-0016
+<!-- .element: style="text-align:left" -->
 
 ---
 
-#### - P2SH (Pay to Script Hash) - Allows more complex scripts (multi-signature)
+####P2SH (Pay to Script Hash) - Allows more complex scripts (multi-signature)
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ```cpp
@@ -883,11 +848,13 @@ RedeemScript: OP_DUP OP_HASH160 <PubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
 ----
 
 #### August 2017 (Segregated Witness upgrade)
-#### https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki
+<!-- .element: style="text-align:left" -->
+##### https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki
+<!-- .element: style="text-align:left" -->
 
 ---
 
-#### - P2WPKH (Pay to Witness Public Key Hash)
+#### P2WPKH (Pay to Witness Public Key Hash)
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ```cpp
@@ -898,7 +865,7 @@ Witness: <Sig> <PubKey>
 
 ---
 
-#### -P2WSH (Pay to Witness Script Hash)
+#### P2WSH (Pay to Witness Script Hash)
 <!-- .element: class="fragment" style="text-align:left" -->
 
 #### Complex SegWit transactions such as multi-signature setups
@@ -913,7 +880,9 @@ Witness: <RedeemScript> <AdditionalData>
 ----
 
 #### November 2021 (taproot upgrade)
-#### https://github.com/bitcoin/bips/tree/master/bip-{0340-0342}
+<!-- .element: style="text-align:left" -->
+##### https://github.com/bitcoin/bips/tree/master/bip-{0340-0342}
+<!-- .element: style="text-align:left" -->
 
 ---
 
@@ -928,11 +897,11 @@ Witness: <RedeemScript> <AdditionalData>
 
 ----
 
-### Bitcoin Script - Use cases
+### Use cases
 
 ----
 
-### Freezing funds until a time in the future
+#### Freezing funds until a time in the future
 
 ```cpp
 ScriptSig:    <Sig> <PubKey>
@@ -1026,6 +995,9 @@ ScriptPubKey:
 ----
 
 ### Further readings
+
+- #### Bitcoin: A Peer-to-Peer Electronic Cash System - https://bitcoin.org/bitcoin.pdf
+<!-- .element: style="text-align:left" -->
 
 - #### Bitcoin Script Source Code - https://github.com/bitcoin/bitcoin/tree/master/src/script
 <!-- .element: style="text-align:left" -->
