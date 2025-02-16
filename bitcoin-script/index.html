@@ -50,18 +50,11 @@
                    data-separator-vertical="^----+$">
           <script type="text/template">
 
-<br />
+## Bitcoin Script
 
 ---
-
-# Bitcoin Script
 
 ## Implementation Details and Use Cases
-
----
-
-<a href="https://cppcon.org/"><img src="images/logo.png" style="width: 50%; background:none; border:none; box-shadow:none;" /></a>&nbsp;&nbsp;&nbsp;
-<img src="images/qr.png" style="width: 10%; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -71,17 +64,17 @@
 
   - #### How does it work?
 
-- #### Bitcoin / Bitcoin Script
-
-  - #### Examples / Evoluation / Use cases
+  - #### Examples / Evoluation / Use Cases
 
 - #### Comparision (vs ETH)
 
 - #### Summary
 
+<img src="images/qr.png" style="width: 10%; background:none; border:none; box-shadow:none;" />
+
 ----
 
-### Bitcion
+#### Bitcion
 
 - #### Bitcoin: A Peer-to-Peer Electronic Cash System - https://bitcoin.org/bitcoin.pdf
 <!-- .element: class="fragment" -->
@@ -96,7 +89,7 @@
 
 ----
 
-### Bitcoin Script is a simple programming language
+#### Bitcoin Script is a SIMPLE programming language
 
 ---
 
@@ -112,27 +105,22 @@
 ```
 <!-- .element: class="fragment" -->
 
-----
-
 #### - Forth-like - https://en.wikipedia.org/wiki/Forth_(programming_language)
+<!-- .element: class="fragment" style="text-align:left" -->
 
 ```cpp
-// C
-int add(int a, int b) { return a + b; }
+int add(int a, int b) { return a + b; } // C
 ```
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ```cpp
-// Forth
-: add ( a b -- sum ) + ;
+: add ( a b -- sum ) + ; // Forth
 ```
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ----
 
-### Bitcoin Script
-
----
+#### Bitcoin Script
 
 <img src="images/script.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -145,7 +133,7 @@ int add(int a, int b) { return a + b; }
 
 ----
 
-### Bitcoin Script - OP_CODES
+#### Bitcoin Script - OP_CODES
 
 #### https://github.com/bitcoin/bitcoin/blob/master/src/script/script.h
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -175,9 +163,7 @@ static const unsigned int MAX_OPCODE = OP_NOP10;
 
 ----
 
-### Bitcoin Script - OP_CODES
-
----
+#### Bitcoin Script - OP_CODES
 
 <img src="images/opcodes1.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
 <!-- .element: class="fragment" data-fragment-index="0" -->
@@ -187,8 +173,6 @@ static const unsigned int MAX_OPCODE = OP_NOP10;
 <!-- .element: class="fragment" data-fragment-index="0"  -->
 <img src="images/opcodes4.png" style="width: 24.5%; background:none; border:none; box-shadow:none;" />
 <!-- .element: class="fragment" data-fragment-index="0" -->
-
----
 
 #### ~200+ OP_CODES
 <!-- .element: class="fragment" data-fragment-index="1" -->
@@ -238,8 +222,6 @@ Crypto      OP_SHA256   168        0xa8     x           sha256(x)
 ```
 <!-- .element: class="fragment" style="text-align:left" -->
 
----
-
 ```
 ...
 ```
@@ -247,7 +229,7 @@ Crypto      OP_SHA256   168        0xa8     x           sha256(x)
 
 ----
 
-### Bitcoin Script - Execution
+#### Bitcoin Script - Execution
 
 #### https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.cpp
 <!-- .element: class="fragment" data-fragment-index="0" -->
@@ -283,7 +265,7 @@ bool EvalScript(
 
 ----
 
-### Bitcoin Script - Execution
+#### Bitcoin Script - Execution
 
 ```cpp
 typedef prevector<28, unsigned char> CScript;
@@ -302,7 +284,7 @@ class prevector;
 
 ----
 
-### Bitcoin Script - Execution
+#### Bitcoin Script - Execution
 
 #### https://github.com/bitcoin/bitcoin/blob/master/src/test/script_tests.cpp
 <!-- .element: class="fragment" data-fragment-index="0" -->
@@ -333,7 +315,7 @@ BOOST_AUTO_TEST_CASE(script_PushData) {
 
 ----
 
-### Bitcoin Script - Execution
+#### Bitcoin Script - Execution
 
 ---
 
@@ -342,9 +324,7 @@ BOOST_AUTO_TEST_CASE(script_PushData) {
 
 ----
 
-### Bitcoin Script - Example
-
----
+#### Bitcoin Script - Example
 
 ```sh
 [asm] OP_2 OP_2 OP_ADD
@@ -379,9 +359,7 @@ BOOST_AUTO_TEST_CASE(script_PushData) {
 
 ----
 
-### Bitcoin Script - Example
-
----
+#### Bitcoin Script - Example
 
 ```sh
 [asm] OP_3 OP_4 OP_ADD OP_5 OP_SUB
@@ -426,9 +404,7 @@ BOOST_AUTO_TEST_CASE(script_PushData) {
 
 ----
 
-### Bitcoin Script - Example
-
----
+#### Bitcoin Script - Example
 
 ```sh
 [asm] OP_3 OP_4 OP_EQUAL OP_IF OP_5 OP_ELSE OP_10 OP_ENDIF
@@ -447,14 +423,12 @@ OP_ENDIF    104        0x68     <expression>  endif
 
 ----
 
-### Bitcoin Script - Example
+#### Bitcoin Script - Example
 
 ```sh
 [asm] OP_3 OP_4 OP_EQUAL OP_IF OP_5 OP_ELSE OP_10 OP_ENDIF
 [hex] 53   54   87       63    55   67      60    68
 ```
-
----
 
 ```cpp
 [stack] [      ]
@@ -500,18 +474,18 @@ OP_ENDIF    104        0x68     <expression>  endif
 
 -----
 
-### How Bitcoin Script is connected to Bitcoin?
+### How Bitcoin Script relates to Bitcoin?
 
 ----
 
-### Programmable Money
+#### Programmable Money / Bitcoin
 
 ---
 
 #### Digital currency that can be programmed with specific rules or conditions to automate financial transactions
 <!-- .element: class="fragment" style="text-align:left" -->
 
-#### Bitcoin enables it via Bitcoin Script
+#### Powered by Bitcoin Script
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ----
@@ -519,7 +493,7 @@ OP_ENDIF    104        0x68     <expression>  endif
 #### Transaction (simplified)
 
 #### - Inputs
-<!-- .element: class="fragment" style="text-align:left" -->
+<!-- .element: style="text-align:left" -->
 
 #### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Previous Transaction ID
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -531,7 +505,7 @@ OP_ENDIF    104        0x68     <expression>  endif
 <!-- .element: class="fragment" style="text-align:left" -->
 
 #### - Outputs
-<!-- .element: class="fragment" style="text-align:left" -->
+<!-- .element: style="text-align:left" -->
 
 #### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Script Public Key (Bitcoin Script)
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -541,9 +515,7 @@ OP_ENDIF    104        0x68     <expression>  endif
 
 ----
 
-### Transaction - Locking / Unlocking
-
-----
+#### Transaction - Locking / Unlocking
 
 #### Locking script (ScriptPubKey)
 <!-- .element: style="text-align:left" -->
@@ -573,9 +545,7 @@ OP_ENDIF    104        0x68     <expression>  endif
 
 ----
 
-### Bitcoin Script - Example
-
----
+#### Transaction - Bitcoin Script
 
 ```cpp
 ScriptPubkey: OP_2 OP_2 OP_ADD OP_EQUAL   # locking
@@ -608,7 +578,7 @@ ScriptSig:    OP_4                        # unlocking
 
 ----
 
-### Bitcoin Script - Example
+#### Transaction - Bitcoin Script
 
 ---
 
@@ -642,11 +612,11 @@ ScriptSig:    OP_5                        # unlocking
 
 ----
 
-### Examples
+#### Bitcoin Script - Examples
 
 ----
 
-### Bitcoin Script - P2PK (Pay To PubKey)
+#### Bitcoin Script - P2PK (Pay To PubKey)
 
 #### Introduced: January 2009 (with the launch of Bitcoin)
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -656,7 +626,7 @@ ScriptSig:    OP_5                        # unlocking
 
 ----
 
-### Bitcoin Script - P2PK (Pay To PubKey)
+#### Bitcoin Script - P2PK (Pay To PubKey)
 
 ```cpp
 ScriptSig:    <Sig>
@@ -676,7 +646,7 @@ ScriptPubKey: <PubKey> OP_CHECKSIG
 
 ----
 
-### Bitcoin Script - P2PK (Pay To PubKey)
+#### Bitcoin Script - P2PK (Pay To PubKey)
 
 ```cpp
 Word            Opcode    Hex      Input        Output
@@ -709,7 +679,7 @@ static bool EvalChecksig(...) { // simplified
 
 ----
 
-### Bitcoin Script - P2PK (Pay To PubKey)
+#### Bitcoin Script - P2PK (Pay To PubKey)
 
 ```cpp
 [asm] <Sig> <PubKey> OP_CHECKSIG
@@ -734,7 +704,7 @@ static bool EvalChecksig(...) { // simplified
 
 -----
 
-### Bitcoin Script - P2PK (Pay To PubKey)
+#### Bitcoin Script - P2PK (Pay To PubKey)
 
 #### Exposes full public key of the receipent in the transaction
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -744,7 +714,7 @@ static bool EvalChecksig(...) { // simplified
 
 ----
 
-### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 #### Introduced: January 2009 (with the launch of Bitcoin)
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -754,7 +724,7 @@ static bool EvalChecksig(...) { // simplified
 
 ----
 
-### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 ```cpp
 ScriptSig:    <Sig> <PubKey>
@@ -771,7 +741,7 @@ ScriptPubkey: OP_DUP OP_HASH160 <PubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
 
 ----
 
-### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 ```cpp
 Word      Opcode    Hex     Input       Output
@@ -797,7 +767,7 @@ case OP_DUP: {
 
 ----
 
-### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 ```cpp
 Word            Opcode    Hex      Input       Output
@@ -829,7 +799,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 ```cpp
 <Sig>         6e132
@@ -856,7 +826,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 <img src="images/transaction2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 <!-- .element: class="fragment" -->
@@ -866,7 +836,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-### Bitcoin Script - P2PKH (Pay To PubKey Hash)
+#### Bitcoin Script - P2PKH (Pay To PubKey Hash)
 
 #### Uses Hashed Public Key (full public key is only exposed when transaction is being spent)
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -876,14 +846,14 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-## Evolution
+### Evolution
 
 #### Bitcoin Improvement Proposals (BIPs) - https://github.com/bitcoin/bips
 <!-- .element: class="fragment" -->
 
 ----
 
-### January 2009
+#### January 2009
 #### https://github.com/bitcoin/bitcoin/tree/4405b78d6059e536c36974088a8ed4d9f0f29898
 
 ---
@@ -895,7 +865,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ----
 
-### February 2012
+#### February 2012
 #### https://github.com/bitcoin/bips/tree/master/bip-0016
 
 ---
@@ -912,8 +882,8 @@ RedeemScript: OP_DUP OP_HASH160 <PubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
 
 ----
 
-### August 2017 (Segregated Witness upgrade)
-### https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki
+#### August 2017 (Segregated Witness upgrade)
+#### https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki
 
 ---
 
@@ -942,7 +912,7 @@ Witness: <RedeemScript> <AdditionalData>
 
 ----
 
-### November 2021 (taproot upgrade)
+#### November 2021 (taproot upgrade)
 #### https://github.com/bitcoin/bips/tree/master/bip-{0340-0342}
 
 ---
@@ -958,7 +928,7 @@ Witness: <RedeemScript> <AdditionalData>
 
 ----
 
-## Bitcoin Script - Use cases
+### Bitcoin Script - Use cases
 
 ----
 
@@ -1013,7 +983,7 @@ case OP_CHECKLOCKTIMEVERIFY: {
 
 ----
 
-### HTLC (Hashed Time-Locked Contracts)
+#### HTLC (Hashed Time-Locked Contracts)
 
 ```cpp
 ReceipentScriptSig: <Sig> <RecipientPubKey> <PreImage> OP_TRUE
