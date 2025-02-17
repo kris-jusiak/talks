@@ -66,7 +66,7 @@
 
   - #### Examples / Evoluation / Use Cases
 
-- #### Comparision (vs ETH)
+- #### Comparision
 
 - #### Summary
 
@@ -74,13 +74,31 @@
 
 ----
 
-#### Bitcoin
+### Bitcoin
+<!-- .element: style="text-align:left" -->
 
 - #### Bitcoin: A Peer-to-Peer Electronic Cash System - https://bitcoin.org/bitcoin.pdf
 <!-- .element: class="fragment" -->
 
-- #### Bitcoin Script - https://github.com/bitcoin/bitcoin/blob/main/src/script (C++20)
+- #### Bitcoin - https://github.com/bitcoin/bitcoin
 <!-- .element: class="fragment" -->
+
+----
+
+### Programmable Money
+<!-- .element: style="text-align:left" -->
+
+---
+
+#### Digital currency that can be programmed with specific rules or conditions to automate financial transactions
+<!-- .element: class="fragment" style="text-align:left" -->
+
+#### Powered by <u>Bitcoin Script</u>
+<!-- .element: class="fragment" style="text-align:left" -->
+#### &nbsp;&nbsp; - Transaction verification, Smart contracts, ...
+<!-- .element: class="fragment" style="text-align:left" -->
+#### &nbsp;&nbsp; - Executed on the nodes
+<!-- .element: class="fragment" style="text-align:left" -->
 
 ----
 
@@ -102,7 +120,14 @@
 
 ----
 
+#### Bitcoin Script - https://github.com/bitcoin/bitcoin (C++20)
+
+----
+
 #### Bitcoin Script
+<!-- .element: style="text-align:left" -->
+
+---
 
 <img src="images/script.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
 <!-- .element: class="fragment" style="text-align:left" -->
@@ -138,26 +163,16 @@ enum opcodetype
 ```
 <!-- .element: class="fragment" style="text-align:left" -->
 
-```cpp
-static const unsigned int MAX_OPCODE = OP_NOP10;
-```
-<!-- .element: class="fragment" style="text-align:left" -->
-
 ----
 
 #### Bitcoin Script - OP_CODES
 
 <img src="images/opcodes1.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
-<!-- .element: class="fragment" data-fragment-index="0" -->
 <img src="images/opcodes2.png" style="width: 22.6%; background:none; border:none; box-shadow:none;" />
-<!-- .element: class="fragment" data-fragment-index="0" -->
 <img src="images/opcodes3.png" style="width: 23.2%; background:none; border:none; box-shadow:none;" />
-<!-- .element: class="fragment" data-fragment-index="0"  -->
 <img src="images/opcodes4.png" style="width: 24.5%; background:none; border:none; box-shadow:none;" />
-<!-- .element: class="fragment" data-fragment-index="0" -->
 
 #### ~200+ OP_CODES
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
@@ -249,25 +264,6 @@ bool EvalScript(
 
 #### Bitcoin Script - Execution
 
-```cpp
-typedef prevector<28, unsigned char> CScript;
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-```cpp
- /**
- * Implements a drop-in replacement for std::vector<T>
- * which stores up to N elements directly (without heap allocation).
- */
-template<unsigned int N, typename T>
-class prevector;
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-----
-
-#### Bitcoin Script - Execution
-
 #### https://github.com/bitcoin/bitcoin/blob/master/src/test/script_tests.cpp
 <!-- .element: class="fragment" data-fragment-index="0" -->
 
@@ -295,8 +291,6 @@ BOOST_AUTO_TEST_CASE(script_PushData) {
 ----
 
 #### Bitcoin Script - Execution
-
----
 
 #### [gdb-like] Bitcoin Script debugging utilities - https://github.com/bitcoin-core/btcdeb
 <!-- .element: class="fragment" -->
@@ -453,19 +447,8 @@ OP_ENDIF    104        0x68     <expression>  endif
 
 -----
 
-### How Bitcoin Script relates to Bitcoin?
+### Transaction / Bitcion Script
 
-----
-
-### Programmable Money / Bitcoin
-
----
-
-#### Digital currency that can be programmed with specific rules or conditions to automate financial transactions
-<!-- .element: class="fragment" style="text-align:left" -->
-
-#### Powered by Bitcoin Script
-<!-- .element: class="fragment" style="text-align:left" -->
 
 ----
 
@@ -524,7 +507,7 @@ OP_ENDIF    104        0x68     <expression>  endif
 
 ----
 
-#### Transaction - Bitcoin Script
+#### Transaction - Bitcoin Script (example)
 
 ```cpp
 ScriptPubkey: OP_2 OP_2 OP_ADD OP_EQUAL   # locking
@@ -557,7 +540,7 @@ ScriptSig:    OP_4                        # unlocking
 
 ----
 
-#### Transaction - Bitcoin Script
+#### Transaction - Bitcoin Script (example)
 
 ---
 
@@ -614,7 +597,7 @@ ScriptSig:    OP_5                        # unlocking
 
 #### P2PK (Pay To PubKey)
 
-#### Use case: Traditional transaction
+#### Used for transactions verification
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ```cpp
@@ -705,7 +688,7 @@ static bool EvalChecksig(...) { // simplified
 
 #### P2PKH (Pay To PubKey Hash)
 
-#### Use case: Traditional transaction
+#### Used for transactions verification
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ```cpp
@@ -835,7 +818,7 @@ case OP_EQUAL: case OP_EQUALVERIFY: {
 
 ---
 
-####P2SH (Pay to Script Hash) - Allows more complex scripts (multi-signature)
+#### P2SH (Pay to Script Hash) - Allows more complex scripts (multi-signature)
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ```cpp
@@ -892,7 +875,7 @@ Witness: <RedeemScript> <AdditionalData>
 #### Shnorr Signature instead of ECDSA signature
 <!-- .element: class="fragment" style="text-align:left" -->
 
-#### Advanced Use cases
+#### Advanced Use cases (smart contracts)
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ----
@@ -979,39 +962,41 @@ ScriptPubKey:
 ----
 
 ### Summary
+<!-- .element: style="text-align:left" -->
 
-#### - Bitcoin script is very simple but powerful
+#### Bitcoin script is very simple but powerful
 <!-- .element: class="fragment" style="text-align:left" -->
 
-#### - It's possible to write complex, scripts
+#### It's possible to write complex, scripts
 <!-- .element: class="fragment" style="text-align:left" -->
 
-#### - It's possible to add/extend/deprecate functionality (BIPs)
+#### It's possible to add/extend/deprecate functionality (BIPs)
 <!-- .element: class="fragment" style="text-align:left" -->
 
-#### - Limited flexibility but increased safety
+#### Limited flexibility but increased safety
 <!-- .element: class="fragment" style="text-align:left" -->
 
 ----
 
 ### Further readings
-
-- #### Bitcoin: A Peer-to-Peer Electronic Cash System - https://bitcoin.org/bitcoin.pdf
 <!-- .element: style="text-align:left" -->
 
-- #### Bitcoin Script Source Code - https://github.com/bitcoin/bitcoin/tree/master/src/script
+#### Bitcoin: A Peer-to-Peer Electronic Cash System - https://bitcoin.org/bitcoin.pdf
 <!-- .element: style="text-align:left" -->
 
-- #### Bitcoin Improvement Proposals (BIPs) - https://github.com/bitcoin/bips
+#### Bitcoin Script Source Code - https://github.com/bitcoin/bitcoin/tree/master/src/script
 <!-- .element: style="text-align:left" -->
 
-- #### Bitcoin Script Debugging Utilities - https://github.com/bitcoin-core/btcdeb
+#### Bitcoin Improvement Proposals (BIPs) - https://github.com/bitcoin/bips
 <!-- .element: style="text-align:left" -->
 
-- #### Bitcoin Script Wiki - https://en.bitcoin.it/wiki/Script
+#### Bitcoin Script Debugging Utilities - https://github.com/bitcoin-core/btcdeb
 <!-- .element: style="text-align:left" -->
 
-- #### Opcode Explained - https://opcodeexplained.com
+#### Bitcoin Script Wiki - https://en.bitcoin.it/wiki/Script
+<!-- .element: style="text-align:left" -->
+
+#### Opcode Explained - https://opcodeexplained.com
 <!-- .element: style="text-align:left" -->
           </script>
         </section>
