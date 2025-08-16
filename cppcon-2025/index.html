@@ -61,26 +61,76 @@
 ----
 
 Disclaimer
-  - x86 (PEBS, IPT, ...)
-  - intel has the most capabilities
-  - ipt intel / Apple M4
-  - linux
 
-  Hw:
-    Computer Architecture - Onur Mutlu - https://www.youtube.com/@OnurMutluLectures
-    Computer, Enhance - Casey Muratori
-    Ignas Bagdonas - talks
+  ```
+  name info                                                    
+  ---- ------------------------------------------------------- 
+  sys  x86_64-pc-linux-gnu 
+  cxx  gcc-15.0.0 
+  cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 
+  iL1  32Kb (64b) 
+  dL1  48Kb/12 (64b) 
+  frq
+  ```
 
- Sw/hw:
-    This talk / further materials at the end
+ Powered by
+  - https://github.com/qlibs/perf
 
- Powered by:
-  https://github.com/qlibs/perf (clang/gcc, llvm, linux/perf, libipt, gnuplot, ...) 
+ Legend
+  - BLUE - Learning
+
+---
+
+### Motivation
+
+Why microbenchmarking
+
+- hard to understand corner cases
+
+fizz_buzz 32ns
 
 ----
 
+Learnings
+- always measure
+- use the right tool for the job (don't optimize ns if you are reading from the disk)
+  - tactivs vs strategy
+- performance is not a number
+- microbenchmarking
+  - baseline
+  - trust your framework (vs mca)
+- realsistc scenarios (alignment, warmup, threading, pin ...)
+- latency vs throughput (policy)
+- vary input data distrubtion
+- statistic measurements (median, mean)
+- charts (ecdf, etc...)
+- understand what results means - profiling / know your hardware
+    Computer Architecture - Onur Mutlu - https://www.youtube.com/@OnurMutluLectures
+    Computer, Enhance - Casey Muratori
+    Ignas Bagdonas - talks
+- use commonly recognized metrics
+  - top-down (show picture)
+    memory bound - LLMs alsso throuhgpu
+    cpu bound
+  - ipc, ...
+- document leraning (what didn't what work)
+
+----
+
+Terminology
+  PEBS
+  IPT / intel has the most capabilities
+  - ipt intel / Apple M4
+ (clang/gcc, llvm, linux/perf, libipt, gnuplot, ...) 
+  ...
+
 Agenda
+
 -why (the quantum mechanics of micro-benchmarking)
+
+  number of tranisiotn - from lemior slieds
+
+
   ```cpp
     Speed of light ............................ ~1 foot/ns
     L1 cache reference ......................... 0.5 ns
@@ -92,6 +142,9 @@ Agenda
   -fizz_buzz (results with charts)
     - branch prediction, latency vs throughput, alignemnt
 
+      latency: cpu -> fpga -> asic
+      thropugput : cpu -> gpu/tup
+
     import perf;
     bench...
 
@@ -102,6 +155,17 @@ Agenda
     import perf
 
 -how
+
+  perf::log({
+    {"sys",  perf::info::sys::triple()},
+    {"cxx",  perf::info::compiler()},
+    {"cpu",  perf::info::cpu()},
+    {"iL1",  perf::info::memory::icache()},
+    {"dL1",  perf::info::memory::dcache()},
+    // freq
+    // topology
+  });
+
   - bench
         Highel level
         - design/algos (BigO, coz, etc...)
@@ -130,12 +194,27 @@ Agenda
             - nanoBench - https://github.com/andreas-abel/nanoBench
             - nanoBench: A Low-Overhead Tool for Running Microbenchmarks on x86 Systems - https://arxiv.org/abs/1911.03282
 
+            latency vs throughput for instruction
+
+            todo screenshot
+
         - llvm.exegesis (llvm.mca)
           - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
         - uarch-bench - https://github.com/travisdowns/uarch-bench
 
       - latency vs throughput
-         - latency
+        plus different process (for isolatotion)
+
+
+        ```
+        latency per instruction vs mca
+        ```
+
+      >   auto add  = [](int a, int b) { return a + b; };
+      >   auto sub  = [](int a, int b) { return a - b; };
+      >   auto mult = [](int a, int b) { return a * b; };
+      >   auto div  = [](int a, int b) { return a / b; };
+
 
        - throughput
           using perf::bench::policy::seq;
@@ -154,19 +233,25 @@ Agenda
       - branch prediction
     - runs statistical appraoch
       - median, p90, p95, p99 (latency)
-      - gnuplot charts (sixel)
+      - gnuplot charts (sixel) and (console)
         - ecdf! // show on the console output
           ```cpp
           perf::plot::hist
           perf::plot::bar
           perf::plot::box
           perf::plot::line
-          perf::plot::ecdf
+          perf::plot::ecdf // https://en.wikipedia.org/wiki/Empirical_distribution_function
+          perf::plot::flamegraph
+          screeenshots
           ```
           ```cpp
           perf::plot::complexity (big0)
-          ``
+          ```
+
+          servser side (no logs)
+
         - jupyter notebook approach
+
     - baseline
     - ipt (intel, m4) -> event_open -> mca -> flamegraphs
       - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html - doesn't fetch
@@ -175,7 +260,8 @@ Agenda
         using perf::mca::bottleneck;          
       - osaca - https://github.com/RRZE-HPC/OSACA
       - uica - https://uica.uops.info
-    -noise
+
+    -isolation / noise reduction
         - set affinity / set prioroity
         - seperate process
         - disable turbo hyperthreading
@@ -184,12 +270,22 @@ Agenda
       - PERF_UEFI
         - no os
         - disable/enable cache (can't be done without user-space)
-        - rdpmc
 
       - jtags...
     - profilers
       - time
         - tsc / clock
+        - rdpmc (current thread)
+
+      perf::profiler profiler{perf::stat::cpu_time, perf::stat:cycles};
+
+      static_assert(profiler::is_syscall_free);
+
+      start()
+      ```
+      rdtsc
+      rdpmc
+      ```
 
         ```cpp
         latency = ns(time) / operations;
@@ -201,8 +297,49 @@ Agenda
         ```
 
       - code labels
+        label("foo");
+              asm volatile goto(
+                ".pushsection labels, \"aw\" \n"
+                ".quad %c0, %l[L]\n" /// note: `.quad %c0, 0b` can be reordered
+                ".popsection \n"
+                : : "i"(Label) : "memory" : L
+              ); L:;
+
         - prevent_elision/is_elided
+
+        inline constexpr auto prevent_elision = [](auto&& t) -> decltype(auto) {
+          if constexpr (std::is_pointer_v<std::remove_cvref_t<decltype(t)>>) {
+            asm volatile("" :: "g"(t) : "memory");
+          } else {
+            #if defined(__clang__)
+            asm volatile("" :: "r,m"(t) : "memory");
+            #else
+            asm volatile("" :: "m,r"(t) : "memory");
+            #endif
+          }
+          return (t);
+        };
+
+        /**
+         * returns true if function is elided by the compiler, false otherwise
+         */
+        template<auto Begin = +[]{}, auto End = +[]{}>
+        [[nodiscard]] inline constexpr auto is_elided(auto&& fn) -> bool {
+          const auto invoke = [&] {
+            code::label<Begin>();
+            fn();
+            code::label<End>();
+          };
+          const auto ptr = &decltype(invoke)::operator();
+          prevent_elision(&ptr);
+          return code::labels[Begin] == code::labels[End];
+        }
+        #endif // PERF_GNU
+
+
         - how to get functoin address
+
+      - code markers
 
       - stat/record
         ```cpp
@@ -337,6 +474,11 @@ Agenda
         invoke(fizz_buzz, std::rand());
         ```
 
+        - stat (perf) vs analyze (mca)
+
+        ```
+        ```
+
         - disassemble vs trace vs sample
 
         ```cpp
@@ -398,6 +540,10 @@ Agenda
 
           https://github.com/qlibs/prof
 
+          likwid
+          magictrace
+          ebpf
+
         Production
           not the code
             - linux-perf - https://www.brendangregg.com/perf.html
@@ -409,6 +555,14 @@ Agenda
           changing the code
             - [`llvm-xray`](https://llvm.org/docs/XRay.html),
               - rdpmc
+
+    inline constexpr auto rdpmc = [](const std::uint64_t id) {
+      std::uint64_t eax{}, edx{};
+        asm volatile(
+          "rdpmc" : "=a"(eax), "=d"(edx) : "c"(id)
+        );
+        return ((static_cast<std::uint64_t>(edx)) << 32u) | static_cast<std::uint64_t>(eax);
+    };
 
               ```cpp
               [[clang::xray_always_instrument]]
@@ -453,7 +607,46 @@ Agenda
             };
             ```
 
--what (examples)
+        flamegraphs
+        format is super easy
+        flamegraph.txt
+        ```
+        main;init;loadConfig 10
+        main;init;checkDependencies 5
+        main;start;connectDB 20
+        main;start;runQuery 30
+        main;start;runQuery;parseResult 25
+        main;start;runQuery;logStats 5
+        main;shutdown;cleanup 8
+        ```
+
+        - https://flamegraph.com
+
+        Eport/Share (jupyter)
+          - code says only what works and not what doesn't
+          - share studies!
+
+        ### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+
+- what (examples)
+
+  Example (dispatch techniques)
+    - full analyze
+
+  ```cpp
+  fizz_buzz(unpredictable)/latency:
+        trace.instructions record::mem_loads timeline timeline resource_pressure
+  1     1                                      1
+  2     2                                      1           1
+  3                                                        1
+  3
+  4     10                                     1
+  4     11
+  5                                            1
+  5     12
+  ```
+
+
   - alignment (latency)
   - memory (ipc)
   - mph / magic_lut
@@ -461,13 +654,23 @@ Agenda
   - [[gnu::target("bmi2")]]
   - C++26 - show how to pack structs r soa
 
-https://github.com/qlibs/perf#studies
-
 ----
 
-### Summary / Always measure!
+### Summary
 
 > ##### `"Performance Is Not a Number!"`
+
+- always measure
+- use the right tool for the job (don't optimize ns if you are reading from the disk)
+- performance is not a number
+- realsistc scenarios (alignment, warmup, threading, pin ...)
+- latency vs throughput (policy)
+- vary input data distrubtion
+- statistic measurements (median, mean)
+- charts (ecdf, etc...)
+- understand what results means - profiling / know your hardware
+- use commonly recognized metrics
+- document leraning (what didn't what work)
 
 ----
 
