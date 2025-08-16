@@ -62,88 +62,301 @@
 
 Disclaimer
 
-  ```
-  name info                                                    
-  ---- ------------------------------------------------------- 
-  sys  x86_64-pc-linux-gnu 
-  cxx  gcc-15.0.0 
-  cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 
-  iL1  32Kb (64b) 
-  dL1  48Kb/12 (64b) 
-  frq
-  ```
-
- Powered by
-  - https://github.com/qlibs/perf
-
- Legend
-  - BLUE - Learning
+  x86, linux focused
 
 ---
 
-### Motivation
+### Performance?
 
-Why microbenchmarking
+Speed of light ............................ ~1 foot/ns
+L1 cache reference ......................... 0.5 ns
+Branch mispredict ............................ 5 ns
+L2 cache reference ........................... 7 ns
+Mutex lock/unlock ........................... 25 ns
+Main memory reference ...................... 100 ns
+  [img]http://ithare.com/infographics-operation-costs-in-cpu-clock-cycles/
 
-- hard to understand corner cases
+Time is discrete: clock cycle
+  Processors: 4 GHz (4*10^9 cycles per second)
+  One cycle is 0.25 nanoseconds
+  light: 7.5 centimeters per cycle
+  One byte per cycle: 4 GB/s
 
-fizz_buzz 32ns
+```cpp
+Frequencies and transistors
+processor	year	frequency	transistors
+Intel Lunar Lake	2024	4.4 GHz	?? billions
+Apple M4	2024	4.5 GHz	28 billions
+AMD Zen 5	2024	5.7 GHz	50 billions
+```
+
+Where do the transistors go?
+  More cores
+  More superscalar execution (more instructions per cycle)
+  Better speculative execution ( more instructions per cycle)
+  More cache, more memory-level parallelism ( more instructions per cycle)
+  Better data-level parallelism (SIMD) ( fewer instructions)
+
+Modern processors execute nearly as many instructions per cycle as you can supply.
+  with caveats: branching, memory, and input/output
+
+  Data level parallelsim - SWAR, SIMD (AVX512)
+  Data oriented design
+  Branchless
 
 ----
 
-Learnings
-- always measure
-- use the right tool for the job (don't optimize ns if you are reading from the disk)
-  - tactivs vs strategy
-- performance is not a number
-- microbenchmarking
-  - baseline
-  - trust your framework (vs mca)
-- realsistc scenarios (alignment, warmup, threading, pin ...)
-- latency vs throughput (policy)
-- vary input data distrubtion
-- statistic measurements (median, mean)
-- charts (ecdf, etc...)
-- understand what results means - profiling / know your hardware
-    Computer Architecture - Onur Mutlu - https://www.youtube.com/@OnurMutluLectures
-    Computer, Enhance - Casey Muratori
-    Ignas Bagdonas - talks
-- use commonly recognized metrics
-  - top-down (show picture)
-    memory bound - LLMs alsso throuhgpu
-    cpu bound
-  - ipc, ...
-- document leraning (what didn't what work)
+Microbenchmarking?
+
+```cpp
+auto fizz_buzz(int n) {
+  if (n % 15 == 0) {
+    return "FizzBuzz";
+  } else if (n % 3 == 0) {
+    return "Fizz";
+  } else if (n % 5 == 0) {
+    return "Buzz";
+  } else {
+    return "Unknown";
+  }
+}
+```
+
+```cpp
+fizz_buzz 123ns
+```
+
+```cpp
+auto baseline(int) { return ""; };
+
+baseline   12ns
+fizz_buzz 123ns
+```
+
+- Microbenchmarking is hard and might be misleading!
+  - understanding, test corner cases, tuning
+
+<!-- .slide: data-background="darkblue" -->
 
 ----
 
-Terminology
-  PEBS
-  IPT / intel has the most capabilities
-  - ipt intel / Apple M4
- (clang/gcc, llvm, linux/perf, libipt, gnuplot, ...) 
-  ...
+Tools of the trade?
 
-Agenda
+Hardware
+  TSC   - Time Stamp Counter
+  RDPMC - Read Performance Monitoring Counters
+  PEBS  - Precise Event-Based Sampling
+  IPT   - Intel Processor Trace
+  (LBR) - Last Branch Record
 
--why (the quantum mechanics of micro-benchmarking)
+Hardware<->Software
+  [llvm-dev](llvm-dev)
 
-  number of tranisiotn - from lemior slieds
+Software<->C++
+  - https://github.com/qlibs/perf <- USED in this talk!
+  - google-benchmark - https://github.com/google/benchmark
+  - nanobench - https://github.com/martinus/nanobench
+  - celero - https://github.com/DigitalInBlue/Celero
+  - ...
 
+----
+
+Micrboencharking
+
+```
+  You should not micr-optimize unless
+  you are doing mirco-optimizations
+
+  Linus Torvalds
+
+----
+
+ common misconceptsion
+- not using the right tool for the job
+- assuming normal distrubtions (taking mean!)
+
+    show chart of distribution
+    show chart of line incorrect
+
+    Control?
+
+    Minimial control
+      `pyperf system tune`
+
+    Moderate control
+      >     # Enable Kernel Mode Task-Isolation (https://lwn.net/Articles/816298)
+      >     # cat /sys/devices/system/cpu/isolated
+      >     isolcpus=<cpu number>,...,<cpu number>
+            - set affinity / set prioroity
+            - seperate process
+
+    Full control
+      - UEFI (wmsr - disable/enable cache (can't be done without user-space))
+      - jtags...
+
+- not understnading what we are measruing
+- not charting
+- not analyzing the results
+
+Real-world measurements
+
+WHY mean is not great
+  - mesuremnets are not following normal distrubution
+    - Timing data is usually skewed, not symmetric
+  - se min, median, percentials isntead
+
+You cannot assume normality
+Measurements are not independent.
+Reality: the absolute minimum is a often a reliable metric
+Margin: difference between mean and minimum
+
+'hot spot' engineering can fail, better to reduce overall instruction count.
+Branchy code can do well in synthetic benchmarks, but be careful.
+
+----
+
+Prevent elision
+
+inline constexpr auto prevent_elision = [](auto&& t) -> decltype(auto) {
+  if constexpr (std::is_pointer_v<std::remove_cvref_t<decltype(t)>>) {
+    asm volatile("" :: "g"(t) : "memory");
+  } else {
+    #if defined(__clang__)
+    asm volatile("" :: "r,m"(t) : "memory");
+    #else
+    asm volatile("" :: "m,r"(t) : "memory");
+    #endif
+  }
+  return (t);
+};
+
+/**
+ * returns true if function is elided by the compiler, false otherwise
+ */
+template<auto Begin = +[]{}, auto End = +[]{}>
+[[nodiscard]] inline constexpr auto is_elided(auto&& fn) -> bool {
+  const auto invoke = [&] {
+    code::label<Begin>();
+    fn();
+    code::label<End>();
+  };
+  const auto ptr = &decltype(invoke)::operator();
+  prevent_elision(&ptr);
+  return code::labels[Begin] == code::labels[End];
+}
+#endif // PERF_GNU
+
+----
+
+Note!
+
+debug verify results / can be done in warmup phase
 
   ```cpp
-    Speed of light ............................ ~1 foot/ns
-    L1 cache reference ......................... 0.5 ns
-    Branch mispredict ............................ 5 ns
-    L2 cache reference ........................... 7 ns
-    Mutex lock/unlock ........................... 25 ns
-    Main memory reference ...................... 100 ns
+  []<auto debug = {}>(std::vector<int>& v) {
+    std::ranges::sort(v);
+    verify<debug>([] { assert(is_sorted(v); });
+  };
   ```
+
+----
+
+```cpp
+start(); // what is measured?
+stop();
+```
+
+```cpp
+for (
+start(); // what is measured?
+stop();
+```
+
+```cpp
+start(); // what is measured?
+for (
+)
+stop();
+latency = 
+```
+
+----
+
+latency vs throughput
+
+Latency - time it takes for a single operation to complete (ns)
+  cpu -> fpga -> asic
+
+  ```cpp
+  //how
+  ```
+
+        ```cpp
+        latency = ns(time) / operations;
+        ```
+
+      >   auto add  = [](int a, int b) { return a + b; };
+      >   auto sub  = [](int a, int b) { return a - b; };
+      >   auto mult = [](int a, int b) { return a * b; };
+      >   auto div  = [](int a, int b) { return a / b; };
+
+    Instruction level
+      - nanoBench - https://github.com/andreas-abel/nanoBench
+      - nanoBench: A Low-Overhead Tool for Running Microbenchmarks on x86 Systems - https://arxiv.org/abs/1911.03282
+      - nanobench (unroll 2x - uroll 1x - link pdf) -> uops.table
+
+        ```cpp
+        template<std::size_t N>
+        inline constexpr auto unroll = [](auto&& fn) {
+          [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
+            (fn(), ...);
+          }(std::make_index_sequence<N>{});
+        };
+        ```
+
+        ```cpp
+        time = unroll<N*2>(fn) - unroll<N>(fn);
+        ```
+
+        ![uops](images/uops.png)
+
+      - llvm.exegesis (llvm.mca) - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+
+
+Throughput - total number of operations or tasks completed in a given amount of time (op/s)
+  cpu -> gpu/tup
+
+    using perf::bench::policy::seq;
+    using perf::bench::policy::unseq;
+    using perf::bench::policy::unroll;
+    using perf::bench::policy::par;
+    using perf::bench::policy::omp;
+    using perf::bench::policy::cuda;
+      (note) that 10% seq execution can't be parallilzed
+        - latency - network request, trade
+        - throughput - backtest/llms
+
+        ```
+        latency per instruction vs mca
+        ```
+
+        ```cpp
+        throughput = operations / seconds(time);
+        inverse_throughput = ns(time) / operations;
+        ```
+
+----
+
+Data distrubtion (branch prediction)
+
+    - input parameters
+      ```cpp
+      using perf::data::unpredictable;                  // not elided and not predicted
+      ```
+      - branch prediction
+
   -fizz_buzz (results with charts)
     - branch prediction, latency vs throughput, alignemnt
-
-      latency: cpu -> fpga -> asic
-      thropugput : cpu -> gpu/tup
 
     import perf;
     bench...
@@ -154,232 +367,74 @@ Agenda
 
     import perf
 
--how
+  - runs statistical appraoch
+    - median, p90, p95, p99 (latency)
 
-  perf::log({
-    {"sys",  perf::info::sys::triple()},
-    {"cxx",  perf::info::compiler()},
-    {"cpu",  perf::info::cpu()},
-    {"iL1",  perf::info::memory::icache()},
-    {"dL1",  perf::info::memory::dcache()},
-    // freq
-    // topology
-  });
+        servser side (no logs)
 
-  - bench
-        Highel level
-        - design/algos (BigO, coz, etc...)
+      - jupyter notebook approach
 
-        Function Level
-          - google-benchmark - https://github.com/google/benchmark / https://quick-bench.com
-          - nanobench - https://github.com/martinus/nanobench
-          - celero - https://github.com/DigitalInBlue/Celero
+  - baseline
 
-        Instruction level
-        - nanobench (unroll 2x - uroll 1x - link pdf) -> uops.table
-            template<std::size_t N>
-            inline constexpr auto unroll = [](auto&& fn) {
-              const auto invoke = [&]<std::size_t I> {
-                if constexpr (requires { fn.template operator()<std::size_t{}>(); }) {
-                  fn.template operator()<I>();
-                } else {
-                  fn();
-                }
-              };
-              [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
-                (invoke.template operator()<Ns>(), ...);
-              }(std::make_index_sequence<N>{});
-            };
+----
 
-            - nanoBench - https://github.com/andreas-abel/nanoBench
-            - nanoBench: A Low-Overhead Tool for Running Microbenchmarks on x86 Systems - https://arxiv.org/abs/1911.03282
+----
 
-            latency vs throughput for instruction
-
-            todo screenshot
-
-        - llvm.exegesis (llvm.mca)
-          - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-        - uarch-bench - https://github.com/travisdowns/uarch-bench
-
-      - latency vs throughput
-        plus different process (for isolatotion)
-
-
-        ```
-        latency per instruction vs mca
-        ```
-
-      >   auto add  = [](int a, int b) { return a + b; };
-      >   auto sub  = [](int a, int b) { return a - b; };
-      >   auto mult = [](int a, int b) { return a * b; };
-      >   auto div  = [](int a, int b) { return a / b; };
-
-
-       - throughput
-          using perf::bench::policy::seq;
-          using perf::bench::policy::unseq;
-          using perf::bench::policy::unroll;
-          using perf::bench::policy::par;
-          using perf::bench::policy::omp;
-          using perf::bench::policy::cuda;
-      (note) that 10% seq execution can't be parallilzed
-        - latency - network request, trade
-        - throughput - backtest/llms
-    - input parameters
-      ```cpp
-      using perf::data::unpredictable;                  // not elided and not predicted
-      ```
-      - branch prediction
-    - runs statistical appraoch
-      - median, p90, p95, p99 (latency)
-      - gnuplot charts (sixel) and (console)
-        - ecdf! // show on the console output
-          ```cpp
-          perf::plot::hist
-          perf::plot::bar
-          perf::plot::box
-          perf::plot::line
-          perf::plot::ecdf // https://en.wikipedia.org/wiki/Empirical_distribution_function
-          perf::plot::flamegraph
-          screeenshots
-          ```
-          ```cpp
-          perf::plot::complexity (big0)
-          ```
-
-          servser side (no logs)
-
-        - jupyter notebook approach
-
-    - baseline
-    - ipt (intel, m4) -> event_open -> mca -> flamegraphs
-      - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html - doesn't fetch
-        using perf::mca::timeline;                        // produces a detailed report of each instruction’s state transitions through an instruction pipeline
-        using perf::mca::resource_pressure;               // reports the average number of resource cycles consumed every iteration by instructions for every processor resource unit available on the target
-        using perf::mca::bottleneck;          
-      - osaca - https://github.com/RRZE-HPC/OSACA
-      - uica - https://uica.uops.info
-
-    -isolation / noise reduction
-        - set affinity / set prioroity
-        - seperate process
-        - disable turbo hyperthreading
-        - isoplus 
-        - `pyperf system tune`
-      - PERF_UEFI
-        - no os
-        - disable/enable cache (can't be done without user-space)
-
-      - jtags...
-    - profilers
-      - time
+Profiler
+  stat
         - tsc / clock
         - rdpmc (current thread)
+          ```cpp
+          using perf::record::cpu_clock;
+          using perf::record::task_clock;
+          using perf::record::page_faults;
+          using perf::record::faults;
+          using perf::record::major_faults;
+          using perf::record::minor_faults;
+          using perf::record::alignment_faults;
+          using perf::record::emulation_faults;
+          using perf::record::context_switches;
+          using perf::record::cgroup_switches;
+          using perf::record::cpu_migrations;
+          using perf::record::migrations;
+          using perf::record::cycles;
+          using perf::record::instructions;
+          using perf::record::branch_misses;
+          using perf::record::bus_cycles;
+          using perf::record::cache_misses;
+          using perf::record::cache_references;
+          using perf::record::branches;
+          using perf::record::branch_instructions;
+          using perf::record::stalled_cycles_backend;
+          using perf::record::idle_cycles_backend;
+          using perf::record::stalled_cycles_frontend;
+          using perf::record::idle_cycles_frontend;
+          using perf::record::llc_misses;
+          using perf::record::l1_misses;
+          using perf::record::l1_dcache_loads;
+          using perf::record::l1_dcache_load_misses;
+          using perf::record::l1_icache_loads;
+          using perf::record::l1_icache_load_misses;
+          using perf::record::dtlb_loads;
+          using perf::record::dtlb_load_misses;
+          using perf::record::itlb_loads;
+          using perf::record::itlb_load_misses;
+          using perf::record::mem_loads;
+          using perf::record::mem_stores;
+          ```
+
+          inline constexpr auto rdpmc = [](const std::uint64_t id) {
+            std::uint64_t eax{}, edx{};
+              asm volatile(
+                "rdpmc" : "=a"(eax), "=d"(edx) : "c"(id)
+              );
+              return ((static_cast<std::uint64_t>(edx)) << 32u) | static_cast<std::uint64_t>(eax);
+          };
+
 
       perf::profiler profiler{perf::stat::cpu_time, perf::stat:cycles};
 
       static_assert(profiler::is_syscall_free);
-
-      start()
-      ```
-      rdtsc
-      rdpmc
-      ```
-
-        ```cpp
-        latency = ns(time) / operations;
-        ```
-
-        ```cpp
-        throughput = operations / seconds(time);
-        inverse_throughput = ns(time) / operations;
-        ```
-
-      - code labels
-        label("foo");
-              asm volatile goto(
-                ".pushsection labels, \"aw\" \n"
-                ".quad %c0, %l[L]\n" /// note: `.quad %c0, 0b` can be reordered
-                ".popsection \n"
-                : : "i"(Label) : "memory" : L
-              ); L:;
-
-        - prevent_elision/is_elided
-
-        inline constexpr auto prevent_elision = [](auto&& t) -> decltype(auto) {
-          if constexpr (std::is_pointer_v<std::remove_cvref_t<decltype(t)>>) {
-            asm volatile("" :: "g"(t) : "memory");
-          } else {
-            #if defined(__clang__)
-            asm volatile("" :: "r,m"(t) : "memory");
-            #else
-            asm volatile("" :: "m,r"(t) : "memory");
-            #endif
-          }
-          return (t);
-        };
-
-        /**
-         * returns true if function is elided by the compiler, false otherwise
-         */
-        template<auto Begin = +[]{}, auto End = +[]{}>
-        [[nodiscard]] inline constexpr auto is_elided(auto&& fn) -> bool {
-          const auto invoke = [&] {
-            code::label<Begin>();
-            fn();
-            code::label<End>();
-          };
-          const auto ptr = &decltype(invoke)::operator();
-          prevent_elision(&ptr);
-          return code::labels[Begin] == code::labels[End];
-        }
-        #endif // PERF_GNU
-
-
-        - how to get functoin address
-
-      - code markers
-
-      - stat/record
-        ```cpp
-        using perf::record::cpu_clock;
-        using perf::record::task_clock;
-        using perf::record::page_faults;
-        using perf::record::faults;
-        using perf::record::major_faults;
-        using perf::record::minor_faults;
-        using perf::record::alignment_faults;
-        using perf::record::emulation_faults;
-        using perf::record::context_switches;
-        using perf::record::cgroup_switches;
-        using perf::record::cpu_migrations;
-        using perf::record::migrations;
-        using perf::record::cycles;
-        using perf::record::instructions;
-        using perf::record::branch_misses;
-        using perf::record::bus_cycles;
-        using perf::record::cache_misses;
-        using perf::record::cache_references;
-        using perf::record::branches;
-        using perf::record::branch_instructions;
-        using perf::record::stalled_cycles_backend;
-        using perf::record::idle_cycles_backend;
-        using perf::record::stalled_cycles_frontend;
-        using perf::record::idle_cycles_frontend;
-        using perf::record::llc_misses;
-        using perf::record::l1_misses;
-        using perf::record::l1_dcache_loads;
-        using perf::record::l1_dcache_load_misses;
-        using perf::record::l1_icache_loads;
-        using perf::record::l1_icache_load_misses;
-        using perf::record::dtlb_loads;
-        using perf::record::dtlb_load_misses;
-        using perf::record::itlb_loads;
-        using perf::record::itlb_load_misses;
-        using perf::record::mem_loads;
-        using perf::record::mem_stores;
-        ```
 
         ```
         /// instruction per cycle (ipc)
@@ -458,11 +513,30 @@ Agenda
         ```
 
         - A Top-Down method for performance analysis and counters architecture - https://www.researchgate.net/publication/269302126_A_Top-Down_method_for_performance_analysis_and_counters_architecture
+
+        ![TopDown1](images/tmam1.png)
+        ![TopDown2](images/tmam2.png)
+          common metric
+          memory bound - LLMs also throuhgpu
+          cpu bound
+
+          perf[top_down::retirigin]
+
+
       - tracing - intel pt
         ```
         using perf::trace::instructions;
         using perf::trace::cycles;
         ```
+
+      - code labels
+        label("foo");
+              asm volatile goto(
+                ".pushsection labels, \"aw\" \n"
+                ".quad %c0, %l[L]\n" /// note: `.quad %c0, 0b` can be reordered
+                ".popsection \n"
+                : : "i"(Label) : "memory" : L
+              ); L:;
 
         ```cpp
         perf::profiler profiler{perf::trace::instructions, perf::trace::cycles}
@@ -474,10 +548,7 @@ Agenda
         invoke(fizz_buzz, std::rand());
         ```
 
-        - stat (perf) vs analyze (mca)
-
-        ```
-        ```
+        show ipc per instruction
 
         - disassemble vs trace vs sample
 
@@ -491,41 +562,8 @@ Agenda
         6
         ```
 
-      - simualtion - callgrind
-      - profiling - perf (vtune, uprof...)
-          /**
-           * perf record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-           */
-          class perf {
-            static constexpr auto enable = "enable\n";
-            static constexpr auto disable = "disable\n";
-
-           public:
-            constexpr explicit perf(std::string&& control)
-              : fd_{open(control.c_str(), O_WRONLY)}
-            { }
-            constexpr perf(const perf&) = delete;
-            constexpr perf(perf&& other)
-              : fd_{std::move(other.fd_)} {
-              other.fd_ = -1;
-            }
-            constexpr ~perf() noexcept {
-              if (fd_ == -1) return;
-              close(fd_);
-            }
-
-            constexpr void start() noexcept {
-              write(fd_, enable, sizeof(enable));
-            }
-
-            constexpr void stop() noexcept {
-              write(fd_, disable, sizeof(disable));
-            }
-
-           private:
-            int fd_{};
-          };
-
+      - Other profilers
+        - can be executed from code
           ```cpp
           [`linux-perf`](https://perf.wiki.kernel.org),
           [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler),
@@ -534,82 +572,60 @@ Agenda
           ```
 
           ```cpp
-          start();
-          stop();
+          prof::perf profiler{"/dev/shm/perf"};
+          profiler.start();
+            // fn
+          profiler.stop();
           ```
 
-          https://github.com/qlibs/prof
+          - https://github.com/qlibs/prof
 
-          likwid
-          magictrace
-          ebpf
+          ... (likwid, magictrace, ebpf, xray, coz - https://github.com/plasma-umass/coz)
 
-        Production
-          not the code
-            - linux-perf - https://www.brendangregg.com/perf.html
-            - perf probe (intel-pt)
-              - https://man7.org/linux/man-pages/man1/perf-probe.1.html
-            - Recording Inferior’s Execution and Replaying It
-              - https://sourceware.org/gdb/current/onlinedocs/gdb.html/Process-Record-and-Replay.html
+analyzer
+  mca
+      - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html - doesn't fetch
+        using perf::mca::timeline;                        // produces a detailed report of each instruction’s state transitions through an instruction pipeline
+        using perf::mca::resource_pressure;               // reports the average number of resource cycles consumed every iteration by instructions for every processor resource unit available on the target
+        using perf::mca::bottleneck;          
+      - osaca - https://github.com/RRZE-HPC/OSACA
+      - uica - https://uica.uops.info
 
-          changing the code
-            - [`llvm-xray`](https://llvm.org/docs/XRay.html),
-              - rdpmc
+      - stat (perf) vs analyze (mca)
 
-    inline constexpr auto rdpmc = [](const std::uint64_t id) {
-      std::uint64_t eax{}, edx{};
-        asm volatile(
-          "rdpmc" : "=a"(eax), "=d"(edx) : "c"(id)
-        );
-        return ((static_cast<std::uint64_t>(edx)) << 32u) | static_cast<std::uint64_t>(eax);
-    };
+      ```
+      ```
 
-              ```cpp
-              [[clang::xray_always_instrument]]
-              auto always() { return 42; }
+      ```cpp
+      fizz_buzz(unpredictable)/latency:
+            trace.instructions record::mem_loads timeline timeline resource_pressure
+      1     1                                      1
+      2     2                                      1           1
+      3                                                        1
+      3
+      4     10                                     1
+      4     11
+      5                                            1
+      5     12
+      ```
 
-              [[clang::xray_always_instrument, clang::xray_log_args(1)]]
-              auto always_profile_and_log_i(int i) { return i; }
 
-              [[clang::xray_never_instrument]]
-              auto never() { return 42; }
+Reports
+p90, p95
 
-              always():
-                      nop     word ptr [rax + rax + 512]
-                      mov     eax, 42
-                      ret
-                      nop     word ptr cs:[rax + rax + 512]
+plot
+      - gnuplot charts (sixel) and (console)
+        - ecdf! // show on the console output
+          ```cpp
+          perf::plot::hist
+          perf::plot::bar
+          perf::plot::box
+          perf::plot::line
 
-              always_profile_and_log_i(int):
-                      nop     word ptr [rax + rax + 512]
-                      mov     eax, edi
-                      ret
-                      nop     word ptr cs:[rax + rax + 512]
+            important - show error bars (show where the previous one could be slower)
 
-              never():
-                      mov     eax, 42
-                      ret
-              ```
-
-            - custom markers (aka xray)
-              marker("foo")
-                -> nop
-
-            - linux-perf
-
-        Notes
-          - debug verify results / can be done in warmup phase
-
-            ```cpp
-            []<auto debug = {}>(std::vector<int>& v) {
-              std::ranges::sort(v);
-              verify<debug>([] { assert(is_sorted(v); });
-            };
-            ```
-
-        flamegraphs
-        format is super easy
-        flamegraph.txt
+          perf::plot::ecdf // https://en.wikipedia.org/wiki/Empirical_distribution_function
+          perf::plot::flamegraph
         ```
         main;init;loadConfig 10
         main;init;checkDependencies 5
@@ -620,39 +636,96 @@ Agenda
         main;shutdown;cleanup 8
         ```
 
+          screeenshots
+          ```
+          ```cpp
+          perf::plot::complexity (big0)
+          ```
+
         - https://flamegraph.com
 
-        Eport/Share (jupyter)
-          - code says only what works and not what doesn't
-          - share studies!
+----
 
-        ### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+Eport/Share (jupyter)
+  - code says only what works and not what doesn't
+  - share studies!
 
-- what (examples)
+----
 
-  Example (dispatch techniques)
-    - full analyze
+What - Examples
 
-  ```cpp
-  fizz_buzz(unpredictable)/latency:
-        trace.instructions record::mem_loads timeline timeline resource_pressure
-  1     1                                      1
-  2     2                                      1           1
-  3                                                        1
-  3
-  4     10                                     1
-  4     11
-  5                                            1
-  5     12
+### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+
+----
+
+  ```
+  name info                                                    
+  ---- ------------------------------------------------------- 
+  sys  x86_64-pc-linux-gnu 
+  cxx  gcc-15.0.0 
+  cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 
+  iL1  32Kb (64b) 
+  dL1  48Kb/12 (64b) 
+  frq
   ```
 
+dispatch techniques
+- mph / magic_lut
+  https://github.com/qlibs/mph
 
-  - alignment (latency)
-  - memory (ipc)
-  - mph / magic_lut
-  - [[gnu::target("avx2")]]
-  - [[gnu::target("bmi2")]]
-  - C++26 - show how to pack structs r soa
+  perf::log({
+    {"sys",  perf::info::sys::triple()},
+    {"cxx",  perf::info::compiler()},
+    {"cpu",  perf::info::cpu()},
+    {"iL1",  perf::info::memory::icache()},
+    {"dL1",  perf::info::memory::dcache()},
+    // freq
+    // topology
+  });
+
+
+Branching
+  Branches that jump backward (loops) and are actually taken the first time → taken without miss.
+  All other branches (forward jumps that are taken) → mispredict on first encounter.
+  - show hot path
+  ```
+  if (foo) [[likely]] // taken (that's why you can use likely)
+  ```
+  ```
+  [[gnu::always_inline]] inline void fast_path() { std::puts("fast_path"); }
+  [[gnu::cold]] void slow_path() { std::puts("slow_path"); }
+
+  constexpr jmp::static_branch<bool> disarmed = false;
+
+  void trigger() {
+    if (not disarmed) { // { false: nop, true: jmp }
+      fast_path();
+    } else {
+      slow_path();
+    }
+  }
+  trigger(): // $CXX -O3
+    nop                              # code patching (nop->jmp .Ltmp1)
+   .Ltmp0:                           # fast path (inlined)
+    mov edi, OFFSET FLAT:.LC1
+    jmp puts
+   .Ltmp1:                           # slow path (cold)
+    jmp slow_path() # [clone .cold]
+  ```
+      // cant measure that with disassembly
+  https://github.com/qlibs/jmp
+
+
+Alignment / latency:
+  template<std::align_val_t Alignment>
+    requires (std::has_single_bit(std::size_t(Alignment)))
+  inline constexpr auto align = [] {
+    asm volatile(".align %c0" : : "i"(Alignment));
+  };
+
+  code::align<64>
+
+// ...
 
 ----
 
@@ -661,6 +734,7 @@ Agenda
 > ##### `"Performance Is Not a Number!"`
 
 - always measure
+- don't assume normal distribution
 - use the right tool for the job (don't optimize ns if you are reading from the disk)
 - performance is not a number
 - realsistc scenarios (alignment, warmup, threading, pin ...)
@@ -672,9 +746,33 @@ Agenda
 - use commonly recognized metrics
 - document leraning (what didn't what work)
 
+Learnings
+- always measure
+- use the right tool for the job (don't optimize ns if you are reading from the disk)
+  - tactivs vs strategy
+- performance is not a number
+- microbenchmarking
+  - baseline
+  - trust your framework (vs mca)
+- realsistc scenarios (alignment, warmup, threading, pin ...)
+- latency vs throughput (policy)
+- vary input data distrubtion
+- statistic measurements (median, mean)
+- charts (ecdf, etc...)
+- understand what results means - profiling / know your hardware
+    Computer Architecture - Onur Mutlu - https://www.youtube.com/@OnurMutluLectures
+    Computer, Enhance - Casey Muratori
+    Ignas Bagdonas - talks
+- use commonly recognized metrics
+  - top-down (show picture)
+  - ipc, ...
+- document leraning (what didn't what work)
+
 ----
 
 ### Further readings
+
+![img](images/resources.png)
 
 ### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
 
