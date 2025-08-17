@@ -317,8 +317,14 @@ Latency - time it takes for a single operation to complete (ns)
   cpu -> fpga -> asic
 
   ```cpp
-  for (...) {
-    sync // dependency chain
+  template<auto N>
+  [[gnu::section("latency")]] [[gnu::align(64u)]] auto latency (auto&& fn, auto&&... ts) {
+    auto checksum = 0u;
+    perf::code::align(64u); for (auto i = 0u; i < N; ++i) {
+      checksum ^= fn(checksum ^ ts...); // data dependency
+      perf::memory::synchronize(); // required if there is a memory write
+    }
+    perf::compiler::prevent_elision(checksum);
   }
   ```
 
@@ -429,6 +435,56 @@ Data distrubtion (branch prediction)
 
 - realsistc scenarios
   alignment, warmup, threading, pin ...
+
+  namespace cpu {
+    #if PERF_GNU == 1 and defined(__x86_64__)
+    namespace pipeline {
+      inline constexpr auto flush = [] {
+        asm volatile("cpuid" : : "a"(0), "c"(0) : "ebx", "edx", "memory");
+      };
+    } // namespace pipeline
+
+  template<class T = std::size_t, class TAllocator = std::allocator<T>>
+  inline constexpr auto pollute(const std::size_t size)
+    requires (requires { T{}; } or requires { T(size); }) {
+    verify(size > 0u);
+    std::list<T, TAllocator> data{};
+    auto n = size;
+    while (n--) {
+      if constexpr (requires { T(n); }) {
+        data.push_back(T(n));
+      } else {
+        data.push_back(T{});
+      }
+    }
+  }
+
+  inline constexpr auto pre_fault =
+    [](std::span<std::byte> data, const std::size_t page_size = info::sys::page_size()) {
+      for (auto i = 0u; i < data.size(); i += page_size) {
+        data[i] = {};
+      }
+    };
+
+  inline constexpr auto flush = [](std::span<const std::byte> data) {
+    const auto size = data.size();
+    const auto cache_line_size = info::memory::dcache()[info::memory::level::L1].line_size;
+    const auto ptr = std::bit_cast<std::uintptr_t>(data.begin());
+    const auto aligned_start = ptr & ~(cache_line_size - 1u);
+    const auto aligned_end = (ptr + size + cache_line_size - 1u) & ~(cache_line_size - 1u);
+    const auto aligned_size = aligned_end - aligned_start;
+
+    #if PERF_GNU == 1 and defined(__x86_64__)
+    for (auto i = 0u; i < aligned_size; i += cache_line_size) {
+      asm volatile("clflush (%0)" :: "r"(reinterpret_cast<const void*>(aligned_start + i)));
+    }
+    #elif __has_builtin(__builtin___clear_cache)
+    __builtin___clear_cache(
+      reinterpret_cast<const std::byte*>(aligned_start),
+      reinterpret_cast<const std::byte*>(aligned_start + aligned_size)
+    );
+    #endif
+  };
 
 ----
 
@@ -662,7 +718,7 @@ Data distrubtion (branch prediction)
       5     12
       ```
 
-      perf::plot::flamegraph
+    perf::plot::flamegraph
     ```
     main;init;loadConfig 10
     main;init;checkDependencies 5
@@ -702,9 +758,12 @@ Data distrubtion (branch prediction)
     - jupyter notebook approach
 
   Eport/Share (jupyter)
+    - perf::json
     - code says only what works and not what doesn't
     - what didn't what work
     - share studies!
+      - github
+    ### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 
 ----
 
