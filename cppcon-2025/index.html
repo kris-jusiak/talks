@@ -76,7 +76,7 @@
 #### Based on https://github.com/qlibs/perf#resources
 <!-- .element: style="text-align:left" -->
 
-#### Powered by https://github.com/qlibs/perf
+#### Powered by https://github.com/qlibs/perf (cpp23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel)
 <!-- .element: style="text-align:left" -->
 
 ---
@@ -134,22 +134,7 @@ fn2       123ns // ?
 
 ----
 
-Impossible to have fully realstic scenarios
-
-- branch prediction state (10'000 1/0 branches learn)
-- cache/memory state
-- which ports will be used
-- depending on the run-time information
-- ...
-
-Notes:
-- can't set specific state (can just do the best and use statistics)
-
-<!-- .slide: data-background="darkred" -->
-
-----
-
-#### Microbenchmarking
+#### Benchmarking
 
 ##### 'hot spot' engineering can fail, better to reduce overall instruction count
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
@@ -167,78 +152,154 @@ Notes:
 
 ----
 
-### Microbenchmarking - Avoiding Common Pitfalls
+#### Benchmarking
+
+Impossible to have fully realstic scenarios
+
+- branch prediction state (10'000 1/0 branches learn)
+- cache/memory state
+- which ports will be used
+- depending on the run-time information
+- ...
+
+Notes:
+- can't set specific state (can just do the best and use statistics)
+
+<!-- .slide: data-background="darkred" -->
 
 ----
 
-### [0] Starting from micro-optimizations
-
-<!-- .slide: data-background="darkblue" -->
+### [Micro]benchmarking - Avoiding Common Pitfalls
 
 ----
 
-Using the right tool for the job
-  ```
-  don't optimize ns if you are reading from the disk
-  ```
+### [0] Caring about performance...
 
-Premature optimizations
-  ```
-  [[always_inline]] everything!
-  optimizing ns when allocating in hot path, etc...
-  logging in the hot ophat, ...
-  reading from the disk in the hot path ...
-  ```
-
-Profilers
-  [coz](https://github.com/plasma-umass/coz) - threading
-  [magictrace](https://github.com/janestreet/magic-trace)
-  [code] [tracy](https://github.com/wolfpld/tracy)
-  [code] [`linux-perf`](https://perf.wiki.kernel.org)
-  [code] [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler)
-  [code] [`amd-uprof`](https://www.amd.com/en/developer/uprof.html)
-  [code] [`gperftools`](https://github.com/gperftools/gperftools)
-  [code] [likwid](https://github.com/RRZE-HPC/likwid)
-  [code] [llvm-xray](https://llvm.org/docs/XRay.html)
-
-Simulators
-  [code] [`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
-
-  ```cpp
-  prof::linux::perf profiler{"/dev/shm/perf"};
-  profiler.start(); // syscall
-  // ...
-  profiler.stop();  // syscall
-  ```
-
-  ```cpp
-  perf record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-  ```
-
-  - https://github.com/qlibs/prof
-
-  llvm-xray
-    [[clang::xray_always_instrument]]
-    auto always() { return 42; }
-          nop     word ptr [rax + rax + 512] // code patching
-          mov     eax, 42
-          ret
-          nop     word ptr cs:[rax + rax + 512] // code patching
-
-    [[clang::xray_never_instrument]]
-    auto never() { return 42; }
-          mov     eax, 42
-          ret
-
-----
-
-### [1] Not measuring
+### ... on paper
+<!-- .element: class="fragment" data-fragment-index="1" -->
 
 <!-- .slide: data-background="darkblue" -->
 
 ----
 
 > Always measure!
+
+> Caring about performance starts with measuring it!
+
+----
+
+
+### [1] Optimizing prematurely
+
+<!-- .slide: data-background="darkblue" -->
+
+----
+
+#### Premature optimizations
+
+```cpp
+template<class T>
+[[always_inline]] auto hot_path(std::list<T>& input, auto... ts) {
+  if (config::instance().verbose) {
+    log << "slow" << std::endl;
+  }
+
+  (l.push(ts), ...);
+
+  std::vector v = bubble_sort(l);
+
+  if (config::instance().verbose) {
+    log << "slower" << v << std::endl;
+  }
+
+  return v;
+}
+```
+
+----
+
+#### Profile first
+
+#### Profilers
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+[timing][code] [tracy](https://github.com/wolfpld/tracy)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[sampling/tracing][code] [`linux-perf`](https://perf.wiki.kernel.org)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[sampling/tracing][code] [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[sampling][code] [`amd-uprof`](https://www.amd.com/en/developer/uprof.html)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[sampling][code] [`gperftools`](https://github.com/gperftools/gperftools)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[stats][code] [likwid](https://github.com/RRZE-HPC/likwid)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[simulating][code] [`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[sampling][coz](https://github.com/plasma-umass/coz) - threading
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+[tracing][magictrace](https://github.com/janestreet/magic-trace)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+https://github.com/qlibs/prof
+
+----
+
+#### [Top-down Microarchitecture Analysis Method](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-0/top-down-microarchitecture-analysis-method.html)
+
+```cpp
+prof::linux::perf profiler{"/dev/shm/perf"};
+profiler.start(); // syscall
+// ...
+profiler.stop();  // syscall
+```
+
+```cpp
+perf stat --topdown --control=fifo:/dev/shm/perf --delay=-1 ./a.out
+```
+
+---
+
+```sh
+Retiring Bad Speculation Frontend Bound Backend Bound Heavy Operations Light Operations Branch Mispredict       Machine Clears        Fetch Latency      Fetch Bandwidth         Memory Bound           Core Bound 
+  22.0%           13.3%          31.8%         32.9%             3.1%            18.8%             12.9%                 0.4%                21.6%                10.2%                23.1%                 9.8% 
+```
+
+----
+
+##### llvm-xray
+
+```cpp
+auto fn(); // -fxray-instrument
+  nop     word ptr [rax + rax + 512]    // XRayEntryType::ENTRY
+  ...
+  nop     word ptr cs:[rax + rax + 512] // XRayEntryType::EXIT
+```
+<!-- .element: style="text-align:left" -->
+
+```cpp
+void handler(int func_id, XRayEntryType entry) {
+  if (entry == XRayEntryType::ENTRY) {
+    profiler.start();
+  } else {
+    profiler.stop();
+  }
+}
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+```cpp
+int main() {
+  __xray_set_handler(handler);
+  __xray_patch(); // nop->jmp &handler
+}
+```
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+
+
+#### https://llvm.org/docs/XRay.html
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -931,8 +992,6 @@ Techniques
     {"cpu",  perf::info::cpu()},
     {"iL1",  perf::info::memory::icache()},
     {"dL1",  perf::info::memory::dcache()},
-    // freq
-    // topology
   });
 
   ```
@@ -940,10 +999,9 @@ Techniques
   ---- -------------------------------------------------------
   sys  x86_64-pc-linux-gnu
   cxx  gcc-15.0.0
-  cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
+  cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 2.67Ghz
   iL1  32Kb (64b)
   dL1  48Kb/12 (64b)
-  frq
   ```
 
   Branches that jump backward (loops) and are actually taken the first time → taken without miss.
@@ -993,38 +1051,13 @@ Techniques
 
 ----
 
-##### `"Performance Is Not a Number!"`
-
-### [0] Starting from micro-optimizations/benchmarking
-<!-- .element: style="text-align:left" -->
-##### 1. Not measuring anything
-<!-- .element: style="text-align:left" -->
-##### 2. Assuming measurements follow normal distrubution
-<!-- .element: style="text-align:left" -->
-##### 3. Assuming measurements are independent
-<!-- .element: style="text-align:left" -->
-##### 4. Not measureing the right thing
-<!-- .element: style="text-align:left" -->
-##### 5. Not verifying results
-<!-- .element: style="text-align:left" -->
-##### 6. Ignoring hardware effects
-<!-- .element: style="text-align:left" -->
-##### 7. Ignoring compiler effects
-<!-- .element: style="text-align:left" -->
-##### 8. Not levaraging PMU counters / HW profiling / metrics
-<!-- .element: style="text-align:left" -->
-##### 9. Not understanding (profiling/tracing/analyzing) results
-<!-- .element: style="text-align:left" -->
-##### 10. Not having baseline
-<!-- .element: style="text-align:left" -->
-##### 11. Not tracking results / documenting learnings
-<!-- .element: style="text-align:left" -->
+### Performance Is Not a Number!
 
 ----
 
-### Further readings
+#### Further readings
 
-<img src="images/resources.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
+<img src="images/resources.png" style="width: 80%; height: 500px; background:none; border:none; box-shadow:none;" />
 
 #### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
 
