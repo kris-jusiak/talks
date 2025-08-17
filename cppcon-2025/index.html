@@ -56,43 +56,52 @@
 <!-- <br />&nbsp; -->
 <!-- <br />&nbsp; -->
 
-#### Kris Jusiak
+---
 
 ### Performance Is Not a Number: Avoiding Microbenchmarking Pitfalls
-<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+  <img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+
+---
+
+#### kris@jusiak.net
+<!-- .element: style="text-align:right" -->
 
 ----
 
 #### Disclaimer
 
-#### Focused on x86-64-linux-gnu
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+#### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+<!-- .element: style="text-align:left" -->
+
+#### Based on https://github.com/qlibs/perf#resources
+<!-- .element: style="text-align:left" -->
+
 #### Powered by https://github.com/qlibs/perf
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+<!-- .element: style="text-align:left" -->
+
+---
+
+#### https://github.com/qlibs/perf/blob/main/.github/workflows/Dockerfile
+<!-- .element: style="text-align:left" -->
 
 ----
 
 #### Performance
 
 ```cpp
-Speed of light ............................ ~1 foot/ns
-L1 cache reference ......................... 0.5 ns
-Branch mispredict ............................ 5 ns
-L2 cache reference ........................... 7 ns
-Mutex lock/unlock ........................... 25 ns
-Main memory reference ...................... 100 ns
+Speed of light           ~30cm/ns
+1 cycle                  0.25ns
+light: 7.5 centimeters per cycle
+L1 cache reference 0.5 - 1ns
+L2 cache reference 2   - 4ns
+L3 cache reference 10-30ns
+Main memory reference 70-100 ns
+Branch mispredict 3-5 ns
 ```
 
-```cpp
-Processor         Year      Freq   Transistors
-Intel Lunar Lake  2024   4.4 GHz   ?? billions
-Apple M4          2024   4.5 GHz   28 billions
-AMD Zen 5         2024   5.7 GHz   50 billions
-```
-
-##### Modern processors execute nearly as many instructions per cycle as you can supply*
+##### Modern processors (Desktop: Intel Arrow Lake, Apple M4, AMD Zen 5) execute nearly as many instructions per cycle as you can supply*
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-###### *branching, memory, and input/output
+##### *branching, memory, and input/output
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
@@ -100,34 +109,61 @@ AMD Zen 5         2024   5.7 GHz   50 billions
 #### Performance Is Not a number!
 
 ```cpp
-auto fizz_buzz(int n) {
-  if (n % 15 == 0) {
-    return "FizzBuzz";
-  } else if (n % 3 == 0) {
-    return "Fizz";
-  } else if (n % 5 == 0) {
-    return "Buzz";
-  } else {
-    return "Unknown";
-  }
-}
+Benchmark  Time
+--------- -----
+fn        123ns // ?
 ```
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
 
+```cpp
+Benchmark  Time
+--------- -----
+fn1       123ns // ?
+fn2       118ns // ?
 ```
-fizz_buzz 123ns // ❓
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+```cpp
+Benchmark  Time
+--------- -----
+baseline   52ns // ?
+fn1       142ns // ?
+fn2       123ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+
+----
+
+Impossible to have fully realstic scenarios
+
+- branch prediction state (10'000 1/0 branches learn)
+- cache/memory state
+- which ports will be used
+- depending on the run-time information
+- ...
+
+Notes:
+- can't set specific state (can just do the best and use statistics)
+
+<!-- .slide: data-background="darkred" -->
 
 ----
 
 #### Microbenchmarking
 
 ##### 'hot spot' engineering can fail, better to reduce overall instruction count
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-##### Understanding, test corner cases, tuning
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-##### Might be misleading!
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+##### Understanding
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+##### Corner cases
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+##### Tuning
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+
+---
+
+##### But done incorrectly might be misleading!
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ----
 
@@ -135,75 +171,74 @@ fizz_buzz 123ns // ❓
 
 ----
 
-### [0] Not profiling before
+### [0] Starting from micro-optimizations
 
 <!-- .slide: data-background="darkblue" -->
 
 ----
 
-- use the right tool for the job (don't optimize ns if you are reading from the disk)
-  - tactivs vs strategy
+Using the right tool for the job
+  ```
+  don't optimize ns if you are reading from the disk
+  ```
 
-- ... (likwid, magictrace, ebpf, xray, coz - https://github.com/plasma-umass/coz)
+Premature optimizations
+  ```
+  [[always_inline]] everything!
+  optimizing ns when allocating in hot path, etc...
+  logging in the hot ophat, ...
+  reading from the disk in the hot path ...
+  ```
 
-- can be executed from code
+Profilers
+  [coz](https://github.com/plasma-umass/coz) - threading
+  [magictrace](https://github.com/janestreet/magic-trace)
+  [code] [tracy](https://github.com/wolfpld/tracy)
+  [code] [`linux-perf`](https://perf.wiki.kernel.org)
+  [code] [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler)
+  [code] [`amd-uprof`](https://www.amd.com/en/developer/uprof.html)
+  [code] [`gperftools`](https://github.com/gperftools/gperftools)
+  [code] [likwid](https://github.com/RRZE-HPC/likwid)
+  [code] [llvm-xray](https://llvm.org/docs/XRay.html)
 
-```
-[`linux-perf`](https://perf.wiki.kernel.org),
-[`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler),
-[`amd-uprof`](https://www.amd.com/en/developer/uprof.html),
-[`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
-```
+Simulators
+  [code] [`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
 
   ```cpp
-  prof::perf profiler{"/dev/shm/perf"};
-  profiler.start();
-    // fn
-  profiler.stop();
+  prof::linux::perf profiler{"/dev/shm/perf"};
+  profiler.start(); // syscall
+  // ...
+  profiler.stop();  // syscall
+  ```
+
+  ```cpp
+  perf record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
   ```
 
   - https://github.com/qlibs/prof
 
+  llvm-xray
+    [[clang::xray_always_instrument]]
+    auto always() { return 42; }
+          nop     word ptr [rax + rax + 512] // code patching
+          mov     eax, 42
+          ret
+          nop     word ptr cs:[rax + rax + 512] // code patching
+
+    [[clang::xray_never_instrument]]
+    auto never() { return 42; }
+          mov     eax, 42
+          ret
+
 ----
 
-### [1] Not measuring anything
+### [1] Not measuring
 
 <!-- .slide: data-background="darkblue" -->
 
 ----
 
-- always measure!
-
-Prevent elision
-
-inline constexpr auto prevent_elision = [](auto&& t) -> decltype(auto) {
-  if constexpr (std::is_pointer_v<std::remove_cvref_t<decltype(t)>>) {
-    asm volatile("" :: "g"(t) : "memory");
-  } else {
-    #if defined(__clang__)
-    asm volatile("" :: "r,m"(t) : "memory");
-    #else
-    asm volatile("" :: "m,r"(t) : "memory");
-    #endif
-  }
-  return (t);
-};
-
-/**
- * returns true if function is elided by the compiler, false otherwise
- */
-template<auto Begin = +[]{}, auto End = +[]{}>
-[[nodiscard]] inline constexpr auto is_elided(auto&& fn) -> bool {
-  const auto invoke = [&] {
-    code::label<Begin>();
-    fn();
-    code::label<End>();
-  };
-  const auto ptr = &decltype(invoke)::operator();
-  prevent_elision(&ptr);
-  return code::labels[Begin] == code::labels[End];
-}
-#endif // PERF_GNU
+> Always measure!
 
 ----
 
@@ -215,16 +250,33 @@ template<auto Begin = +[]{}, auto End = +[]{}>
 
     taking mean!
       - mesuremnets are not following normal distrubution
-        - Timing data is usually skewed, not symmetric
-      - se min, median, percentials isntead
-
     show chart of distribution
+        - Timing data is usually skewed, not symmetric
+      - use min, median, percentials instead
+
+  - statistical approach
+    ```cpp
+      perf::metric::stat::min;
+      perf::metric::stat::max;
+      perf::metric::stat::mean;
+      perf::metric::stat::geomean;
+      perf::metric::stat::median;
+      perf::metric::stat::percentile;
+      perf::metric::stat::p99;
+      perf::metric::stat::p75;
+      perf::metric::stat::p50;
+      perf::metric::stat::p25;
+      perf::metric::stat::variance;
+      perf::metric::stat::stddev;      // degrees_of_freedom = 1
+      perf::metric::stat::sem;         // standard error
+      perf::metric::stat::mae;         // median absolute errror
+      perf::metric::stat::mad;         // median absolute deviation
+      perf::metric::stat::cv;          // coefficient of variation
+      perf::metric::stat::z_score;
+      perf::metric::stat::t_score;
+    ```
+
     show chart of line incorrect
-
-  - statistical appraoch
-    median, p90, p95, p99 (latency)
-
-    report
 
     plot
       - gnuplot charts (sixel) and (console)
@@ -239,11 +291,11 @@ template<auto Begin = +[]{}, auto End = +[]{}>
 
           perf::plot::ecdf // https://en.wikipedia.org/wiki/Empirical_distribution_function
 
-            - running on the server side - sixel
-
+            - running on the server side - sixel / show console picture
 ----
 
 ### [3] Assuming measurements are independent
+### [3] Ingoring OS effects
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -272,22 +324,27 @@ Full control
 ----
 
 ```cpp
-start(); // what is measured?
+start();
+fn();
 stop();
 ```
 
 ```cpp
-for (
-start(); // what is measured?
-stop();
+for (auto i = 0; i < iterations; ++i) {
+  start();
+  fn();
+  stop();
+}
 ```
 
 ```cpp
-start(); // what is measured?
-for (
+start();
+for (auto i = 0; i < iterations; ++i) {
+  fn();
 )
 stop();
-latency =
+
+const auto time = (stop - start) / iterations; // ?
 ```
 
 ----
@@ -307,11 +364,19 @@ latency vs throughput
 Latency - time it takes for a single operation to complete (ns)
   cpu -> fpga -> asic
 
+    ```cpp
+    namespace perf::code {
+      constexpr auto align(std::align_val_t Alignment) {
+        asm volatile(".align %c0" : : "i"(Alignment));
+      }
+    }
+    ```
+
   ```cpp
-  template<auto N>
-  [[gnu::section("latency")]] [[gnu::align(64u)]] auto latency (auto&& fn, auto&&... ts) {
+  template<std::size_t N, std::align_val_t Alignment>
+  [[gnu::section("latency")]] [[gnu::aligned(Alignment)]] constexpr auto latency(auto&& fn, auto&&... ts) {
     auto checksum = 0u;
-    perf::code::align(64u); for (auto i = 0u; i < N; ++i) {
+    perf::code::align(Alignment); for (auto i = 0u; i < N; ++i) {
       checksum ^= fn(checksum ^ ts...); // data dependency
       perf::memory::synchronize(); // required if there is a memory write
     }
@@ -335,11 +400,11 @@ Latency - time it takes for a single operation to complete (ns)
 
         ```cpp
         template<std::size_t N>
-        inline constexpr auto unroll = [](auto&& fn) {
+        constexpr auto unroll(auto&& fn) {
           [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
             (fn(), ...);
           }(std::make_index_sequence<N>{});
-        };
+        }
         ```
 
         ```cpp
@@ -355,12 +420,15 @@ Latency - time it takes for a single operation to complete (ns)
 Throughput - total number of operations or tasks completed in a given amount of time (op/s)
   cpu -> gpu/tup
 
-    using perf::bench::policy::seq;
-    using perf::bench::policy::unseq;
-    using perf::bench::policy::unroll;
-    using perf::bench::policy::par;
-    using perf::bench::policy::omp;
-    using perf::bench::policy::cuda;
+  ```cpp
+    perf::bench::throughput::policy::seq;
+    perf::bench::throughput::policy::unseq;
+    perf::bench::throughput::policy::unroll;
+    perf::bench::throughput::policy::par;
+    perf::bench::throughput::policy::omp;
+    perf::bench::throughput::policy::cuda;
+  ```
+
       (note) that 10% seq execution can't be parallilzed
         - latency - network request, trade
         - throughput - backtest/llms
@@ -381,22 +449,29 @@ Throughput - total number of operations or tasks completed in a given amount of 
 
 ----
 
+
+
 debug verify results / can be done in warmup phase
 
-  ```cpp
-  []<auto debug = {}>(std::vector<int>& v) {
-    std::ranges::sort(v);
-    verify<debug>([] { assert(is_sorted(v); });
-  };
-  ```
+```cpp
+[]<bool debug = {}>(std::vector<int>& v) {
+  std::ranges::sort(v);
+  if constexpr (debug) {
+    assert(is_sorted(v));
+  }
+};
+```
 
 ----
 
-### [6] Ignoring hardware effects
+### [6] Ignoring hardware effects (aka not having realistic scenarios understnaing)
 
 <!-- .slide: data-background="darkblue" -->
 
 ----
+
+not knowing what to optimize and how
+  - Modern processors execute nearly as many instructions per cycle as you can supply*
 
 Data distrubtion (branch prediction)
 
@@ -489,7 +564,14 @@ Data distrubtion (branch prediction)
 
 ----
 
+  Nonosecond count!
+
     TSC   - Time Stamp Counter
+
+      Time based benchmarking
+
+        clock-gettime
+
 
     Time is discrete: clock cycle
       Processors: 4 GHz (4*10^9 cycles per second)
@@ -502,6 +584,7 @@ Data distrubtion (branch prediction)
 
     - tsc / clock
       tsc = [] {
+        // get it from higway
       };
 
     - rdpmc (current thread)
@@ -515,67 +598,61 @@ Data distrubtion (branch prediction)
 
 
       ```cpp
-      using perf::record::cpu_clock;
-      using perf::record::task_clock;
-      using perf::record::page_faults;
-      using perf::record::faults;
-      using perf::record::major_faults;
-      using perf::record::minor_faults;
-      using perf::record::alignment_faults;
-      using perf::record::emulation_faults;
-      using perf::record::context_switches;
-      using perf::record::cgroup_switches;
-      using perf::record::cpu_migrations;
-      using perf::record::migrations;
-      using perf::record::cycles;
-      using perf::record::instructions;
-      using perf::record::branch_misses;
-      using perf::record::bus_cycles;
-      using perf::record::cache_misses;
-      using perf::record::cache_references;
-      using perf::record::branches;
-      using perf::record::branch_instructions;
-      using perf::record::stalled_cycles_backend;
-      using perf::record::idle_cycles_backend;
-      using perf::record::stalled_cycles_frontend;
-      using perf::record::idle_cycles_frontend;
-      using perf::record::llc_misses;
-      using perf::record::l1_misses;
-      using perf::record::l1_dcache_loads;
-      using perf::record::l1_dcache_load_misses;
-      using perf::record::l1_icache_loads;
-      using perf::record::l1_icache_load_misses;
-      using perf::record::dtlb_loads;
-      using perf::record::dtlb_load_misses;
-      using perf::record::itlb_loads;
-      using perf::record::itlb_load_misses;
+      using perf::stat::cpu_clock;
+      using perf::stat::task_clock;
+      using perf::stat::page_faults;
+      using perf::stat::faults;
+      using perf::stat::major_faults;
+      using perf::stat::minor_faults;
+      using perf::stat::alignment_faults;
+      using perf::stat::emulation_faults;
+      using perf::stat::context_switches;
+      using perf::stat::cgroup_switches;
+      using perf::stat::cpu_migrations;
+      using perf::stat::migrations;
+      using perf::stat::cycles;
+      using perf::stat::instructions;
+      using perf::stat::branch_misses;
+      using perf::stat::bus_cycles;
+      using perf::stat::cache_misses;
+      using perf::stat::cache_references;
+      using perf::stat::branches;
+      using perf::stat::branch_instructions;
+      using perf::stat::stalled_cycles_backend;
+      using perf::stat::idle_cycles_backend;
+      using perf::stat::stalled_cycles_frontend;
+      using perf::stat::idle_cycles_frontend;
+      using perf::stat::llc_misses;
+      using perf::stat::l1_misses;
+      using perf::stat::l1_dcache_loads;
+      using perf::stat::l1_dcache_load_misses;
+      using perf::stat::l1_icache_loads;
+      using perf::stat::l1_icache_load_misses;
+      using perf::stat::dtlb_loads;
+      using perf::stat::dtlb_load_misses;
+      using perf::stat::itlb_loads;
+      using perf::stat::itlb_load_misses;
+      ...
+      ```
+
+      ```cpp
       using perf::record::mem_loads;
       using perf::record::mem_stores;
       ```
 
-  perf::profiler profiler{perf::stat::cpu_time, perf::stat:cycles};
-
+  perf::profiler profiler{perf::stat::tsc, perf::stat:cycles, perf::stat::instructions, perf::trace::instructions, perf::trace::cycles, perf::record::mem_loads, perf::record::mem_stores};
   static_assert(profiler::is_syscall_free);
 
 - use commonly recognized metrics
     ```
-    /// instruction per cycle (ipc)
-    inline constexpr auto ipc = instructions / cycles;
-
-    /// cycles per instruction (cpi, inverse of ipc)
-    inline constexpr auto cpi = cycles / instructions;
-
-    /// branch miss rate (branch misses per branch instruction)
-    inline constexpr auto branch_miss_rate = branch_misses / branches;
-
-    /// cache miss rate (cache misses per cache reference)
+    inline constexpr auto ipc = instructions / cycles; // instruction per cycle (ipc)
+    inline constexpr auto cpi = cycles / instructions; // // cycles per instruction (cpi, inverse of ipc)
+    inline constexpr auto l1_dcache_miss_rate = l1_dcache_load_misses / l1_dcache_loads;
     inline constexpr auto cache_miss_rate = cache_misses / cache_references;
-
-    /// llc miss rate
+    inline constexpr auto branch_miss_rate = branch_misses / branches;
     inline constexpr auto llc_miss_rate = llc_misses / cache_references;
 
-    /// l1 data cache miss rate
-    inline constexpr auto l1_dcache_miss_rate = l1_dcache_load_misses / l1_dcache_loads;
+```
 
     /// l1 instruction cache miss rate
     inline constexpr auto l1_icache_miss_rate = l1_icache_load_misses / l1_icache_loads;
@@ -619,28 +696,30 @@ Data distrubtion (branch prediction)
   ![TopDown1](images/tmam1.png)
   ![TopDown2](images/tmam2.png)
     common metric
-    memory bound - LLMs also throuhgpu
     cpu bound
 
-    perf[top_down::retirigin]
+    perf[top_down::retiring]
 
     ```
+    // l1
     inline constexpr auto retiring = aux::retiring / aux::slots;
-    inline constexpr auto heavy_operations = aux::heavy_operations / aux::slots;
-    inline constexpr auto light_operations = retiring - heavy_operations;
+      inline constexpr auto heavy_operations = aux::heavy_operations / aux::slots;
+      inline constexpr auto light_operations = retiring - heavy_operations;
 
     inline constexpr auto bad_speculation = aux::bad_speculation / aux::slots;
-    inline constexpr auto branch_mispredict = aux::branch_mispredict / aux::slots;
-    inline constexpr auto machine_clears = bad_speculation - branch_mispredict;
+      inline constexpr auto branch_mispredict = aux::branch_mispredict / aux::slots;
+      inline constexpr auto machine_clears = bad_speculation - branch_mispredict;
 
     inline constexpr auto frontend_bound = aux::frontend_bound / aux::slots;
-    inline constexpr auto fetch_latency = aux::fetch_latency / aux::slots;
-    inline constexpr auto fetch_bandwidth = frontend_bound - fetch_latency;
+      inline constexpr auto fetch_latency = aux::fetch_latency / aux::slots;
+      inline constexpr auto fetch_bandwidth = frontend_bound - fetch_latency;
 
     inline constexpr auto backend_bound = aux::backend_bound / aux::slots;
-    inline constexpr auto memory_bound = aux::memory_bound / aux::slots;
-    inline constexpr auto core_bound = backend_bound - memory_bound;
+      inline constexpr auto memory_bound = aux::memory_bound / aux::slots; // LLMs
+      inline constexpr auto core_bound = backend_bound - memory_bound;
     ```
+
+    find the slide
 
 ----
 
@@ -649,6 +728,39 @@ Data distrubtion (branch prediction)
 <!-- .slide: data-background="darkblue" -->
 
 ----
+
+  - optimizd away
+
+  ```cpp
+  constexpr auto prevent_elision(const auto& t) {
+    asm volatile("" :: "r,m"(t) : "memory");
+  }
+  constexpr auto prevent_elision(const auto* t) {
+    asm volatile("" :: "g"(t) : "memory");
+  }
+  ```
+
+  ```cpp
+  template<auto Begin = []{}, auto End = []{}>
+  constexpr auto is_elided(auto&& fn) -> bool {
+    const auto invoke = [&] {
+      code::label<Begin>();
+      fn();
+      code::label<End>();
+    };
+    prevent_elision(&decltype(invoke)::operator());
+    return code::labels[Begin] == code::labels[End];
+  }
+  ```
+
+  ```cpp
+  assert(perf::compiler::is_elided([] { }));
+  assert(perf::compiler::is_elided([] { int i{}; i++; }));
+  assert(not perf::compiler::is_elided([] {
+    int i{};
+    perf::compiler::prevent_elision(i++);
+  }));
+  ```
 
   Want performance - know your hardware!
 
@@ -662,13 +774,23 @@ Data distrubtion (branch prediction)
     ```
 
   - code labels
-    label("foo");
-          asm volatile goto(
-            ".pushsection labels, \"aw\" \n"
-            ".quad %c0, %l[L]\n" /// note: `.quad %c0, 0b` can be reordered
-            ".popsection \n"
-            : : "i"(Label) : "memory" : L
-          ); L:;
+  ```cpp
+  constexpr auto label(conts auto id) {
+    asm volatile goto(
+      ".pushsection labels, \"aw\" \n"
+      ".quad %c0, 0b \n`
+      ".popsection \n"
+      : : "i"(id) : "memory"
+    );
+  }
+  ```
+
+  ```cpp
+    extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
+    extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
+
+    constinit std::unordered_map<std::uint64_t, std::uint64_t> labels{&__start_labels, &__stop_labels};
+  ```
 
     ```cpp
     perf::profiler profiler{perf::trace::instructions, perf::trace::cycles}
@@ -695,10 +817,16 @@ Data distrubtion (branch prediction)
     ```
 
   mca
-      - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html - doesn't fetch
-        using perf::mca::timeline;                        // produces a detailed report of each instruction’s state transitions through an instruction pipeline
-        using perf::mca::resource_pressure;               // reports the average number of resource cycles consumed every iteration by instructions for every processor resource unit available on the target
-        using perf::mca::bottleneck;
+      remove dependency chains
+
+      - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html (doesn't fetch, depends on your description)
+
+        ```cpp
+        perf::mca::timeline;                        // produces a detailed report of each instruction’s state transitions through an instruction pipeline
+        perf::mca::resource_pressure;               // reports the average number of resource cycles consumed every iteration by instructions for every processor resource unit available on the target
+        perf::mca::bottleneck;
+        ```
+
       - osaca - https://github.com/RRZE-HPC/OSACA
       - uica - https://uica.uops.info
 
@@ -746,19 +874,31 @@ Data distrubtion (branch prediction)
 
 ----
 
-  - baseline
+perf::runner bench{perf::bench::latency{}};
+
+bench(perf::bench::baseline([]{});
+bench(fizz_buzz, 1);
+report()
 
 ----
 
-### [11] Not tracking results / documenting learnings
+
+### [11] Not knowing when to stop micro-optimizing
+
+max ipc
+
+----
+
+### [12] Not tracking results / documenting learnings
 
 <!-- .slide: data-background="darkblue" -->
 
 ----
 
     - learning
+    - test it perf::verify(assembly)
     - continous integration
-    - testing perf::verify(assembly)
+
     - jupyter notebook approach
 
   Eport/Share (jupyter)
@@ -771,7 +911,7 @@ Data distrubtion (branch prediction)
 
 ----
 
-### Examples
+### Studies
 
 #### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 
@@ -780,7 +920,20 @@ Data distrubtion (branch prediction)
 Techniques
   Data level parallelsim - SWAR, SIMD (AVX512)
   Data oriented design
-  Branchless
+  Branchless programming
+
+
+1. Branching
+
+  perf::log({
+    {"sys",  perf::info::sys::triple()},
+    {"cxx",  perf::info::compiler()},
+    {"cpu",  perf::info::cpu()},
+    {"iL1",  perf::info::memory::icache()},
+    {"dL1",  perf::info::memory::dcache()},
+    // freq
+    // topology
+  });
 
   ```
   name info
@@ -793,7 +946,6 @@ Techniques
   frq
   ```
 
-1. Branching
   Branches that jump backward (loops) and are actually taken the first time → taken without miss.
   All other branches (forward jumps that are taken) → mispredict on first encounter.
   - show hot path
@@ -835,17 +987,7 @@ Techniques
 
 3. dispatching
 - mph / magic_lut
-
-  perf::log({
-    {"sys",  perf::info::sys::triple()},
-    {"cxx",  perf::info::compiler()},
-    {"cpu",  perf::info::cpu()},
-    {"iL1",  perf::info::memory::icache()},
-    {"dL1",  perf::info::memory::dcache()},
-    // freq
-    // topology
-  });
-
+- pext
 
   https://github.com/qlibs/mph
 
@@ -853,7 +995,7 @@ Techniques
 
 ##### `"Performance Is Not a Number!"`
 
-##### 0. Not profiling before
+### [0] Starting from micro-optimizations/benchmarking
 <!-- .element: style="text-align:left" -->
 ##### 1. Not measuring anything
 <!-- .element: style="text-align:left" -->
@@ -882,7 +1024,7 @@ Techniques
 
 ### Further readings
 
-<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+<img src="images/resources.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
 
 #### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
 
