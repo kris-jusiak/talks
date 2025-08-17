@@ -47,67 +47,57 @@
                    data-separator="^====+$"
                    data-separator-vertical="^----+$">
           <script type="text/template">
-<!-- .element: data-background-image="images/title_card.png"  data-background-size="100%"  -->
+<!-- .element: data-background-image="images/title_card.png"  data-background-size="100%" -->
+<!-- <br />&nbsp; -->
+<!-- <br />&nbsp; -->
+<!-- <br />&nbsp; -->
+<!-- <br />&nbsp; -->
+<!-- <br />&nbsp; -->
+<!-- <br />&nbsp; -->
+<!-- <br />&nbsp; -->
 
-<br />&nbsp;
-<br />&nbsp;
-<br />&nbsp;
-<br />&nbsp;
-<br />&nbsp;
-<br />&nbsp;
-<br />&nbsp;
-<img src="images/qr.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
+#### Kris Jusiak
+
+### Performance Is Not a Number: Avoiding Microbenchmarking Pitfalls
+<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
 
 ----
 
-Disclaimer
+#### Disclaimer
 
-Focused on x86, linux
-Powered by https://github.com/qlibs/perf
+#### Focused on x86-64-linux-gnu
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+#### Powered by https://github.com/qlibs/perf
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
----
+----
 
-### Performance?
+#### Performance
 
+```cpp
 Speed of light ............................ ~1 foot/ns
 L1 cache reference ......................... 0.5 ns
 Branch mispredict ............................ 5 ns
 L2 cache reference ........................... 7 ns
 Mutex lock/unlock ........................... 25 ns
 Main memory reference ...................... 100 ns
-  [img]http://ithare.com/infographics-operation-costs-in-cpu-clock-cycles/
-
-Time is discrete: clock cycle
-  Processors: 4 GHz (4*10^9 cycles per second)
-  One cycle is 0.25 nanoseconds
-  light: 7.5 centimeters per cycle
-  One byte per cycle: 4 GB/s
-
-```cpp
-Frequencies and transistors
-processor	year	frequency	transistors
-Intel Lunar Lake	2024	4.4 GHz	?? billions
-Apple M4	2024	4.5 GHz	28 billions
-AMD Zen 5	2024	5.7 GHz	50 billions
 ```
 
-Where do the transistors go?
-  More cores
-  More superscalar execution (more instructions per cycle)
-  Better speculative execution ( more instructions per cycle)
-  More cache, more memory-level parallelism ( more instructions per cycle)
-  Better data-level parallelism (SIMD) ( fewer instructions)
+```cpp
+Processor         Year      Freq   Transistors
+Intel Lunar Lake  2024   4.4 GHz   ?? billions
+Apple M4          2024   4.5 GHz   28 billions
+AMD Zen 5         2024   5.7 GHz   50 billions
+```
 
-Modern processors execute nearly as many instructions per cycle as you can supply.
-  with caveats: branching, memory, and input/output
-
-  Data level parallelsim - SWAR, SIMD (AVX512)
-  Data oriented design
-  Branchless
+##### Modern processors execute nearly as many instructions per cycle as you can supply*
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+###### *branching, memory, and input/output
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
 
-Microbenchmarking
+#### Performance Is Not a number!
 
 ```cpp
 auto fizz_buzz(int n) {
@@ -123,27 +113,29 @@ auto fizz_buzz(int n) {
 }
 ```
 
-```cpp
-fizz_buzz 123ns
 ```
-
-```cpp
-auto baseline(int) { return ""; };
-
-baseline   12ns
-fizz_buzz 123ns
+fizz_buzz 123ns // ❓
 ```
-
-- Microbenchmarking is hard and might be misleading!
-  - understanding, test corner cases, tuning
-
-  'hot spot' engineering can fail, better to reduce overall instruction count.
-
-  common misconseptions
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
 
-0. Not profiling before
+#### Microbenchmarking
+
+##### 'hot spot' engineering can fail, better to reduce overall instruction count
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+##### Understanding, test corner cases, tuning
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+##### Might be misleading!
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+
+----
+
+### Microbenchmarking - Avoiding Common Pitfalls
+
+----
+
+### [0] Not profiling before
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -155,12 +147,13 @@ fizz_buzz 123ns
 - ... (likwid, magictrace, ebpf, xray, coz - https://github.com/plasma-umass/coz)
 
 - can be executed from code
-  ```cpp
-  [`linux-perf`](https://perf.wiki.kernel.org),
-  [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler),
-  [`amd-uprof`](https://www.amd.com/en/developer/uprof.html),
-  [`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
-  ```
+
+```
+[`linux-perf`](https://perf.wiki.kernel.org),
+[`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler),
+[`amd-uprof`](https://www.amd.com/en/developer/uprof.html),
+[`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
+```
 
   ```cpp
   prof::perf profiler{"/dev/shm/perf"};
@@ -171,17 +164,15 @@ fizz_buzz 123ns
 
   - https://github.com/qlibs/prof
 
+----
+
+### [1] Not measuring anything
+
 <!-- .slide: data-background="darkblue" -->
 
 ----
-
-1. Not measuring anything
 
 - always measure!
-
-<!-- .slide: data-background="darkblue" -->
-
-----
 
 Prevent elision
 
@@ -216,7 +207,7 @@ template<auto Begin = +[]{}, auto End = +[]{}>
 
 ----
 
-2. Assuming measurements follow normal distrubution
+### [2] Assuming measurements follow normal distrubution
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -252,7 +243,7 @@ template<auto Begin = +[]{}, auto End = +[]{}>
 
 ----
 
-3. Assuming measurements are independent
+### [3] Assuming measurements are independent
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -274,7 +265,7 @@ Full control
 
 ----
 
-4. Not measureing the right thing
+### [4] Not measureing the right thing
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -384,9 +375,11 @@ Throughput - total number of operations or tasks completed in a given amount of 
         ```
 ----
 
-5. Not verifying results
+### [5] Not verifying results
 
 <!-- .slide: data-background="darkblue" -->
+
+----
 
 debug verify results / can be done in warmup phase
 
@@ -399,7 +392,7 @@ debug verify results / can be done in warmup phase
 
 ----
 
-6. Ignoring hardware effects
+### [6] Ignoring hardware effects
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -429,9 +422,11 @@ Data distrubtion (branch prediction)
 
 ----
 
-7. Ignoring compiler effects
+### [7] Ignoring compiler effects
 
 <!-- .slide: data-background="darkblue" -->
+
+----
 
 - realsistc scenarios
   alignment, warmup, threading, pin ...
@@ -488,13 +483,20 @@ Data distrubtion (branch prediction)
 
 ----
 
-8. Not levaraging PMU counters / HW profiling / metrics
+### [8] Not levaraging PMU counters / HW profiling / metrics
 
 <!-- .slide: data-background="darkblue" -->
 
 ----
 
     TSC   - Time Stamp Counter
+
+    Time is discrete: clock cycle
+      Processors: 4 GHz (4*10^9 cycles per second)
+      One cycle is 0.25 nanoseconds
+      light: 7.5 centimeters per cycle
+      One byte per cycle: 4 GB/s
+
     RDPMC - Read Performance Monitoring Counters
     PEBS  - Precise Event-Based Sampling
 
@@ -642,7 +644,7 @@ Data distrubtion (branch prediction)
 
 ----
 
-9. Not understanding (profiling/tracing/analyzing) results
+### [9] Not understanding (profiling/tracing/analyzing) results
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -738,7 +740,7 @@ Data distrubtion (branch prediction)
     - https://flamegraph.com
 ----
 
-10. Not having baseline
+### [10] Not having baseline
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -748,9 +750,11 @@ Data distrubtion (branch prediction)
 
 ----
 
-11. Not tracking results / documenting learnings
+### [11] Not tracking results / documenting learnings
 
 <!-- .slide: data-background="darkblue" -->
+
+----
 
     - learning
     - continous integration
@@ -767,11 +771,16 @@ Data distrubtion (branch prediction)
 
 ----
 
-Examples
+### Examples
 
-### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+#### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 
 ----
+
+Techniques
+  Data level parallelsim - SWAR, SIMD (AVX512)
+  Data oriented design
+  Branchless
 
   ```
   name info
@@ -844,26 +853,38 @@ Examples
 
 ##### `"Performance Is Not a Number!"`
 
-0. Not profiling before
-1. Not measuring anything
-2. Assuming measurements follow normal distrubution
-3. Assuming measurements are independent
-4. Not measureing the right thing
-5. Not verifying results
-6. Ignoring hardware effects
-7. Ignoring compiler effects
-8. Not levaraging PMU counters / HW profiling / metrics
-9. Not understanding (profiling/tracing/analyzing) results
-10. Not having baseline
-11. Not tracking results / documenting learnings
+##### 0. Not profiling before
+<!-- .element: style="text-align:left" -->
+##### 1. Not measuring anything
+<!-- .element: style="text-align:left" -->
+##### 2. Assuming measurements follow normal distrubution
+<!-- .element: style="text-align:left" -->
+##### 3. Assuming measurements are independent
+<!-- .element: style="text-align:left" -->
+##### 4. Not measureing the right thing
+<!-- .element: style="text-align:left" -->
+##### 5. Not verifying results
+<!-- .element: style="text-align:left" -->
+##### 6. Ignoring hardware effects
+<!-- .element: style="text-align:left" -->
+##### 7. Ignoring compiler effects
+<!-- .element: style="text-align:left" -->
+##### 8. Not levaraging PMU counters / HW profiling / metrics
+<!-- .element: style="text-align:left" -->
+##### 9. Not understanding (profiling/tracing/analyzing) results
+<!-- .element: style="text-align:left" -->
+##### 10. Not having baseline
+<!-- .element: style="text-align:left" -->
+##### 11. Not tracking results / documenting learnings
+<!-- .element: style="text-align:left" -->
 
 ----
 
 ### Further readings
 
-![img](images/resources.png)
+<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
 
-### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
+#### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
 
           </script>
         </section>
