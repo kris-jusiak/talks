@@ -47,7 +47,7 @@
                    data-separator="^====+$"
                    data-separator-vertical="^----+$">
           <script type="text/template">
-<!-- .element: data-background-image="images/title_card.png"  data-background-size="100%" -->
+<!-- .element: data-background-image="images/title_card.png" data-background-size="100%" -->
 <!-- <br />&nbsp; -->
 <!-- <br />&nbsp; -->
 <!-- <br />&nbsp; -->
@@ -58,83 +58,179 @@
 
 ---
 
-### Performance Is Not a Number: Avoiding Microbenchmarking Pitfalls
-  <img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+### Performance Is Not a Number!
+
+<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+
+### Avoiding Microbenchmarking Pitfalls
 
 ---
 
-#### kris@jusiak.net
+###### kris@jusiak.net
 <!-- .element: style="text-align:right" -->
 
 ----
 
-#### Disclaimer
+#### Performance Is Not a Number!
 
-#### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+```cpp
+Measurement              Time*
+---------------------- -------
+1 cycle execution       0.20ns // 5Ghz
+```
 <!-- .element: style="text-align:left" -->
 
-#### Based on https://github.com/qlibs/perf#resources
+```cpp
+Measurement              Time*
+---------------------- -------
+L1 cache reference      0.50ns //   2 cycles
+L2 cache reference      3.00ns //  15 cycles
+L3 cache reference     10.00ns //  50 cycles
+Main memory reference  70.00ns // 350 cycles
+```
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+
+```cpp
+Measurement              Time*
+---------------------- -------
+Branch mispredict       3.00ns //  15 cycles
+```
+<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
+
+##### * Intel Arrow Lake, Apple M4, AMD Zen 5
 <!-- .element: style="text-align:left" -->
 
-#### Powered by https://github.com/qlibs/perf (cpp23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel)
-<!-- .element: style="text-align:left" -->
+----
+
+#### Performance Is Not a Number!
+
+```cpp
+Measurement            Time
+---------------------- ----
+fizz_buzz              42ns // ?
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ---
 
-#### https://github.com/qlibs/perf/blob/main/.github/workflows/Dockerfile
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Performance
-
 ```cpp
-Speed of light           ~30cm/ns
-1 cycle                  0.25ns
-light: 7.5 centimeters per cycle
-L1 cache reference 0.5 - 1ns
-L2 cache reference 2   - 4ns
-L3 cache reference 10-30ns
-Main memory reference 70-100 ns
-Branch mispredict 3-5 ns
+auto fizz_buzz(int n) {
+       if (n % 15 == 0) { return "FizzBuzz"; } 
+  else if (n % 3  == 0) { return "Fizz"; } 
+  else if (n % 5  == 0) { return "Buzz"; }
+  return "Unknown";
+}
 ```
-
-##### Modern processors (Desktop: Intel Arrow Lake, Apple M4, AMD Zen 5) execute nearly as many instructions per cycle as you can supply*
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-##### *branching, memory, and input/output
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
 
-#### Performance Is Not a number!
+#### Performance Is Not a Number!
 
 ```cpp
-Benchmark  Time
---------- -----
-fn        123ns // ?
+Measurement            Time
+---------------------- ----
+fizz_buzz              42ns // ?
+fizz_buzz_lut          32ns // ?
 ```
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
+
+---
 
 ```cpp
-Benchmark  Time
---------- -----
-fn1       123ns // ?
-fn2       118ns // ?
+auto fizz_buzz_lut(int n) {
+  static constexpr std::array lut{
+    "Unknown","Unknown","Fizz","Unknown","Buzz",
+    "Fizz","Unknown","Unknown","Fizz","Buzz",
+    "Unknown","Fizz","Unknown","Unknown","FizzBuzz"
+  };
+  return lut[(n-1) % 15];
+}
+```
+<!-- .element: class="fragment" data-fragment-index="4" style="text-align:left" -->
+
+----
+
+#### Performance Is Not a Number!
+
+```cpp
+Measurement             Time
+---------------------- -----
+fizz_buzz(15)           12ns // ?
+fizz_buzz_lut(15)       32ns // ?
+```
+
+```cpp
+Measurement             Time
+---------------------- -----
+fizz_buzz(0)           211ns // ?
+fizz_buzz_lut(0)        33ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ```cpp
-Benchmark  Time
---------- -----
-baseline   52ns // ?
-fn1       142ns // ?
-fn2       123ns // ?
+Measurement             Time
+---------------------- -----
+fizz_buzz(5)            51ns // ?
+fizz_buzz_lut(5)        30ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
+```cpp
+Measurement             Time
+---------------------- -----
+fizz_buzz(3)            32ns // ?
+fizz_buzz_lut(3)        31ns // ?
+```
+<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
+
 ----
 
-#### Benchmarking
+#### Performance Is Not a Number!
+
+```cpp
+Measurement             Time
+---------------------- -----
+fizz_buzz(5)            34ns // ?
+fizz_buzz(5)            37ns // ?
+fizz_buzz(5)           137ns // ?
+fizz_buzz(5)            53ns // ?
+fizz_buzz(5)            21ns // ?
+fizz_buzz(5)            41ns // ?
+fizz_buzz(5)           111ns // ?
+fizz_buzz(5)            30ns // ?
+fizz_buzz(5)            88ns // ?
+fizz_buzz(5)            48ns // ?
+// ...
+```
+----
+
+#### Performance Is Not a Number!
+
+```cpp
+/*v1*/ for (auto i = 0; i < N; ++i) { r = fizz_buzz(15); }
+/*v2*/ for (auto i = 0; i < N; ++i) { r = fizz_buzz(i); }
+/*v3*/ for (auto i = 0; i < N; ++i) { r = fizz_buzz(random[i]); }
+/*v4*/ for (auto i = 0; i < N; ++i) { i = fizz_buzz(i^random[i]); }
+```
+
+---
+
+```cpp
+Measurement             Time    N
+---------------------- ----- ----
+fizz_buzz/v1            34ns 1000  // ?
+fizz_buzz/v2            37ns 1000  // ?
+fizz_buzz/v3           137ns 1000  // ?
+fizz_buzz/v4           137ns 1000  // ?
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+----
+
+#### Performance...
+
+#### ...optimization is difficult!
 
 ##### 'hot spot' engineering can fail, better to reduce overall instruction count
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
@@ -146,32 +242,6 @@ fn2       123ns // ?
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
 
 ---
-
-##### But done incorrectly might be misleading!
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-----
-
-#### Benchmarking
-
-Impossible to have fully realstic scenarios
-
-- branch prediction state (10'000 1/0 branches learn)
-- cache/memory state
-- which ports will be used
-- depending on the run-time information
-- ...
-
-Notes:
-- can't set specific state (can just do the best and use statistics)
-
-<!-- .slide: data-background="darkred" -->
-
-----
-
-### [Micro]benchmarking - Avoiding Common Pitfalls
-
-----
 
 ### [0] Caring about performance...
 
@@ -195,30 +265,7 @@ Notes:
 
 ----
 
-#### Premature optimizations
-
-```cpp
-template<class T>
-[[always_inline]] auto hot_path(std::list<T>& input, auto... ts) {
-  if (config::instance().verbose) {
-    log << "slow" << std::endl;
-  }
-
-  (l.push(ts), ...);
-
-  std::vector v = bubble_sort(l);
-
-  if (config::instance().verbose) {
-    log << "slower" << v << std::endl;
-  }
-
-  return v;
-}
-```
-
-----
-
-#### Profile first
+> "Premature optimization is the root of all evil", Donald Knuth
 
 #### Profilers
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
@@ -246,10 +293,10 @@ https://github.com/qlibs/prof
 
 ----
 
-#### [Top-down Microarchitecture Analysis Method](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-0/top-down-microarchitecture-analysis-method.html)
+#### Top-down Microarchitecture Analysis Method
 
 ```cpp
-prof::linux::perf profiler{"/dev/shm/perf"};
+prof::linux_perf profiler{"/dev/shm/perf"};
 profiler.start(); // syscall
 // ...
 profiler.stop();  // syscall
@@ -259,12 +306,15 @@ profiler.stop();  // syscall
 perf stat --topdown --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
 
----
-
 ```sh
-Retiring Bad Speculation Frontend Bound Backend Bound Heavy Operations Light Operations Branch Mispredict       Machine Clears        Fetch Latency      Fetch Bandwidth         Memory Bound           Core Bound 
-  22.0%           13.3%          31.8%         32.9%             3.1%            18.8%             12.9%                 0.4%                21.6%                10.2%                23.1%                 9.8% 
+          Retiring Bad Speculation Frontend Bound Backend Bound
+misspred       10%             70%            10%           10% 
+opt            80%              5%            10%           15% 
 ```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+##### https://github.com/qlibs/prof
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -276,7 +326,7 @@ auto fn(); // -fxray-instrument
   ...
   nop     word ptr cs:[rax + rax + 512] // XRayEntryType::EXIT
 ```
-<!-- .element: style="text-align:left" -->
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
 
 ```cpp
 void handler(int func_id, XRayEntryType entry) {
@@ -300,6 +350,44 @@ int main() {
 
 #### https://llvm.org/docs/XRay.html
 <!-- .element: style="text-align:left" -->
+
+----
+
+##### But done incorrectly might be misleading!
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+----
+
+#### [Micro]benchmarking
+
+- Microbenchmarking is the measurement of the performance of a small, specific piece of code under controlled conditions!
+
+Impossible to have fully realstic scenarios / also apply to app profiling
+
+- branch prediction state (10'000 1/0 branches learn)
+- cache/memory state
+- which ports will be used
+- depending on the run-time information
+- ...
+
+Notes:
+- can't set specific state (can just do the best and use statistics)
+
+<!-- .slide: data-background="darkred" -->
+
+----
+
+#### Disclaimer
+
+#### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+<!-- .element: style="text-align:left" -->
+
+#### Powered by https://github.com/qlibs/perf (C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel)
+<!-- .element: style="text-align:left" -->
+
+----
+
+### [Micro]benchmarking - Avoiding Common Pitfalls
 
 ----
 
@@ -754,8 +842,6 @@ Data distrubtion (branch prediction)
 
   - A Top-Down method for performance analysis and counters architecture - https://www.researchgate.net/publication/269302126_A_Top-Down_method_for_performance_analysis_and_counters_architecture
 
-  ![TopDown1](images/tmam1.png)
-  ![TopDown2](images/tmam2.png)
     common metric
     cpu bound
 
@@ -1057,10 +1143,9 @@ Techniques
 
 #### Further readings
 
-<img src="images/resources.png" style="width: 80%; height: 500px; background:none; border:none; box-shadow:none;" />
+<img src="images/resources.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
 
 #### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
-
           </script>
         </section>
 
