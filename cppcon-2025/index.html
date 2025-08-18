@@ -105,126 +105,46 @@ Branch mispredict       3.00ns //  15 cycles
 #### Performance Is Not a Number!
 
 ```cpp
-Measurement            Time
----------------------- ----
-fizz_buzz              42ns // ?
+Measurement               Time*
+----------------------  -------
+fizz_buzz               40.00ns
+```
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+
+```cpp
+fizz_buzz               37.00ns
+fizz_buzz              131.00ns
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+```cpp
+fizz_buzz(15)           31.00ns
+fizz_buzz(3)            41.00ns
+fizz_buzz(5)            87.00ns
+fizz_buzz(0)           121.00ns
+```
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+
+```cpp
+fizz_buzz/{15,3,5}      33.00ns
+fizz_buzz/{random}     137.00ns
+```
+<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
 
 ---
 
 ```cpp
 auto fizz_buzz(int n) {
-       if (n % 15 == 0) { return "FizzBuzz"; } 
-  else if (n % 3  == 0) { return "Fizz"; } 
-  else if (n % 5  == 0) { return "Buzz"; }
+       if (n % 15 == 0) { return "FizzBuzz"; }
+  else if (n % 3  == 0) { return "Fizz"; }
+  else if (n % 5  == 0) { return "Buzz"; } 
   return "Unknown";
 }
 ```
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
 
 #### Performance Is Not a Number!
-
-```cpp
-Measurement            Time
----------------------- ----
-fizz_buzz              42ns // ?
-fizz_buzz_lut          32ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
-
----
-
-```cpp
-auto fizz_buzz_lut(int n) {
-  static constexpr std::array lut{
-    "Unknown","Unknown","Fizz","Unknown","Buzz",
-    "Fizz","Unknown","Unknown","Fizz","Buzz",
-    "Unknown","Fizz","Unknown","Unknown","FizzBuzz"
-  };
-  return lut[(n-1) % 15];
-}
-```
-<!-- .element: class="fragment" data-fragment-index="4" style="text-align:left" -->
-
-----
-
-#### Performance Is Not a Number!
-
-```cpp
-Measurement             Time
----------------------- -----
-fizz_buzz(15)           12ns // ?
-fizz_buzz_lut(15)       32ns // ?
-```
-
-```cpp
-Measurement             Time
----------------------- -----
-fizz_buzz(0)           211ns // ?
-fizz_buzz_lut(0)        33ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-```cpp
-Measurement             Time
----------------------- -----
-fizz_buzz(5)            51ns // ?
-fizz_buzz_lut(5)        30ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-
-```cpp
-Measurement             Time
----------------------- -----
-fizz_buzz(3)            32ns // ?
-fizz_buzz_lut(3)        31ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
-
-----
-
-#### Performance Is Not a Number!
-
-```cpp
-Measurement             Time
----------------------- -----
-fizz_buzz(5)            34ns // ?
-fizz_buzz(5)            37ns // ?
-fizz_buzz(5)           137ns // ?
-fizz_buzz(5)            53ns // ?
-fizz_buzz(5)            21ns // ?
-fizz_buzz(5)            41ns // ?
-fizz_buzz(5)           111ns // ?
-fizz_buzz(5)            30ns // ?
-fizz_buzz(5)            88ns // ?
-fizz_buzz(5)            48ns // ?
-// ...
-```
-----
-
-#### Performance Is Not a Number!
-
-```cpp
-/*v1*/ for (auto i = 0; i < N; ++i) { r = fizz_buzz(15); }
-/*v2*/ for (auto i = 0; i < N; ++i) { r = fizz_buzz(i); }
-/*v3*/ for (auto i = 0; i < N; ++i) { r = fizz_buzz(random[i]); }
-/*v4*/ for (auto i = 0; i < N; ++i) { i = fizz_buzz(i^random[i]); }
-```
-
----
-
-```cpp
-Measurement             Time    N
----------------------- ----- ----
-fizz_buzz/v1            34ns 1000  // ?
-fizz_buzz/v2            37ns 1000  // ?
-fizz_buzz/v3           137ns 1000  // ?
-fizz_buzz/v4           137ns 1000  // ?
-```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ----
 
@@ -308,8 +228,8 @@ perf stat --topdown --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 
 ```sh
           Retiring Bad Speculation Frontend Bound Backend Bound
-misspred       10%             70%            10%           10% 
-opt            80%              5%            10%           15% 
+misspred       10%             70%            10%           10%
+opt            80%              5%            10%           15%
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
@@ -599,7 +519,6 @@ Throughput - total number of operations or tasks completed in a given amount of 
 ----
 
 
-
 debug verify results / can be done in warmup phase
 
 ```cpp
@@ -848,25 +767,22 @@ Data distrubtion (branch prediction)
     perf[top_down::retiring]
 
     ```
-    // l1
     inline constexpr auto retiring = aux::retiring / aux::slots;
-      inline constexpr auto heavy_operations = aux::heavy_operations / aux::slots;
-      inline constexpr auto light_operations = retiring - heavy_operations;
+    inline constexpr auto heavy_operations = aux::heavy_operations / aux::slots;
+    inline constexpr auto light_operations = retiring - heavy_operations;
 
     inline constexpr auto bad_speculation = aux::bad_speculation / aux::slots;
-      inline constexpr auto branch_mispredict = aux::branch_mispredict / aux::slots;
-      inline constexpr auto machine_clears = bad_speculation - branch_mispredict;
+    inline constexpr auto branch_mispredict = aux::branch_mispredict / aux::slots;
+    inline constexpr auto machine_clears = bad_speculation - branch_mispredict;
 
     inline constexpr auto frontend_bound = aux::frontend_bound / aux::slots;
-      inline constexpr auto fetch_latency = aux::fetch_latency / aux::slots;
-      inline constexpr auto fetch_bandwidth = frontend_bound - fetch_latency;
+    inline constexpr auto fetch_latency = aux::fetch_latency / aux::slots;
+    inline constexpr auto fetch_bandwidth = frontend_bound - fetch_latency;
 
     inline constexpr auto backend_bound = aux::backend_bound / aux::slots;
-      inline constexpr auto memory_bound = aux::memory_bound / aux::slots; // LLMs
-      inline constexpr auto core_bound = backend_bound - memory_bound;
+    inline constexpr auto memory_bound = aux::memory_bound / aux::slots; // LLMs
+    inline constexpr auto core_bound = backend_bound - memory_bound;
     ```
-
-    find the slide
 
 ----
 
