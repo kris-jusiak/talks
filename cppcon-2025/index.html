@@ -74,46 +74,39 @@
 #### Performance Is Not a Number!
 
 ```cpp
-Measurement              Time*
+Measurement               Time
 ---------------------- -------
 1 cycle execution       0.20ns // 5Ghz
 ```
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-Measurement              Time*
----------------------- -------
-L1 cache reference      0.50ns //   2 cycles
-L2 cache reference      3.00ns //  15 cycles
-L3 cache reference     10.00ns //  50 cycles
-Main memory reference  70.00ns // 350 cycles
+L1 cache reference      0.50ns
+L2 cache reference      3.00ns
+L3 cache reference     10.00ns
+Main memory reference  70.00ns
 ```
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ```cpp
-Measurement              Time*
----------------------- -------
-Branch mispredict       3.00ns //  15 cycles
+Branch mispredict       3.00ns
 ```
 <!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
-
-##### * Intel Arrow Lake, Apple M4, AMD Zen 5
-<!-- .element: style="text-align:left" -->
 
 ----
 
 #### Performance Is Not a Number!
 
 ```cpp
-Measurement               Time*
-----------------------  -------
+Measurement                Time
+---------------------- --------
 fizz_buzz               40.00ns
 ```
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
 
 ```cpp
 fizz_buzz               37.00ns
 fizz_buzz              131.00ns
+fizz_buzz               53.00ns
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
@@ -131,14 +124,223 @@ fizz_buzz/{random}     137.00ns
 ```
 <!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
 
----
+...
+<!-- .element: class="fragment" data-fragment-index="4" style="text-align:left" -->
 
+----
+
+#### Microbenchmark
+
+```cpp
+void bench(auto n) {
+start();
+fizz_buzz(n);
+stop();
+```
 ```cpp
 auto fizz_buzz(int n) {
        if (n % 15 == 0) { return "FizzBuzz"; }
   else if (n % 3  == 0) { return "Fizz"; }
-  else if (n % 5  == 0) { return "Buzz"; } 
+  else if (n % 5  == 0) { return "Buzz"; }
   return "Unknown";
+}
+```
+
+----
+
+```cpp
+fizz_buzz(int): // gcc-15 -O3
+  imul    eax, edi, -286331153
+  mov     edx, OFFSET FLAT:.LC1
+  add     eax, 143165576
+  cmp     eax, 286331152
+  jbe     .L13
+  imul    eax, edi, -1431655765
+  mov     edx, OFFSET FLAT:.LC3
+  add     eax, 715827882
+  cmp     eax, 1431655764
+  jbe     .L13
+  imul    edi, edi, -858993459
+  mov     edx, OFFSET FLAT:.LC4
+  mov     eax, OFFSET FLAT:.LC2
+  add     edi, 429496729
+  cmp     edi, 858993459
+  cmovnb  rdx, rax
+.L13:
+  mov     rax, rdx
+  ret
+```
+
+----
+
+```cpp
+perf::plot::flamegraph(bench[perf::record::cycles]);
+```
+
+<img src="images/perf1.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+
+----
+
+#### Hardware
+
+<img src="images/zen5.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+
+##### https://chipsandcheese.com
+
+----
+
+#### Operating Systerm / Kernel
+
+<img src="images/linux.png" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
+
+##### https://makelinux.github.io/kernel/map
+
+----
+
+Performance is not A number -> Avoiding microbenchmarkign pitfalls
+
+----
+
+profiler
+
+Assuming normal distrubution
+<blue>
+perf is not a number
+
+
+latency vs throughput
+  unroll
+
+  not testing
+
+how to check vs mca
+  add 1 cycles
+  llvm.exercis
+
+  disasemble vs trace
+
+Letls improve it how?
+  hyptheosis
+    - what if?
+  gather data
+    -
+but how to identify the problem in the first place?
+
+  top-down
+  llvm-xray
+
+----
+
+Studies
+
+----
+
+
+not using ratios, baseline (speedup, relative)
+https://godbolt.org/z/Gxf84ehjP
+
+
+TODO
+- get slide from topdown talk
+- read google.benchmarking tutorial
+- watch bryce and davido
+- read about mca
+
+##### Modern processors (Desktop: Intel Arrow Lake, Apple M4, AMD Zen 5) execute nearly as many instructions per cycle as you can supply*
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+##### *branching, memory, and input/output
+
+#### Performance Is Not a Number!
+
+```cpp
+auto fizz_buzz_lut(int n) {
+  static constexpr std::array lut{
+    "Unknown","Unknown","Fizz","Unknown","Buzz",
+    "Fizz","Unknown","Unknown","Fizz","Buzz",
+    "Unknown","Fizz","Unknown","Unknown","FizzBuzz"
+  };
+  return lut[(n-1) % 15];
+}
+```
+
+---
+
+```cpp
+Measurement             Time   |   Measurement             Time
+---------------------- -----   |   ---------------------- -----
+fizz_buzz(0)           211ns   |   fizz_buzz_lut(0)        33ns // ?
+fizz_buzz(3)            32ns   |   fizz_buzz_lut(3)        31ns // ?
+fizz_buzz(5)            51ns   |   fizz_buzz_lut(5)        30ns // ?
+fizz_buzz(15)           12ns   |   fizz_buzz_lut(15)       32ns // ?
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+----
+
+#### Performance Is Not a Number!
+
+```cpp
+fizz_buzz(int): // gcc-15 -O3             fizz_buzz_lut(int): // gcc-15 -O3
+  imul    eax, edi, -286331153              sub     edi, 1
+  mov     edx, OFFSET FLAT:.LC1             movsx   rax, edi
+  add     eax, 143165576                    mov     edx, edi
+  cmp     eax, 286331152                    imul    rax, rax, -2004318071
+  jbe     .L13                              sar     edx, 31
+  imul    eax, edi, -1431655765             shr     rax, 32
+  mov     edx, OFFSET FLAT:.LC3             add     eax, edi
+  add     eax, 715827882                    sar     eax, 3
+  cmp     eax, 1431655764                   sub     eax, edx
+  jbe     .L13                              mov     edx, eax
+  imul    edi, edi, -858993459              sal     edx, 4
+  mov     edx, OFFSET FLAT:.LC4             sub     edx, eax
+  mov     eax, OFFSET FLAT:.LC2             sub     edi, edx
+  add     edi, 429496729                    movsx   rdi, edi
+  cmp     edi, 858993459                    mov     rax, QWORD PTR "table"[0+rdi*8]
+  cmovnb  rdx, rax                          ret
+.L13:
+  mov     rax, rdx
+  ret
+```
+
+
+
+#### Performance Is Not a Number!
+
+
+```cpp
+auto bench() {
+  auto n = rand();
+  auto begin = time();
+  fizz_buzz(n);
+  auto end = time();
+  return end - begin;
+}
+```
+
+```cpp
+Measurement             Time
+---------------------- -----
+fizz_buzz(15)           42ns // ?
+fizz_buzz(15)           34ns // ?
+fizz_buzz(15)           37ns // ?
+fizz_buzz(15)          137ns // ?
+fizz_buzz(15)           53ns // ?
+fizz_buzz(15)           21ns // ?
+fizz_buzz(15)           41ns // ?
+fizz_buzz(15)          111ns // ?
+fizz_buzz(15)           30ns // ?
+fizz_buzz(15)           88ns // ?
+fizz_buzz(15)           48ns // ?
+// ...
+```
+
+---
+
+```cpp
+auto bench(auto n) {
+  auto begin = time();
+  fizz_buzz(n);
+  auto end = time();
 }
 ```
 
@@ -146,46 +348,60 @@ auto fizz_buzz(int n) {
 
 #### Performance Is Not a Number!
 
-----
-
-#### Performance...
-
-#### ...optimization is difficult!
-
-##### 'hot spot' engineering can fail, better to reduce overall instruction count
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
-##### Understanding
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
-##### Corner cases
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
-##### Tuning
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+```cpp
+Measurement             Time       N
+---------------------- ----- -------
+fizz_buzz(15)           32ns 100'000 // ?
+fizz_buzz(15)           33ns 100'000 // ?
+fizz_buzz(15)           38ns 100'000 // ?
+fizz_buzz(15)           33ns 100'000 // ?
+fizz_buzz(15)           40ns 100'000 // ?
+fizz_buzz(15)           32ns 100'000 // ?
+fizz_buzz(15)           39ns 100'000 // ?
+fizz_buzz(15)          250ns 100'000 // ?
+fizz_buzz(15)           31ns 100'000 // ?
+// ...
+```
 
 ---
 
-### [0] Caring about performance...
-
-### ... on paper
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-<!-- .slide: data-background="darkblue" -->
-
-----
-
-> Always measure!
-
-> Caring about performance starts with measuring it!
-
-----
+```cpp
+template<auto N>
+auto bench(auto n) {
+  auto begin = time();
+  for (auto i = 0; i < N; ++i) {
+    r = fizz_buzz(n); // 'r' prevents elision
+  }
+  auto end = time();
+  return (end - begin) / N;
+}
+```
+https://godbolt.org/z/Gxf84ehjP
 
 
-### [1] Optimizing prematurely
 
-<!-- .slide: data-background="darkblue" -->
 
-----
 
-> "Premature optimization is the root of all evil", Donald Knuth
+
+
+
+
+
+
+
+
+
+
+
+#### Performance optimizaion is difficult
+
+How to approach it
+
+  - always measure - Caring about performance starts with measuring it!
+    - "Premature optimization is the root of all evil", Donald Knuth
+  - profile first
+  - 'hot spot' engineering can fail, better to reduce overall instruction count
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
 
 #### Profilers
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
@@ -217,9 +433,9 @@ https://github.com/qlibs/prof
 
 ```cpp
 prof::linux_perf profiler{"/dev/shm/perf"};
-profiler.start(); // syscall
+profiler.start();
 // ...
-profiler.stop();  // syscall
+profiler.stop();
 ```
 
 ```cpp
@@ -278,9 +494,13 @@ int main() {
 
 ----
 
+
 #### [Micro]benchmarking
 
 - Microbenchmarking is the measurement of the performance of a small, specific piece of code under controlled conditions!
+    - undersaing
+    - Corner cases
+    - Tuning
 
 Impossible to have fully realstic scenarios / also apply to app profiling
 
@@ -307,9 +527,30 @@ Notes:
 
 ----
 
-### [Micro]benchmarking - Avoiding Common Pitfalls
+### Avoiding Common Microbenchmarking Pitfalls
 
 ----
+
+### [3] Ingoring OS effects
+### [6] Ignoring hardware effects (aka not having realistic scenarios understnaing)
+
+<!-- .slide: data-background="darkblue" -->
+
+----
+
+Minimial control
+  `pyperf system tune`
+
+Moderate control
+  >     # Enable Kernel Mode Task-Isolation (https://lwn.net/Articles/816298)
+  >     # cat /sys/devices/system/cpu/isolated
+  >     isolcpus=<cpu number>,...,<cpu number>
+        - set affinity / set prioroity
+        - seperate process
+
+Full control
+  - UEFI (wmsr - disable/enable cache (can't be done without user-space))
+  - jtags...
 
 ### [2] Assuming measurements follow normal distrubution
 
@@ -345,6 +586,8 @@ Notes:
       perf::metric::stat::t_score;
     ```
 
+### [2] Not plotting results
+
     show chart of line incorrect
 
     plot
@@ -363,26 +606,6 @@ Notes:
             - running on the server side - sixel / show console picture
 ----
 
-### [3] Assuming measurements are independent
-### [3] Ingoring OS effects
-
-<!-- .slide: data-background="darkblue" -->
-
-----
-
-Minimial control
-  `pyperf system tune`
-
-Moderate control
-  >     # Enable Kernel Mode Task-Isolation (https://lwn.net/Articles/816298)
-  >     # cat /sys/devices/system/cpu/isolated
-  >     isolcpus=<cpu number>,...,<cpu number>
-        - set affinity / set prioroity
-        - seperate process
-
-Full control
-  - UEFI (wmsr - disable/enable cache (can't be done without user-space))
-  - jtags...
 
 ----
 
@@ -532,7 +755,7 @@ debug verify results / can be done in warmup phase
 
 ----
 
-### [6] Ignoring hardware effects (aka not having realistic scenarios understnaing)
+### [3] Assuming measurements are independent
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -931,7 +1154,7 @@ Data distrubtion (branch prediction)
     - https://flamegraph.com
 ----
 
-### [10] Not having baseline
+### [10] Not having baseline, not using ratios, baseline (speedup, relative)
 
 <!-- .slide: data-background="darkblue" -->
 
@@ -941,7 +1164,7 @@ perf::runner bench{perf::bench::latency{}};
 
 bench(perf::bench::baseline([]{});
 bench(fizz_buzz, 1);
-report()
+report(, min, median, p90, p99)
 
 ----
 
