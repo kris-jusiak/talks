@@ -47,29 +47,145 @@
                    data-separator="^====+$"
                    data-separator-vertical="^----+$">
           <script type="text/template">
-<!-- .element: data-background-image="images/title_card.png" data-background-size="100%" -->
-<!-- <br />&nbsp; -->
-<!-- <br />&nbsp; -->
-<!-- <br />&nbsp; -->
-<!-- <br />&nbsp; -->
-<!-- <br />&nbsp; -->
-<!-- <br />&nbsp; -->
-<!-- <br />&nbsp; -->
+<!-- .element: data-background-image="images/title.png" data-background-size="100%" -->
+<br />&nbsp;
+<br />&nbsp;
+<br />&nbsp;
 
----
-
-### Performance Is Not a Number!
-
-<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
-
-### Avoiding Microbenchmarking Pitfalls
-
----
-
-###### kris@jusiak.net
-<!-- .element: style="text-align:right" -->
+<img src="images/qr.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
 
 ----
+
+#### Disclaimer
+
+#### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+<!-- .element: style="text-align:left" -->
+
+#### Powered by https://github.com/qlibs/perf (C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel)
+<!-- .element: style="text-align:left" -->
+
+----
+
+First step in any opitmization is proper/reliable measument
+
+Why to microbenchmark
+  - 'hot spot' engineering can fail, better to reduce overall instruction count
+
+  - not easy
+    - hot to measure
+    - what to measure
+    - how to be sure wheat it applies
+
+  - understanding, intuition
+  How to optimize (not this talk)
+    - swar, simd, dod, par, branchless, design, bigO, constexpr, ...
+    - hopthesis
+    - tests
+
+  measurments without undersatding have little value
+  measurments which can't be reproduced have little value
+  measurments without clear undestaning what is measured or without extensive measruemnts have little value
+
+  the answer to anything perf related will be
+  it depends
+
+  the best we can is to haave scienttiif approach to it
+
+----
+
+  Performance is not a number!
+
+fizz_buzz  100ns
+fizz_buzz  120ns
+fizz_buzz  120ns 100000
+baseline   100ns   1000
+fizz_buzz  120ns 100000
+
+---
+
+zoom out...
+
+int main() {
+  start();
+  fn(...);
+  stop();
+  return stop-start;
+}
+
+perf::runner bench([](auto fn, auto... ts) {
+  start();
+  fn(ts...);
+  stop();
+});
+
+show perf results
+
+code alignment
+
+
+---
+
+blue afterwards
+
+----
+
+What we need?
+  we need profiler/analyzer/tracer
+    - disassemble vs trace
+
+      - disassembler
+        - llvm
+      - show
+        - intel_pt on intel and m4
+      - use jmp
+        - show static_keys
+      - use fizz_buzz
+        -
+
+    - analyze vs profile
+
+      profile + analyze
+        get intel_pt
+
+  we need plotter
+    perf specific plots
+    with plots show what the error bar is and why (based on min error)
+    ecdf
+
+  we need runner
+    note - normal distribution
+    latency vs throughput
+    input
+    statistical
+
+> disclaimer
+  qlibs.perf
+
+----
+
+stratigt to results
+
+  and what and why
+
+  show based on diffferent functions add, for loop, fizz_buzz whatever demonstratest
+
+gofing further
+  asm
+  gofing fruther mca
+
+  vs stat.mca
+
+  disassemble vs trace
+
+  analyze vs stat
+
+  testing
+
+--- benchmarking
+
+  hiptohesis
+
+
 
 #### Performance Is Not a Number!
 
@@ -194,6 +310,22 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 <img src="images/linux.png" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
 
 ##### https://makelinux.github.io/kernel/map
+
+----
+
+<img src="images/isolcpus.png" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
+
+https://foojay.io/today/how-to-optimise-cpu-performance-through-isolation-and-system-tuning/
+
+----
+
+<img src="images/uefi.png" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
+
+//todo picture with rdpcm
+//clear_cache
+//setup_rdpmc
+
+https://en.wikipedia.org/wiki/UEFI
 
 ----
 
