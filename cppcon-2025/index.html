@@ -36,18 +36,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   </head>
 
-  <!--### [2] Not plotting results-->
-  <!--### [3] Ingoring OS effects-->
-  <!--### [4] Not measureing the right thing-->
-  <!--### [3] Assuming measurements are independent-->
-  <!--### [6] Ignoring hardware effects (aka not having realistic scenarios understnaing)-->
-  <!--### [7] Ignoring compiler effects-->
-  <!--### [8] Not levaraging PMU counters / HW profiling / metrics-->
-  <!--### [9] Not understanding (profiling/tracing/analyzing) results-->
-  <!--### [10] Not having baseline, not using ratios, baseline (speedup, relative)-->
-  <!--### [11] Not knowing when to stop micro-optimizing-->
-  <!--### [12] Not tracking results / documenting learnings-->
-
   <body>
     <div class="reveal">
       <div class="slides">
@@ -68,338 +56,325 @@
 
 ----
 
-## Performance is not a number!
-
-```cpp
-auto fizz_buzz(int n) {
-       if (n % 15 == 0) { return "FizzBuzz"; }
-  else if (n % 3  == 0) { return "Fizz"; }
-  else if (n % 5  == 0) { return "Buzz"; }
-  return "Unknown";
-}
-```
-
-### fast/slow? -> it depends -> always measure!
+### Performance?
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+<table>
+  <tr>
+  <td>
+  <pre>
+(⬆️) Number of transistors 
+  - scalar
+  - cores
+  - cpu-units
+  </pre>
+  <pre>
+(〰) Frequency 
+  - reached limits
+  </pre>
+  </td>
+  <td>
+    <img src="images/moore.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  </td>
+</tr>
+</table>
 
 ----
 
-## Performance is not a number!
+### Always Measure!
+<!-- .element: style="text-align:left" -->
 
-### fizz_buzz 100ns
+#### Top-down Microarchitecture Analysis Method (Level1)
+<!-- .element: style="text-align:left" -->
 
-----
-
-## fizz_buzz 100ns
-## fizz_buzz 110ns
-## fizz_buzz 210ns
-## fizz_buzz 710ns
-## fizz_buzz 110ns
-## fizz_buzz 40ns
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-----
-
-----
-
-fizz_buzz(15)           42ns // ?
-fizz_buzz(15)           34ns // ?
-fizz_buzz(15)           37ns // ?
-fizz_buzz(15)          137ns // ?
-fizz_buzz(15)           53ns // ?
-fizz_buzz(15)           21ns // ?
-fizz_buzz(15)           41ns // ?
-fizz_buzz(15)          111ns // ?
-fizz_buzz(15)           30ns // ?
-fizz_buzz(15)           88ns // ?
-fizz_buzz(15)           48ns // ?
-/
-----
-
-## fizz_buzz(15)           31.00ns
-## fizz_buzz(3)            41.00ns
-## fizz_buzz(5)            87.00ns
-## fizz_buzz(0)           121.00ns
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-
-----
-
-## fizz_buzz/{15,3,5}      33.00ns
-## fizz_buzz/{3,15,5}      33.00ns
-## fizz_buzz/{3,15,5}      33.00ns
-## fizz_buzz/{5,3,5}       33.00ns
-## fizz_buzz/{0,1,0}       33.00ns
-## fizz_buzz/{random}     137.00ns
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-
-----
-
-...
-
-----
-
-```cpp
-int main(int argc, char**) { // OS
-  start(); // CPU
-  fizz_buzz(n);
-  stop();
-}
-```
-
-```cpp
-int main(int argc, char**) { // OS
-  start(); // CPU
-  for (auto...) {
-  fizz_buzz(n);
-  stop();
-}
-```
-
-```cpp
-int main(int argc, char**) { // OS
-  start(); // CPU
-  for (auto...) {
-  fizz_buzz(n^i);
-  fence
-  stop();
-}
-```
-
-
-<img src="images/zen5.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-##### https://chipsandcheese.com
-<img src="images/linux.png" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
-##### https://makelinux.github.io/kernel/map
-
-----
-
-Production?
-
-How 
-  - big0
-
-How to approach it
-  - always measure - Caring about performance starts with measuring it!
-    - "Premature optimization is the root of all evil", Donald Knuth
-  - profile first
-  - 'hot spot' engineering can fail, better to reduce overall instruction count
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
-
-#### Profilers
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-[timing][code] [tracy](https://github.com/wolfpld/tracy)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[sampling/tracing][code] [`linux-perf`](https://perf.wiki.kernel.org)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[sampling/tracing][code] [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[sampling][code] [`amd-uprof`](https://www.amd.com/en/developer/uprof.html)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[sampling][code] [`gperftools`](https://github.com/gperftools/gperftools)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[stats][code] [likwid](https://github.com/RRZE-HPC/likwid)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[simulating][code] [`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[sampling][coz](https://github.com/plasma-umass/coz) - threading
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-[tracing][magictrace](https://github.com/janestreet/magic-trace)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-https://github.com/qlibs/prof
-
-----
-
-#### Top-down Microarchitecture Analysis Method
+  <img src="images/tmam1.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
 
 ```cpp
 prof::linux_perf profiler{"/dev/shm/perf"};
-profiler.start();
+profiler.start(); // syscall
 // ...
-profiler.stop();
+profiler.stop(); // syscall
 ```
 
 ```cpp
-# level 1 (level 2, level 3 later)
 perf stat --topdown --control=fifo:/dev/shm/perf --delay=-1 ./mispredicted
 ```
 
 ```sh
 Retiring   Bad Speculation   Frontend Bound   Backend Bound
-     10%               70%              10%             10%
+    10%               70%              10%             10%
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-##### https://github.com/qlibs/prof
-<!-- .element: style="text-align:left" -->
 
 ----
 
-##### llvm-xray
+    ##### https://github.com/qlibs/prof
+    <!-- .element: style="text-align:left" -->
+
+### Always Measure!
+
+  llvm-xray - https://llvm.org/docs/XRay.html
+
+    ```cpp
+    auto fn(); // -fxray-instrument
+    nop     word ptr [rax + rax + 512]    // XRayEntryType::ENTRY
+    ...
+    nop     word ptr cs:[rax + rax + 512] // XRayEntryType::EXIT
+    ```
+    <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+
+    ```cpp
+    void handler(int func_id, XRayEntryType entry) {
+      if (entry == XRayEntryType::ENTRY) {
+          profiler.start();
+      } else {
+          profiler.stop();
+      }
+    }
+    ```
+    <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+    ```cpp
+    int main() {
+    __xray_set_handler(handler);
+    __xray_patch(); // nop->jmp &handler
+    }
+    ```
+    <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+
+----
+
+### Always Measure!
+
+    // take it from perf
+    - perf probe
+    - gdb backwards
+
+    - 'hot spot' optimizations
+
+        [timing][code] [tracy](https://github.com/wolfpld/tracy)
+
+        [sampling/tracing][code] [`linux-perf`](https://perf.wiki.kernel.org)
+        [sampling/tracing][code] [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler)
+        [sampling][code] [`amd-uprof`](https://www.amd.com/en/developer/uprof.html)
+
+        [sampling][code] [`gperftools`](https://github.com/gperftools/gperftools)
+        [sampling][code] [likwid](https://github.com/RRZE-HPC/likwid)
+
+        [threading][coz](https://github.com/plasma-umass/coz)
+
+        [simulating][code] [`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
+
+        [tracing][magictrace](https://github.com/janestreet/magic-trace)
+
+    - active benchmarking
+    ...
+
+----
+
+But 'hot spot' engineering can fail, better to reduce overall instruction count -> Microbenchmarking
+
+  - Modern processors (Desktop: Intel Arrow Lake, Apple M4, AMD Zen 5) execute nearly as many instructions per cycle as you can supply*
+    *branching, memory, and input/output
+  - choose the right tool for the job
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-auto fn(); // -fxray-instrument
-  nop     word ptr [rax + rax + 512]    // XRayEntryType::ENTRY
-  ...
-  nop     word ptr cs:[rax + rax + 512] // XRayEntryType::EXIT
-```
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
-
-```cpp
-void handler(int func_id, XRayEntryType entry) {
-  if (entry == XRayEntryType::ENTRY) {
-    profiler.start();
-  } else {
-    profiler.stop();
-  }
+auto fizz_buzz(int n) {
+       if (n % 15 == 0) { return "FizzBuzz"; }
+  else if (n % 3  == 0) { return "Fizz";     }
+  else if (n % 5  == 0) { return "Buzz";     }
+  return "Unknown";
 }
 ```
+
+#### Slow/Fast?
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
-```cpp
-int main() {
-  __xray_set_handler(handler);
-  __xray_patch(); // nop->jmp &handler
-}
+```
+fizz_buzz   0ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
+```
+fizz_buzz  10ns // ?
+```
+<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
 
-#### https://llvm.org/docs/XRay.html
+```
+fizz_buzz 100ns // ?
+```
+<!-- .element: class="fragment" data-fragment-index="4" style="text-align:left" -->
+
+----
+
+### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
-----
-
-  big0
-  perf probe
-  gdb backwards
-
-----
-
-First step in any opitmization is proper/reliable measument
-  the answer to anything perf related will be -> it depends
-  the best we can is to haave scienttiif approach to it
-
-Found and what?
-    99% slow (pciture everyting slow)
-    - memory
-
-How to optimize?
-  - hypothesise
-    - experiemnts
-
-
-Techniques (depends on the issue)
-  -SWAR qlibs/swar
-  -SIMD (avx, neon) -> highway
-  - constexpr (avoid hard to predicted braches)
-  - DOD (data oriented design)
-  - branchless (jump-table, hashing)
-  - parallel
-  - design
-  - ...
-
-----
-
-Microbenchmarking is the measurement of the performance of a small, specific piece of code under controlled conditions!
-    - undersaing
-    - Corner cases
-    - Tuning
-
-Impossible to have fully realstic scenarios / also apply to app profiling
-
-  - branch prediction state (10'000 1/0 branches learn)
-  - cache/memory state
-  - which ports will be used
-  - depending on the run-time information
-  - ...
-
-  Notes:
-  - can't set specific state (can just do the best and use statistics)
-  - may not much prodction
-
-<!-- .slide: data-background="darkred" -->
-
-How?
-- hot to measure
-- what to measure
-- how to be sure wheat it applies
-
-Why to microbenchmark (choose the right tool for the job)
-  - 'hot spot' engineering can fail, better to reduce overall instruction count
-  - Modern processors (Desktop: Intel Arrow Lake, Apple M4, AMD Zen 5) execute nearly as many instructions per cycle as you can supply*
-    *branching, memory, and input/output
-  - fast iteratoion / isolation
-  - understanding
-  - edge cases
-  - intuition
-  - tuning
-
-  How to optimize (not this talk)
-    - swar, simd, dod, par, branchless, design, bigO, constexpr, ...
-    - hopthesis
-    - tests
-
-  - measurments without undersatding have little value
-  - measurments which can't be reproduced have little value
-  - measurments without clear undestaning what is measured or without extensive measruemnts have little value
-
-
-What microbenchmarking is NOT good for?
-  - apply to production direclty
-
-ESSENTIAL
-    - always apply your microbenchmarking results to end-2-end testing
-    - claims without it are useless
-
-----
-
-  ## Performance is not A number -> Avoiding microbenchmarkign pitfalls
-
-----
-
 ```cpp
-int main(int argc, char**) { // OS
-  start(); // CPU
-  for (auto...) {
-  fizz_buzz(n^i);
-  fence
-  stop();
+auto fizz_buzz(int n) {
+       if (n % 15 == 0) { return "FizzBuzz"; }
+  else if (n % 3  == 0) { return "Fizz";     }
+  else if (n % 5  == 0) { return "Buzz";     }
+  return "Unknown";
 }
 ```
 
+```cpp
+fizz_buzz(15)              31ns // ?
+fizz_buzz(3)               41ns // ?
+fizz_buzz(5)               87ns // ?
+fizz_buzz(0)              121ns // ?
 ```
-CXX -O3 fizz_buzz.cpp // COMPILER
-```
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ```cpp
-fizz_buzz(int): // gcc-15 -O3
+fizz_buzz/{15,3,5}         33ns // ?
+fizz_buzz/{3,15,5}         33ns // ?
+fizz_buzz/{3,15,5}         33ns // ?
+fizz_buzz/{5,3,5}          33ns // ?
+fizz_buzz/{0,1,0}          33ns // ?
+fizz_buzz/{random}        137ns // ?
+```
+<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
+
+```cpp
+...
+```
+<!-- .element: class="fragment" data-fragment-index="4" style="text-align:left" -->
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main(int argc, const char** argv) {
+  assert(argc == 2u);
+  const auto n = std::stoi(argv[1]);
+
+  // how?
+  {
+    const auto start = time(); // loop?
+    fizz_buzz(n);              // elided?
+    const auto end = time();   // time?
+    return end - start;        // runs?
+  }
+}
+```
+
+###### `$CXX -O3 fizz_buzz.cpp -o fizz_buzz # flags?`
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+<table>
+<tr>
+  <td>
+ <pre><code>
+ main:
+  call  time()
+  mov   DWORD PTR [rsp+12], edi
+  call  fizz_buzz(int)
+  call  time()
+  sub   eax, ebx
+  ret
+ </code></pre>
+  </td>
+  <td>
+  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  </td>
+  </tr>
+</table>
+
+###### `./fizz_buzz # affinity?, priority?`
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+<img src="images/linux2.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+
+##### Linux 6.x - https://makelinux.github.io/kernel/map
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+<table>
+<tr>
+  <td>
+ <pre><code>
+fizz_buzz(int):
   imul    eax, edi, -286331153
   mov     edx, OFFSET FLAT:.LC1
   add     eax, 143165576
   cmp     eax, 286331152
+  ...
   jbe     .L13
-  imul    eax, edi, -1431655765
-  mov     edx, OFFSET FLAT:.LC3
-  add     eax, 715827882
-  cmp     eax, 1431655764
-  jbe     .L13
-  imul    edi, edi, -858993459
-  mov     edx, OFFSET FLAT:.LC4
-  mov     eax, OFFSET FLAT:.LC2
-  add     edi, 429496729
-  cmp     edi, 858993459
-  cmovnb  rdx, rax
-.L13:
+  ...
   mov     rax, rdx
   ret
+ </code></pre>
+  </td>
+  <td>
+  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  </td>
+  </tr>
+</table>
+
+###### `fizz_buzz(n); # cpu state?, code layout?, input parameters?`
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+<img src="images/cpu2.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
+
+##### AMD Zen5 - https://chipsandcheese.com
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+```cpp
+fizz_buzz                   0ns // ? (elided)
+fizz_buzz                  10ns // ? -> ✔️ 
+fizz_buzz                 100ns // ? -> ✔️
+fizz_buzz(15)              31ns // ? -> ✔️
+fizz_buzz(3)               41ns // ? -> ✔️
+fizz_buzz(5)               87ns // ? -> ✔️
+fizz_buzz(0)              121ns // ? -> ✔️
+fizz_buzz/{15,3,5}         33ns // ? -> ✔️
+fizz_buzz/{3,15,5}         33ns // ? -> ✔️
+fizz_buzz/{3,15,5}         33ns // ? -> ✔️
+fizz_buzz/{5,3,5}          33ns // ? -> ✔️
+fizz_buzz/{0,1,0}          33ns // ? -> ✔️
+fizz_buzz/{random}        137ns // ? -> ✔️
+```
+
+```cpp
+...
 ```
 
 ----
 
+> "Don't bring me problems, bring me solutions!"
+
+----
+
 OS?
+<!-- .element: style="text-align:left" -->
 
 Minimial control
   `pyperf system tune`
@@ -418,20 +393,13 @@ Full control
   - UEFI (wmsr - disable/enable cache (can't be done without user-space))
     //clear_cache
     //setup_rdpmc
-  - affinity
+  - affinity, priority
   - jtags...
 <img src="images/uefi.png" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
 https://en.wikipedia.org/wiki/UEFI
 
 How to verify
-    self testing show picture
-
-----
-
-COMPILER?
-  -O2
-  -O3
-  - inline depth
+    self testing show picture of add, rdpmc
 
 ----
 
@@ -440,78 +408,125 @@ CPU?
 set<TBT>(ip) = 1
 set<cache>(ip) = 1
 
+  - branch prediction state (10'000 1/0 branches learn)
+  - cache/memory state
+  - which ports will be used
+  - depending on the run-time information
+
+
+  prioroty information
+
 ----
 
-Microbenchmarking -> frameowrk
+C++ -> Microbenchmarking 
+
+... is the measurement of the performance of a small, specific piece of code under controlled conditions!
+
+Why?
+  - fast iteratoion / isolation (measurments which can't be reproduced have little value)
+  - understanding (measurments without undersatding have little value)
+  - control/edge cases (measurments without clear undestaning what is measured or without extensive measruemnts have little value)
+  - intuition
+  - tuning
+
+Notes
+- scentiifc process
+- always apply your microbenchmarking results to end-2-end testing
+
+----
 
 #### Disclaimer
 
 #### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
 
-  perf::log({
-    {"sys",  perf::info::sys::triple()},
-    {"cxx",  perf::info::compiler()},
-    {"cpu",  perf::info::cpu()},
-    {"iL1",  perf::info::memory::icache()},
-    {"dL1",  perf::info::memory::dcache()},
-  });
+#### Function level
+- google.benchmark
+- nanobench
+- celebro
 
-  ```
-  name info
-  ---- -------------------------------------------------------
-  sys  x86_64-pc-linux-gnu
-  cxx  gcc-15.0.0
-  cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 2.67Ghz
-  iL1  32Kb (64b)
-  dL1  48Kb/12 (64b)
-  ```
+#### Instruciton level
+- nanboe (uops)
+- llv.mexercis (llvm scheduing model)
 
-
-#### Powered by https://github.com/qlibs/perf (C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel)
+####  Powered by https://github.com/qlibs/perf
+  - Function level/Instruciton Level C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel
 <!-- .element: style="text-align:left" -->
 
-  - profile/analyzing/tracing
+----
 
-    counting
-    sampling
-    simulating - callgrind
+  -info/self testing/tuning
+    - on linux topolgy
+
+    auto&& spec = perf::info::spec{
+        {"sys",  perf::info::sys::triple()},
+        {"cxx",  perf::info::compiler()},
+        {"cpu",  perf::info::cpu()},
+        {"iL1",  perf::info::memory::icache()},
+        {"dL1",  perf::info::memory::dcache()},
+    };
+    perf::log(spec);
+
+    ```
+    name info
+    ---- -------------------------------------------------------
+    sys  x86_64-pc-linux-gnu
+    cxx  gcc-15.0.0
+    cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 12x2.67Ghz
+    iL1  32Kb (64b)
+    dL1  48Kb/12 (64b)
+    ```
+
+  - profiler
+
+      ```
+      static_assert(requires {
+        proifler{events...}
+        profiler::is_syscall_free;
+        profiler::is_mulitplexing_free;
+        profiler.start();
+        profiler.stop();
+      })
+      ```
+
+    stat (counting)
 
       Nonosecond count!
+        Time is discrete: clock cycle
+        Processors: 4 GHz (4*10^9 cycles per second)
+        One cycle is 0.25 nanoseconds
+        light: 7.5 centimeters per cycle
+        One byte per cycle: 4 GB/s
 
-      - TSC - time-stamp counter
+      - TSC - Time Stamp Counter
 
+        ```tsc
+        rdtscp from highway
+        ```
+
+        ```cpp
         stat.cpu_time (wall) chrono
         stat.real
         stat.thread (clock-gettime)
         stat.steady (monotonic)
-
-        ```tsc
-        rdtscp
         ```
 
-        Time is discrete: clock cycle
-          Processors: 4 GHz (4*10^9 cycles per second)
-          One cycle is 0.25 nanoseconds
-          light: 7.5 centimeters per cycle
-          One byte per cycle: 4 GB/s
-
-      - PMC Perfomrmance mesuerning Counter / `perf list`
-      - LBR Last Branch Record
+      - PMC - Perfomrmance mesuerning Counter / `perf list`
+      - LBR  - Last Branch Record
       - RDPMC - Read Performance Monitoring Counters
       - PEBS  - Precise Event-Based Sampling / IBS (Amd)
-      - IPT Intel Processor Trace - (intel, m4) // benefits over sampling
+      - IPT -  Intel Processor Trace - (intel, m4) // benefits over sampling
 
       - rdpmc (current thread)
         inline constexpr auto rdpmc = [](const std::uint64_t id) {
-          std::uint64_t eax{}, edx{};
+            std::uint64_t eax{}, edx{};
             asm volatile(
               "rdpmc" : "=a"(eax), "=d"(edx) : "c"(id)
             );
-            return ((static_cast<std::uint64_t>(edx)) << 32u) | static_cast<std::uint64_t>(eax);
+            return ((std::uint64_t>(edx)) << 32u) | static_cast<std::uint64_t>(eax);
         };
 
-      events (long list perf list)
+      events `perf list`
         ```cpp
         using perf::stat::cpu_clock;
         using perf::stat::task_clock;
@@ -548,20 +563,6 @@ Microbenchmarking -> frameowrk
         using perf::stat::itlb_loads;
         using perf::stat::itlb_load_misses;
         ...
-        ```
-
-        ```cpp
-        using perf::record::mem_loads;
-        using perf::record::mem_stores;
-        ```
-
-        perf::profiler profiler{perf::stat::tsc, perf::stat:cycles, perf::stat::instructions, perf::trace::instructions, perf::trace::cycles, perf::record::mem_loads, perf::record::mem_stores};
-        static_assert(profiler::is_syscall_free);
-        static_assert(profiler::is_mulitplexing_free);
-
-        ```
-        using perf::trace::instructions;
-        using perf::trace::cycles;
         ```
 
       metrics
@@ -614,11 +615,45 @@ Microbenchmarking -> frameowrk
           inline constexpr auto core_bound = backend_bound - memory_bound;
           ```
 
+        record (sampling)
+
+        ```cpp
+        using perf::record::mem_loads; // cycles 3
+        using perf::record::mem_stores;
+        ```
+
+        perf::profiler profiler{
+          perf::stat::tsc, perf::stat:cycles, perf::stat::instructions,
+          perf::trace::instructions, perf::trace::cycles,
+          perf::record::mem_loads, perf::record::mem_stores
+        };
+
+        static_assert(profiler::is_syscall_free);
+        static_assert(profiler::is_mulitplexing_free);
+
+        trace (tracing)
+
+        ```
+        using perf::trace::instructions;
+        using perf::trace::cycles;
+        ```
+
+        ```
+        invoke fn = [] {
+        };
+        assert(5 == instructions);
+        assert(3 == instructinos);
+        ```
+
   analyzer - goal - identify boltenockes (remove dependency chains)
     - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html (doesn't fetch, depends on your description)
       timeline
       resource_pressure
+
       stat vs mca::stat
+      log
+      | mca.cycles | cycles   |
+      | 1          | 3 cycles |
 
         ```cpp
         perf::mca::timeline;                        // produces a detailed report of each instruction’s state transitions through an instruction pipeline
@@ -733,8 +768,6 @@ Microbenchmarking -> frameowrk
 
       <blue> not understnaindg why
 
-----
-
   runner/bench
 
     ```cpp
@@ -782,7 +815,7 @@ Microbenchmarking -> frameowrk
       latency vs throughput
         Latency - time it takes for a single operation to complete (ns)
           cpu -> fpga -> asic
-          fpga picture 
+          fpga picture
 
         [] {
         for
@@ -896,8 +929,6 @@ Microbenchmarking -> frameowrk
           how to check vs mca
             add 1 cycles
 
-      Function Level
-
       input data distribution
         - pollute_heap
           ```cpp
@@ -938,7 +969,7 @@ Microbenchmarking -> frameowrk
         Data distrubtion (branch prediction)
 
             - realsistc scenarios
-              alignment, warmup, threading, pin ...
+              alignment, cold, warm, threading, pin ...
 
             - input parameters
               ```cpp
@@ -963,8 +994,10 @@ Microbenchmarking -> frameowrk
       alignemt
         - code::align<64> // clang vs code::align
 
-      baseline
-        compierl::prevent_eliasion (is_elided)
+      baseline (speedup, relative)
+
+        // aka do_not_optimze_away -> when is needed will affect the result?
+        compierl::prevent_elision (is_elided)
         ```cpp
         constexpr auto prevent_elision(const auto& t) {
           asm volatile("" :: "r,m"(t) : "memory");
@@ -987,14 +1020,17 @@ Microbenchmarking -> frameowrk
         }
         ```
 
-  ```cpp
-  assert(perf::compiler::is_elided([] { }));
-  assert(perf::compiler::is_elided([] { int i{}; i++; }));
-  assert(not perf::compiler::is_elided([] {
-    int i{};
-    perf::compiler::prevent_elision(i++);
-  }));
-  ```
+        ```cpp
+        assert(perf::compiler::is_elided([] { }));
+        assert(perf::compiler::is_elided([] { int i{}; i++; }));
+        assert(not perf::compiler::is_elided([] {
+            int i{};
+            perf::compiler::prevent_elision(i++);
+        }));
+        ```
+
+    > We need to measure the right thing
+    > Assuming measurements are independent
 
   - debug
     - verify results (fatest but wrong)
@@ -1094,8 +1130,21 @@ Microbenchmarking -> frameowrk
 
   - options
     - jupyter
+        cpp | edit
+        notebook | build&run | save(json) | analyze (pyton)
+
+        cpp | buid&run | save(json) | notebok | analyze(python)
+
     - microbnechmar UI - show link
+
+        ui | read(db)
+        cpp | bench (cpp) | write(db)
+
     - gnuplot -> on the server (picutres)
+
+        cpp | bench | analyze (terminal)
+
+      https:://arewesixelyet.com
 
       PERF_IO_PLOT_TERM='sixel'                 # terminal - sixel
       PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
@@ -1106,20 +1155,21 @@ Microbenchmarking -> frameowrk
 
 
   testing
-    - assembly testing
-    - optimizations
-
-----
-
-    - google.benchmark
-    - nanobench
-    - celebro
+    verify(instructions.size)
+    verify(asm.instruciont == "mov")
+    verify(asm.instruciton.count < non optimizaed)
+    verify(as.minstruciton.count == c++optimization)
 
 ----
 
 fizz_buzz (again)
 
-show analysis
+show full analysis with charts
+ - latency vs throughput
+ - charts
+ - different params
+ - alignment
+ - flamegraph
 
 ----
 
@@ -1144,11 +1194,42 @@ document export & share results
 
 ----
 
-Didn't even get to that!
+So we can measure but what now?
+
+Found and what?
+      99% slow (pciture everyting slow) /
+
+Not knowing when to stop micro-optimizing
+      max_ipc (the end!)
 
 Letls improve it how?
   hyptheosis
     - what if?
+    - experiemnts
+    - testinmg
+
+Techniques (depends on the issue)
+  -Upgrade harwdware
+  -Optimize software
+    -SWAR qlibs/swar
+    -SIMD (avx, neon) -> highway
+    - constexpr (avoid hard to predicted braches)
+    - DOD (data oriented design)
+    - branchless (jump-table, hashing)
+    - parallel
+    - design
+    - ...
+
+- Applying to production
+    - doesn't match what we missed
+
+- Continous benchmarking
+ - can't be one off that's we have testing
+     show picture
+----
+
+#### Optimizations?
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 auto fizz_buzz_lut(int n) {
@@ -1157,54 +1238,22 @@ auto fizz_buzz_lut(int n) {
     "Fizz","Unknown","Unknown","Fizz","Buzz",
     "Unknown","Fizz","Unknown","Unknown","FizzBuzz"
   };
-  return lut[(n-1) % 15];
+  return lut[fast_mod((n-1), 15)];
 }
 ```
 
 ```cpp
-Measurement             Time   |   Measurement             Time
----------------------- -----   |   ---------------------- -----
-fizz_buzz(0)           211ns   |   fizz_buzz_lut(0)        33ns // ?
-fizz_buzz(3)            32ns   |   fizz_buzz_lut(3)        31ns // ?
-fizz_buzz(5)            51ns   |   fizz_buzz_lut(5)        30ns // ?
-fizz_buzz(15)           12ns   |   fizz_buzz_lut(15)       32ns // ?
+...
 ```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+#### Exercise for the reader!
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
 
-#### Performance Is Not a Number!
+### Further readings
+<!-- .element: style="text-align:left" -->
 
-```cpp
-fizz_buzz(int): // gcc-15 -O3             fizz_buzz_lut(int): // gcc-15 -O3
-  imul    eax, edi, -286331153              sub     edi, 1
-  mov     edx, OFFSET FLAT:.LC1             movsx   rax, edi
-  add     eax, 143165576                    mov     edx, edi
-  cmp     eax, 286331152                    imul    rax, rax, -2004318071
-  jbe     .L13                              sar     edx, 31
-  imul    eax, edi, -1431655765             shr     rax, 32
-  mov     edx, OFFSET FLAT:.LC3             add     eax, edi
-  add     eax, 715827882                    sar     eax, 3
-  cmp     eax, 1431655764                   sub     eax, edx
-  jbe     .L13                              mov     edx, eax
-  imul    edi, edi, -858993459              sal     edx, 4
-  mov     edx, OFFSET FLAT:.LC4             sub     edx, eax
-  mov     eax, OFFSET FLAT:.LC2             sub     edi, edx
-  add     edi, 429496729                    movsx   rdi, edi
-  cmp     edi, 858993459                    mov     rax, QWORD PTR "table"[0+rdi*8]
-  cmovnb  rdx, rax                          ret
-.L13:
-  mov     rax, rdx
-  ret
-```
-
-https://godbolt.org/z/Gxf84ehjP
-
-----
-
-## Further readings
-
-<img src="images/resources.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/resources.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
 
 #### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
           </script>
