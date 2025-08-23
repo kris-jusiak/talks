@@ -63,13 +63,13 @@
   <tr>
   <td>
   <pre>
-(⬆️) Number of transistors 
+(⬆️) Number of transistors
   - scalar
   - cores
   - cpu-units
   </pre>
   <pre>
-(〰) Frequency 
+(〰) Frequency
   - reached limits
   </pre>
   </td>
@@ -84,103 +84,173 @@
 ### Always Measure!
 <!-- .element: style="text-align:left" -->
 
-#### Top-down Microarchitecture Analysis Method (Level1)
-<!-- .element: style="text-align:left" -->
-
-  <img src="images/tmam1.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
-
-```cpp
-prof::linux_perf profiler{"/dev/shm/perf"};
-profiler.start(); // syscall
-// ...
-profiler.stop(); // syscall
+```sh
+time ./app
 ```
 
 ```cpp
-perf stat --topdown --control=fifo:/dev/shm/perf --delay=-1 ./mispredicted
+ real  0m1.726s
+ user  0m0.218s
+ sys   0m0.412s
+```
+
+----
+
+### Always Measure!
+<!-- .element: style="text-align:left" -->
+
+```sh
+perf stat ./app
+```
+
+<img src="images/stat.png" style="width: 100%; background:none; border:none; box-shadow:none; margin-left:-45px;" />
+
+----
+
+#### Always Measure! - [Top-down Microarchitecture Analysis Method](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-0/top-down-microarchitecture-analysis-method.html)
+<!-- .element: style="text-align:left" -->
+
+<img src="images/tma.png" style="width: 100%; background:none; border:none; box-shadow:none; margin-left:-45px;" />
+
+```cpp
+import prof; // https://github.com/qlibs/prof
+
+int main() {
+  prof::linux_perf profiler{"/dev/shm/perf"};
+  profiler.start();
+  // ...
+  profiler.stop();
+}
+```
+
+```cpp
+perf stat --control=fifo:/dev/shm/perf --delay=-1 --topdown ./a.out
+```
+
+----
+
+#### Always Measure! - [Callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+import prof; // https://github.com/qlibs/prof
+
+int main() {
+  prof::callgrind profiler{"profile"};
+
+  profiler.start(); // reset
+  if (trigger()) {
+    // ...
+    profiler.stop();
+    proflier.flush(); // dump
+  }
+}
 ```
 
 ```sh
-Retiring   Bad Speculation   Frontend Bound   Backend Bound
-    10%               70%              10%             10%
+valgrind --tool=callgrind --instr-atstart=no ./a.out
 ```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ----
 
-    ##### https://github.com/qlibs/prof
-    <!-- .element: style="text-align:left" -->
+#### Always Measure! -  https://llvm.org/docs/XRay.html
+<!-- .element: style="text-align:left" -->
 
-### Always Measure!
+```cpp
+function(int, int):
+  // nop word ptr [rax + rax + 512]    // -fxray-instrument
+  lea eax, [rdi+rsi]
+  ret
+  // nop word ptr cs:[rax + rax + 512] // -fxray-instrument
+```
 
-  llvm-xray - https://llvm.org/docs/XRay.html
+```cpp
+void handler(int32_t func_id, XRayEntryType entry) {
+  if (entry == XRayEntryType::ENTRY) {
+    profiler.start();
+  } else {
+    profiler.stop();
+  }
+};
+```
 
-    ```cpp
-    auto fn(); // -fxray-instrument
-    nop     word ptr [rax + rax + 512]    // XRayEntryType::ENTRY
-    ...
-    nop     word ptr cs:[rax + rax + 512] // XRayEntryType::EXIT
-    ```
-    <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left" -->
+```cpp
+int main() {
+  __xray_set_handler(handler);
+  __xray_patch(); // nop -> jmp &handler [code patching]
+}
+```
 
-    ```cpp
-    void handler(int func_id, XRayEntryType entry) {
-      if (entry == XRayEntryType::ENTRY) {
-          profiler.start();
-      } else {
-          profiler.stop();
-      }
-    }
-    ```
-    <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-    ```cpp
-    int main() {
-    __xray_set_handler(handler);
-    __xray_patch(); // nop->jmp &handler
-    }
-    ```
-    <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
+```sh
+clang++ -fxray-instrument -fxray-function-list=function.txt
+```
 
 ----
 
-### Always Measure!
+#### Always Measure! (the right tool for the job)
+<!-- .element: style="text-align:left" -->
 
-    // take it from perf
-    - perf probe
-    - gdb backwards
-
-    - 'hot spot' optimizations
-
-        [timing][code] [tracy](https://github.com/wolfpld/tracy)
-
-        [sampling/tracing][code] [`linux-perf`](https://perf.wiki.kernel.org)
-        [sampling/tracing][code] [`intel-vtune`](https://www.intel.com/content/www/us/en/docs/vtune-profiler)
-        [sampling][code] [`amd-uprof`](https://www.amd.com/en/developer/uprof.html)
-
-        [sampling][code] [`gperftools`](https://github.com/gperftools/gperftools)
-        [sampling][code] [likwid](https://github.com/RRZE-HPC/likwid)
-
-        [threading][coz](https://github.com/plasma-umass/coz)
-
-        [simulating][code] [`callgrind`](https://valgrind.org/docs/manual/cl-manual.html)
-
-        [tracing][magictrace](https://github.com/janestreet/magic-trace)
-
-    - active benchmarking
-    ...
-
-----
-
-But 'hot spot' engineering can fail, better to reduce overall instruction count -> Microbenchmarking
-
-  - Modern processors (Desktop: Intel Arrow Lake, Apple M4, AMD Zen 5) execute nearly as many instructions per cycle as you can supply*
-    *branching, memory, and input/output
-  - choose the right tool for the job
+##### linux-perf - https://perf.wiki.kernel.org
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### dtrace - https://perf.wiki.kernel.org
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### amd-uprof - https://www.amd.com/en/developer/uprof.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### flamegraph - https://github.com/brendangregg/FlameGraph
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### gperftools - https://github.com/gperftools/gperftools
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### likwid - https://github.com/RRZE-HPC/likwid
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### pmu-tools - https://github.com/andikleen/pmu-tools
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### tracy - https://github.com/wolfpld/tracy
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### magic-trace - https://github.com/janestreet/magic-trace
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### callgrind - https://valgrind.org/docs/manual/cl-manual.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### coz - https://github.com/plasma-umass/coz
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+...
+<!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
-### Performance Is Not a Number!
+### 'hot spot' engineering can fail
+<!-- .element: style="text-align:left" -->
+
+#### Modern processors execute nearly as many instructions per cycle as you can supply*
+<!-- .element:  style="text-align:left" -->
+##### - Branching, memory, and input/output
+<!-- .element: style="text-align:left" -->
+##### - Reduce overall instruction count
+<!-- .element: style="text-align:left" -->
+
+<!-- .slide: data-background="darkblue" -->
+
+----
+
+#### Microbenchmarking?
+<!-- .element: style="text-align:left" -->
+
+```
+auto bench(auto fn, auto... ts) {
+  const auto start = time();
+  fn(ts...);
+  const auto end = time();
+  return end - start;
+}
+```
+
+##### Faster iterations / Isolation / Understanding / Tuning / Scentifc
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Performance Is Not a Number! Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -191,9 +261,6 @@ auto fizz_buzz(int n) {
   return "Unknown";
 }
 ```
-
-#### Slow/Fast?
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ```
 fizz_buzz   0ns // ?
@@ -212,7 +279,7 @@ fizz_buzz 100ns // ?
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number! Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -225,59 +292,63 @@ auto fizz_buzz(int n) {
 ```
 
 ```cpp
-fizz_buzz(15)              31ns // ?
-fizz_buzz(3)               41ns // ?
-fizz_buzz(5)               87ns // ?
-fizz_buzz(0)              121ns // ?
+fizz_buzz(15)         31ns // ?
+fizz_buzz(3)          41ns // ?
+fizz_buzz(5)          87ns // ?
+fizz_buzz(0)         121ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ```cpp
-fizz_buzz/{15,3,5}         33ns // ?
-fizz_buzz/{3,15,5}         33ns // ?
-fizz_buzz/{3,15,5}         33ns // ?
-fizz_buzz/{5,3,5}          33ns // ?
-fizz_buzz/{0,1,0}          33ns // ?
-fizz_buzz/{random}        137ns // ?
+fizz_buzz/{15,3,5}    33ns // ?
+fizz_buzz/{3,15,5}    33ns // ?
+fizz_buzz/{3,15,5}    33ns // ?
+fizz_buzz/{5,3,5}     33ns // ?
+fizz_buzz/{0,1,0}     33ns // ?
+fizz_buzz/{random}   137ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
 
 ```cpp
 ...
 ```
-<!-- .element: class="fragment" data-fragment-index="4" style="text-align:left" -->
+<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number! Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int main(int argc, const char** argv) {
-  assert(argc == 2u);
-  const auto n = std::stoi(argv[1]);
-
-  // how?
-  {
-    const auto start = time(); // loop?
-    fizz_buzz(n);              // elided?
-    const auto end = time();   // time?
-    return end - start;        // runs?
-  }
+auto bench(auto fn, auto... ts) {
+  const auto start = time(); // loop?
+  fn(ts...);                 // elided?
+  const auto end = time();   // time?
+  return end - start;        // runs?
 }
 ```
 
-###### `$CXX -O3 fizz_buzz.cpp -o fizz_buzz # flags?`
+```
+int main(int argc, const char** argv) {
+  bench(fizz_buzz, std::stoi(argv[1]));
+}
+```
+
+```sh
+$CXX -O3 fizz_buzz.cpp -o fizz_buzz # flags?
+```
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number! Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 <table>
 <tr>
   <td>
  <pre><code>
+ &nbsp;
+ &nbsp;
  main:
   call  time()
   mov   DWORD PTR [rsp+12], edi
@@ -285,6 +356,8 @@ int main(int argc, const char** argv) {
   call  time()
   sub   eax, ebx
   ret
+ &nbsp;
+ &nbsp;
  </code></pre>
   </td>
   <td>
@@ -297,7 +370,7 @@ int main(int argc, const char** argv) {
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number! Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 <img src="images/linux2.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
@@ -335,7 +408,7 @@ fizz_buzz(int):
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number! Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 <img src="images/cpu2.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
@@ -344,12 +417,12 @@ fizz_buzz(int):
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number! Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 fizz_buzz                   0ns // ? (elided)
-fizz_buzz                  10ns // ? -> ✔️ 
+fizz_buzz                  10ns // ? -> ✔️
 fizz_buzz                 100ns // ? -> ✔️
 fizz_buzz(15)              31ns // ? -> ✔️
 fizz_buzz(3)               41ns // ? -> ✔️
@@ -369,11 +442,11 @@ fizz_buzz/{random}        137ns // ? -> ✔️
 
 ----
 
-> "Don't bring me problems, bring me solutions!"
+### Avoiding microbenchmarkign pitfalls
 
 ----
 
-OS?
+Performance is not  Operating
 <!-- .element: style="text-align:left" -->
 
 Minimial control
@@ -413,50 +486,31 @@ set<cache>(ip) = 1
   - which ports will be used
   - depending on the run-time information
 
-
   prioroty information
 
 ----
 
-C++ -> Microbenchmarking 
+Avoiding Microbenchmarking Pitfalls
 
-... is the measurement of the performance of a small, specific piece of code under controlled conditions!
+Frameowrks
+- google.benchmark [function level]
+- nanobench[function level]
+- celebro[function level]
+- nanboe (uops) [instruction level]
+- llvm.mexercis (llvm scheduing model)
+- https://github.com/qlibs/perf [this talk]
+    - C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel [instruction/fuction level]
+- ...
 
-Why?
-  - fast iteratoion / isolation (measurments which can't be reproduced have little value)
-  - understanding (measurments without undersatding have little value)
-  - control/edge cases (measurments without clear undestaning what is measured or without extensive measruemnts have little value)
-  - intuition
-  - tuning
-
-Notes
-- scentiifc process
-- always apply your microbenchmarking results to end-2-end testing
-
-----
-
-#### Disclaimer
-
-#### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+#### Disclaimer - focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
 
-#### Function level
-- google.benchmark
-- nanobench
-- celebro
+  - difference between fast cpu and cpu which is easy to make fast and providing tools to do so (intel)
 
-#### Instruciton level
-- nanboe (uops)
-- llv.mexercis (llvm scheduing model)
-
-####  Powered by https://github.com/qlibs/perf
-  - Function level/Instruciton Level C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel
-<!-- .element: style="text-align:left" -->
-
+###### Always apply your microbenchmarking results to end-2-end testing
 ----
 
-  -info/self testing/tuning
-    - on linux topolgy
+  -info
 
     auto&& spec = perf::info::spec{
         {"sys",  perf::info::sys::triple()},
@@ -475,6 +529,13 @@ Notes
     cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 12x2.67Ghz
     iL1  32Kb (64b)
     dL1  48Kb/12 (64b)
+    ```
+
+    <blue> measruments without underlying hw/sftw not the valuable
+
+  - self testing
+
+    ```cpp
     ```
 
   - profiler
@@ -641,6 +702,9 @@ Notes
         ```
         invoke fn = [] {
         };
+
+        log // hexdump
+
         assert(5 == instructions);
         assert(3 == instructinos);
         ```
@@ -660,6 +724,8 @@ Notes
         perf::mca::resource_pressure;               // reports the average number of resource cycles consumed every iteration by instructions for every processor resource unit available on the target
         perf::mca::bottleneck;
         ```
+
+        show annotate<split>(mca::timeline)
 
       - osaca - https://github.com/RRZE-HPC/OSACA
       - uica - https://uica.uops.info
@@ -1220,6 +1286,10 @@ Techniques (depends on the issue)
     - design
     - ...
 
+  - PGO (profile guided optimization)
+  - bolt
+  - prepellar
+
 - Applying to production
     - doesn't match what we missed
 
@@ -1253,9 +1323,20 @@ auto fizz_buzz_lut(int n) {
 ### Further readings
 <!-- .element: style="text-align:left" -->
 
-<img src="images/resources.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+##### Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### AMD - https://www.amd.com/content/dam/amd/en/documents
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### ARM - https://developer.arm.com/documentation/ddi0487/latest
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
+<!-- .element: style="text-align:left; margin: 0 0;" -->
 
-#### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
+---
+
+##### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
           </script>
         </section>
 
