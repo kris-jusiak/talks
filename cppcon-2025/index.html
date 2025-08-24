@@ -62,39 +62,26 @@
 ### Performance?
 <!-- .element: style="text-align:left" -->
 
-            ```cpp
-            Measurement               Time
-            ---------------------- -------
-            1 cycle execution       0.20ns // 5Ghz
-            ```
-            <!-- .element: style="text-align:left" -->
-
-            99% slow (pciture everyting slow) /
-            ```cpp
-            L1 cache reference      0.50ns
-            L2 cache reference      3.00ns
-            L3 cache reference     10.00ns
-            Main memory reference  70.00ns
-            ```
-            <!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-
-            ```cpp
-            Branch mispredict       3.00ns
-            ```
-            <!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
-
 <table>
   <tr>
   <td>
   <pre>
 (⬆️) Number of transistors
-  - scalar
-  - cores
-  - cpu-units
+  - Scalar
+  - Cores
+  - Cpu-Units
   </pre>
   <pre>
-(〰) Frequency
-  - reached limits
+(~) Frequency
+  - Reached limits
+  </pre>
+  <pre>
+(~) Metrics
+  - 1 cycle(5Ghz) 0.20ns
+  - L1 cache      0.50ns
+  - L2 cache      3.00ns
+  - L3 cache     10.00ns
+  - Main memory  70.00ns
   </pre>
   </td>
   <td>
@@ -609,8 +596,19 @@ int main() {
 }
 ```
 
+----
+
 ```cpp
-constexpr auto label(conts auto id) {
+constexpr auto prevent_elision(auto&& t) {
+  // simplified
+  asm volatile("" :: "r,m"(t) : "memory");
+}
+```
+
+----
+
+```cpp
+constexpr auto label(const auto id) {
   asm volatile goto(
     ".pushsection labels, \"aw\" \n"
     ".quad %c0, 0b \n`
@@ -621,17 +619,12 @@ constexpr auto label(conts auto id) {
 ```
 
 ```cpp
-  extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
-  extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
-  constinit std::unordered_map<std::uint64_t, std::uint64_t> labels{&__start_labels, &__stop_labels};
+extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
+extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
+constinit std::unordered_map<std::uint64_t, std::uint64_t>
+  labels{&__start_labels, &__stop_labels};
 ```
 
-```cpp
-constexpr auto prevent_elision(auto&& t) {
-  // simplified
-  asm volatile("" :: "r,m"(t) : "memory");
-}
-```
 
 ```cpp
 template<auto Begin = []{}, auto End = []{}>
@@ -689,15 +682,18 @@ namespace perf::code {
 
 ----
 
-#### Info
+#### cpu/info
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::info::spec spec{
-    {"sys",  perf::info::sys::triple()},
-    {"cxx",  perf::info::compiler()},
-    {"cpu",  perf::info::cpu()},
-    {"iL1",  perf::info::memory::icache()},
-    {"dL1",  perf::info::memory::dcache()},
+    {"perf",    perf::info::version()},
+    {"time",    std::chrono::system_clock::now()},
+    {"sys",     perf::info::sys::triple()},
+    {"cxx",     perf::info::compiler()},
+    {"cpu",     perf::info::cpu()},
+    {"icache",  perf::info::memory::icache()},
+    {"dcache",  perf::info::memory::dcache()},
 };
 ```
 ```cpp
@@ -705,13 +701,15 @@ perf::log(spec);
 ```
 
 ```sh
-name info
----- -------------------------------------------------------
-sys  x86_64-pc-linux-gnu
-cxx  gcc-15.0.0
-cpu  12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) 12x2.67Ghz
-iL1  32Kb (64b)
-dL1  48Kb/12 (64b)
+name    info
+------- -------------------------------------------------------
+perf    0.0.1
+time    2025-09-15 11:30:00
+sys     x86_64-pc-linux-gnu
+cxx     gcc-15.0.0
+cpu     12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
+icache  L1: 32Kb (64b)
+dcache  L1: 48Kb/12 (64b), L2: , L3: ()
 ```
 
 ----
@@ -721,35 +719,30 @@ dL1  48Kb/12 (64b)
 
 ----
 
-#### Self-testing/tuning
+### Latency vs. Throughput
 
 ----
 
-#### bench
+#### Latency - Time it takes for a single operation to complete (ns/op)
+<!-- .element: style="text-align:left" -->
 
+<img src="images/fpga.gif" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
+
+##### network request / cpu -> fpga -> asic
+<!-- .element: style="text-align:left" -->
+
+----
+
+### Latency
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-start();
-fn();
-stop();
-```
-
-```cpp
-for (auto i = 0; i < iterations; ++i) {
+for (auto i = 0; i < iterations; ++i) { // what is that meassuring
   start();
   fn();
   stop();
 }
 ```
-
-----
-
-#### latency vs throughput
-
-Latency - time it takes for a single operation to complete (ns/op)
-- network request, trade
-- cpu -> fpga -> asic
-  <img src="images/fpga.gif" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
 
 ```cpp
 template<std::size_t N, std::align_val_t Alignment>
@@ -819,6 +812,7 @@ Not benchmarking realsistc scenarios (alignment, cold, warm, threading, ...)
 ----
 
 #### Reporting
+<!-- .element: style="text-align:left" -->
 
 - Timing data is usually skewed, not symmetric
 - taking mean!
@@ -827,7 +821,34 @@ Not benchmarking realsistc scenarios (alignment, cold, warm, threading, ...)
 - baseline (speedup, relative)
       - mesuremnets are not following normal distrubution
 
+----
+
 ```cpp
+perf::metric::stat::min;
+perf::metric::stat::max;
+perf::metric::stat::mean;
+perf::metric::stat::geomean;
+perf::metric::stat::median;
+perf::metric::stat::percentile;
+perf::metric::stat::p99;
+perf::metric::stat::p75;
+perf::metric::stat::p50;
+perf::metric::stat::p25;
+perf::metric::stat::variance;
+perf::metric::stat::stddev;      // degrees_of_freedom = 1
+perf::metric::stat::sem;         // standard error
+perf::metric::stat::mae;         // median absolute errror
+perf::metric::stat::mad;         // median absolute deviation
+perf::metric::stat::cv;          // coefficient of variation
+perf::metric::stat::z_score;
+perf::metric::stat::t_score;
+```
+
+----
+
+```cpp
+import perf;
+
 perf::runner bench{perf::bench::latency{}};
 
 bench(perf::bench::baseline([]{});
@@ -835,30 +856,10 @@ bench(fizz_buzz, 1);
 report(bench[stat::tsc], min, median, p90, p99)
 ```
 
-```cpp
-  perf::metric::stat::min;
-  perf::metric::stat::max;
-  perf::metric::stat::mean;
-  perf::metric::stat::geomean;
-  perf::metric::stat::median;
-  perf::metric::stat::percentile;
-  perf::metric::stat::p99;
-  perf::metric::stat::p75;
-  perf::metric::stat::p50;
-  perf::metric::stat::p25;
-  perf::metric::stat::variance;
-  perf::metric::stat::stddev;      // degrees_of_freedom = 1
-  perf::metric::stat::sem;         // standard error
-  perf::metric::stat::mae;         // median absolute errror
-  perf::metric::stat::mad;         // median absolute deviation
-  perf::metric::stat::cv;          // coefficient of variation
-  perf::metric::stat::z_score;
-  perf::metric::stat::t_score;
-```
-
 ----
 
 #### Plotting
+<!-- .element: style="text-align:left" -->
 
 - jupyter notebook (via json + python)
 - custom UI
@@ -875,7 +876,7 @@ perf::plot::flamegraph;
 ```
 
 ```cpp
-PERF_IO_PLOT_TERM='sixel'                 # terminal - https:://arewesixelyet.com
+PERF_IO_PLOT_TERM='sixel'                 # terminal
 PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
 PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
 PERF_IO_PLOT_TERM='wxt'                   # popup windows
@@ -883,13 +884,23 @@ PERF_IO_PLOT_TERM='canvas'                # html
 PERF_IO_PLOT_TERM='png'                   # png
 ```
 
+#### https://arewesixelyet.com
+<!-- .element: style="text-align:left" -->
+
 ----
 
 Hist - Histogram
+<!-- .element: style="text-align:left" -->
+
+----
 
 ECDF - https://en.wikipedia.org/wiki/Empirical_distribution_function
+<!-- .element: style="text-align:left" -->
+
+----
 
 Bar - Bar
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -904,7 +915,9 @@ perf::plot::complexity (big0)
 
 ----
 
-flamegraph
+### flamegraph
+<!-- .element: style="text-align:left" -->
+
 ```cpp
 perf::plot::flamegraph(bench[perf::record::cycles]);
 ```
@@ -921,6 +934,7 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 ----
 
 #### Profiling
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 static_assert(requires {
@@ -935,6 +949,7 @@ static_assert(requires {
 ----
 
 #### stat / counting
+<!-- .element: style="text-align:left" -->
 
 TSC - Time Stamp Counter
 
@@ -958,6 +973,7 @@ perf::stat.steady (monotonic)
 ----
 
 #### PMC - Perfomrmance mesuerning Counter / `perf list`
+<!-- .element: style="text-align:left" -->
 
 ### RDPMC - Read Performance Monitoring Counters (current thread)
 
@@ -1013,6 +1029,7 @@ using perf::stat::itlb_load_misses;
 ----
 
 ### Metrics
+<!-- .element: style="text-align:left" -->
 
 ```
 inline constexpr auto ipc = instructions / cycles; // instruction per cycle (ipc)
@@ -1074,6 +1091,7 @@ inline constexpr auto core_bound = backend_bound - memory_bound;
 ----
 
 #### Record / Sampling
+<!-- .element: style="text-align:left" -->
 
 LBR  - Last Branch Record
 PEBS  - Precise Event-Based Sampling / IBS (Amd)
@@ -1086,6 +1104,7 @@ using perf::record::mem_stores;
 ----
 
 #### Trace / Tracing
+<!-- .element: style="text-align:left" -->
 
 IPT -  Intel Processor Trace - (intel, m4)
 
@@ -1107,6 +1126,7 @@ verify(3 == instructinos);
 ----
 
 #### Profiler
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::profiler profiler{
@@ -1124,6 +1144,7 @@ static_assert(profiler::is_mulitplexing_free);
 -----
 
 #### Analyzer - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
+<!-- .element: style="text-align:left" -->
 
 osaca - https://github.com/RRZE-HPC/OSACA
 uica - https://uica.uops.info
@@ -1174,6 +1195,7 @@ perf::annotate<perf::vsplit>(bench[mca::timeline])
 ----
 
 #### disassemble vs trace vs sample
+<!-- .element: style="text-align:left" -->
 
 Branches that jump backward (loops) and are actually taken the first time → taken without miss.
 All other branches (forward jumps that are taken) → mispredict on first encounter.
@@ -1225,6 +1247,8 @@ https://github.com/qlibs/jmp
 ----
 
 analyze vs profile
+<!-- .element: style="text-align:left" -->
+
   - mph /table
   - condition move
   - align to cacheline
@@ -1267,6 +1291,8 @@ Not understnaindg why
 ----
 
 ### Debuging/Testing
+<!-- .element: style="text-align:left" -->
+
 - verify results (fatest but wrong)
 - debug verify results / can be done in warmup phase
 
@@ -1279,6 +1305,8 @@ Not understnaindg why
 };
 ```
 
+----
+
 ```cpp
 perf::verify(instructions.size)
 perf::verify(asm.instruciont == "mov")
@@ -1288,7 +1316,16 @@ perf::verify(as.minstruciton.count == c++optimization)
 
 ----
 
-Not testing results
+### Self-testing/tuning
+<!-- .element: style="text-align:left" -->
+
+```
+perf::self::test({.verbose = true});
+```
+
+----
+
+### Not testing results
 <!-- .slide: data-background="darkblue" -->
 
 ----
@@ -1298,30 +1335,34 @@ Not testing results
 ----
 
 #### Document export & share results
-  - show stiesd link
-  - jupyter notbeeok is good
-  - learning
-  - test it perf::verify(assembly)
-  - continous integration
-  - jupyter notebook approach
+<!-- .element: style="text-align:left" -->
+
+- show stiesd link
+- jupyter notbeeok is good
+- learning
+- test it perf::verify(assembly)
+- continous integration
+- jupyter notebook approach
 
 #### Eport/Share (jupyter)
-  - perf::json
-  - code says only what works and not what doesn't
-  - what didn't what work
-  - share studies!
-    - github
+<!-- .element: style="text-align:left" -->
+- perf::json
+- code says only what works and not what doesn't
+- what didn't what work
+- share studies!
+  - github
 
 #### Continous benchmarking
-  show picture
+- show picture
 
 ### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 
 ----
 
 #### Optimizations
+<!-- .element: style="text-align:left" -->
 
-Measureing -> Hypthotesies -> Benchmarking -> Production
+Measuring -> Hypthotesies -> Benchmarking -> Testing -> Production
 
 Techniques*
 - Harwdware
