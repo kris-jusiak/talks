@@ -52,9 +52,6 @@
 <br />&nbsp;
 <br />&nbsp;
 
-#### &nbsp; &nbsp;  Disclaimer [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
-<!-- .element: style="text-align:left" -->
-
 <img src="images/qr.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
 
 ----
@@ -66,22 +63,22 @@
   <tr>
   <td>
   <pre>
-(⬆️) Number of transistors
-  - Scalar
-  - Cores
-  - Cpu-Units
-  </pre>
-  <pre>
 (~) Frequency
-  - Reached limits
+ - Heat
+   - Power Limits
+   - Leakage
+   - 'Dark Silicon'
+ - 1 cycle (5Ghz): 0.20ns&nbsp;
   </pre>
   <pre>
-(~) Metrics
-  - 1 cycle(5Ghz) 0.20ns
-  - L1 cache      0.50ns
-  - L2 cache      3.00ns
-  - L3 cache     10.00ns
-  - Main memory  70.00ns
+(⬆️) Number of transistors
+ - (⬆️) Cores
+ - (⬆️) IPC
+   - L1 cache:     0.50ns
+   - L2 cache:     3.00ns
+   - L3 cache:    10.00ns
+   - Main memory: 70.00ns
+   - Branch miss:  3.00ns
   </pre>
   </td>
   <td>
@@ -92,79 +89,132 @@
 
 ----
 
-### Always Measure!
+#### Always Measure?!
 <!-- .element: style="text-align:left" -->
 
-```sh
-time ./app
-```
 
 ```cpp
- real  0m1.726s
- user  0m0.218s
- sys   0m0.412s
+0. performance requirements
+
+1. measuring/profiling
+  - end-2-end, production like enviornment, continous integration
+
+  - optimizations
+    - SIMD, SWAR, DoD, constexpr, branchless, par, PGO, ...
+
+  - microbenchmarking <- this talk
+    - understanding
+    - edge-cases/tails
+    - documentation
+    - testing
+
+
+
+  -
+
+  - microbenchmarking (understanding, edge-cases, tails, testing) <- this talk!
+
+  end-2-end production like enviornment
+    - profile/measure (continuous integration)
+      - microbenchmarking (understanding, edge-cases, tails, testing) <- this talk!
+    - verication
+    |
+   - |
+    | yes (push micro-benchmarkin (analysis/tests/fix))
 ```
+
+> starting from microbenchmarking
+> claiming performance without measurments
+>
+
+- dont' start from micro-optimizations without end-2-end
+-  if you can'affort the env (expensive)
+
+    best other thing
 
 ----
 
-### Always Measure!
-<!-- .element: style="text-align:left" -->
-
-```sh
-perf stat ./app
-```
-
-<img src="images/stat.png" style="width: 100%; background:none; border:none; box-shadow:none; margin-left:-45px;" />
+[bootom-up]
 
 ----
+Profiling answers: “Where should I optimize?”
+Micro-benchmarking answers: “How fast can this be under ideal conditions?”
+Start: Observe overall system performance
+ ├─> Step 1: High-Level Profiling (Top-Down / Hot-Spot)
+ │       ├─ Identify **slow areas or functions** in the program
+ │       ├─ Tools: Hot-spot profiling (bottom-up), top-down call profiling
+ │       └─ Goal: Narrow down **suspected bottlenecks**
+ │
+ ├─> Step 2: Drill Down into Critical Components
+ │       ├─ Use **micro-benchmarking** on isolated functions or algorithms
+ │       ├─ Compare alternative implementations
+ │       ├─ Measure actual cycles, latency, throughput
+ │       └─ Goal: Find **which specific implementation is optimal**
+ │
+ ├─> Step 3: Tune & Optimize
+ │       ├─ Apply code-level or algorithmic improvements
+ │       ├─ Optionally use **hardware-aware analysis** (TDAM, perf counters)
+ │       └─ Goal: Address low-level inefficiencies (cache, pipeline stalls)
+ │
+ ├─> Step 4: Verify at High Level
+ │       ├─ Re-run **high-level profiling** after optimization
+ │       ├─ Check that changes translate into **real application-level gains**
+ │       └─ Goal: Ensure improvements are meaningful for overall performance
+ │
+ └─> Repeat as Needed
+         ├─ If new bottlenecks appear, go back to Step 2
+         └─ Iterate until performance goals are met
 
-#### Always Measure! - [Top-down Microarchitecture Analysis Method](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-0/top-down-microarchitecture-analysis-method.html)
+#### [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
-
-<img src="images/tma.png" style="width: 100%; background:none; border:none; box-shadow:none; margin-left:-45px;" />
 
 ```cpp
 import prof; // https://github.com/qlibs/prof
 
 int main() {
   prof::linux_perf profiler{"/dev/shm/perf"};
+
   profiler.start();
   // ...
   profiler.stop();
 }
 ```
-
-```cpp
-perf stat --control=fifo:/dev/shm/perf --delay=-1 --topdown ./a.out
-```
-
-----
-
-#### Always Measure! - [Callgrind](https://valgrind.org/docs/manual/cl-manual.html)
 <!-- .element: style="text-align:left" -->
 
-```cpp
-import prof; // https://github.com/qlibs/prof
-
-int main() {
-  prof::callgrind profiler{"profile"};
-
-  profiler.start(); // reset
-  if (trigger()) {
-    // ...
-    profiler.stop();
-    proflier.flush(); // dump
-  }
-}
-```
-
 ```sh
-valgrind --tool=callgrind --instr-atstart=no ./a.out
+perf stat --control=fifo:/dev/shm/perf --delay=-1 ./app
 ```
+
+<!-- .element: style="text-align:left" -->
 
 ----
 
-#### Always Measure! -  https://llvm.org/docs/XRay.html
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
+
+```sh
+perf stat --topdown --td-level 1
+  --control=fifo:/dev/shm/perf --delay=-1 ./app
+```
+<!-- .element: style="text-align:left" -->
+
+```
+Expected Range
+
+  Category         Desktop Server    HPC
+  ---------------- ------- ------ ------
+  Retiring          20–50% 10–30% 30–70%
+  Back-End Bound    20–40% 20–60% 20–40%
+  Front-End Bound    5–10% 10–25%  5–10%
+  Bad Speculation    5–10%  5–10%   1–5%
+
+(source: Intel)
+```
+
+
+----
+
+#### [llvm-xray](https://llvm.org/docs/XRay.html)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -176,21 +226,19 @@ function(int, int):
 ```
 
 ```cpp
-void handler(int32_t func_id, XRayEntryType entry) {
-  if (entry == XRayEntryType::ENTRY) {
-    profiler.start();
-  } else {
-    profiler.stop();
-  }
-};
-```
-
-```cpp
 int main() {
-  __xray_set_handler(handler);
+  auto handler = [](int32_t func_id, XRayEntryType entry) {
+    if (entry == XRayEntryType::ENTRY) {
+      profiler.start();
+    } else {
+      profiler.stop();
+    }
+  };
+  __xray_set_handler(+handler);
   __xray_patch(); // nop -> jmp &handler [code patching]
 }
 ```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ```sh
 clang++ -fxray-instrument -fxray-function-list=function.txt
@@ -198,7 +246,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-#### Always Measure! (the right tool for the job)
+#### https://github.com/qlibs/prof/blob/main/.github/workflows/Dockerfile
 <!-- .element: style="text-align:left" -->
 
 ##### linux-perf - https://perf.wiki.kernel.org
@@ -209,42 +257,53 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### amd-uprof - https://www.amd.com/en/developer/uprof.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
+##### toplev - https://github.com/andikleen/pmu-tools
+<!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### flamegraph - https://github.com/brendangregg/FlameGraph
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### gperftools - https://github.com/gperftools/gperftools
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### likwid - https://github.com/RRZE-HPC/likwid
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### pmu-tools - https://github.com/andikleen/pmu-tools
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### tracy - https://github.com/wolfpld/tracy
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### magic-trace - https://github.com/janestreet/magic-trace
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### callgrind - https://valgrind.org/docs/manual/cl-manual.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### coz - https://github.com/plasma-umass/coz
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-...
+##### gperftools - https://github.com/gperftools/gperftools
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### likwid - https://github.com/RRZE-HPC/likwid
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### tracy - https://github.com/wolfpld/tracy
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### magic-trace - https://github.com/janestreet/magic-trace
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### ...
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### [cpp] prof - https://github.com/qlibs/prof (linux-perf, intel-vtune, amd-uprof, callgrind, ...)
+<!-- .element: style="text-align:left" -->
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
-### 'hot spot' engineering can fail
+### hot spot profiling [bottom-up] can get thus far
 <!-- .element: style="text-align:left" -->
+#### - IO, allocations, ...
+<!-- .element: style="text-align:left" -->
+
+```cpp
+```
+
 
 #### Modern processors execute nearly as many instructions per cycle as you can supply*
 <!-- .element:  style="text-align:left" -->
-##### - Branching, memory, and input/output
 <!-- .element: style="text-align:left" -->
-##### - Reduce overall instruction count
+##### - Reduce overall instruction count (IPC you aslo have the max dispatch width)
 <!-- .element: style="text-align:left" -->
 
-<!-- .slide: data-background="darkblue" -->
+##### - I/O, branch, memory
+<!-- .element: style="text-align:left" -->
+
+<!-- .slide: data-background="black" -->
 
 ----
 
-#### Microbenchmarking?
+#### Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -256,117 +315,56 @@ auto bench(auto fn, auto... ts) {
 }
 ```
 
-##### Faster iterations / Isolation / Understanding / Tuning / Scentifc
+##### Faster iterations / Isolation / Understanding / Tuning / Scientific
 <!-- .element: style="text-align:left" -->
 
 ----
 
-#### Performance Is Not a Number! Microbenchmarking
+#### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto fizz_buzz(int n) {
+[[gnu::optimize("O3")]] auto fizz_buzz(int n) {
        if (n % 15 == 0) { return "FizzBuzz"; }
   else if (n % 3  == 0) { return "Fizz";     }
   else if (n % 5  == 0) { return "Buzz";     }
   return "Unknown";
 }
 ```
-
-```
-fizz_buzz   0ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-
-```
-fizz_buzz  10ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
-
-```
-fizz_buzz 100ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="4" style="text-align:left" -->
-
-----
-
-#### Performance Is Not a Number! Microbenchmarking
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-auto fizz_buzz(int n) {
-       if (n % 15 == 0) { return "FizzBuzz"; }
-  else if (n % 3  == 0) { return "Fizz";     }
-  else if (n % 5  == 0) { return "Buzz";     }
-  return "Unknown";
-}
+fizz_buzz                     100.00ns
 ```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
-```cpp
-fizz_buzz(15)         31ns // ?
-fizz_buzz(3)          41ns // ?
-fizz_buzz(5)          87ns // ?
-fizz_buzz(0)         121ns // ?
 ```
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
-
-```cpp
-fizz_buzz/{15,3,5}    33ns // ?
-fizz_buzz/{3,15,5}    33ns // ?
-fizz_buzz/{3,15,5}    33ns // ?
-fizz_buzz/{5,3,5}     33ns // ?
-fizz_buzz/{0,1,0}     33ns // ?
-fizz_buzz/{random}   137ns // ?
-```
-<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
-
-```cpp
+fizz_buzz                       0.00ns
+fizz_buzz                     100.00ns
+fizz_buzz                     500.00ns
+fizz_buzz(15)                  31.00ns
+fizz_buzz(3)                   41.00ns
+fizz_buzz(5)                   87.00ns
+fizz_buzz(0)                  121.00ns
+fizz_buzz(sequence{15,3,5})    33.00ns
+fizz_buzz(sequence{3,15,5})    33.00ns
+fizz_buzz(sequence{3,15,5})    33.00ns
+fizz_buzz(sequence{5,3,5})     33.00ns
+fizz_buzz(uniform{1,15})      137.00ns
 ...
 ```
-<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left" -->
+<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
 
-#### Performance Is Not a Number! Microbenchmarking
-<!-- .element: style="text-align:left" -->
-
-```cpp
-auto bench(auto fn, auto... ts) {
-  const auto start = time(); // loop?
-  fn(ts...);                 // elided?
-  const auto end = time();   // time?
-  return end - start;        // runs?
-}
-```
-
-```
-int main(int argc, const char** argv) {
-  bench(fizz_buzz, std::stoi(argv[1]));
-}
-```
-
-###### `$CXX -O3 fizz_buzz.cpp -o fizz_buzz`
-
-----
-
-#### Performance Is Not a Number! Microbenchmarking
+### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
 <table>
 <tr>
   <td>
  <pre><code>
- &nbsp;
- &nbsp;
- main:
-  call  time()
-  mov   DWORD PTR [rsp+12], edi
-  call  fizz_buzz(int)
-  call  time()
-  sub   eax, ebx
-  ret
- &nbsp;
- &nbsp;
+int main(int, const char**) {&nbsp;
+  bench(fizz_buzz);
+}
  </code></pre>
   </td>
   <td>
@@ -379,7 +377,7 @@ int main(int argc, const char** argv) {
 
 ----
 
-#### Performance Is Not a Number! Microbenchmarking
+#### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
 <img src="images/linux2.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
@@ -397,7 +395,7 @@ int main(int argc, const char** argv) {
  <pre><code>
 fizz_buzz(int):
   imul    eax, edi, -286331153
-  mov     edx, OFFSET FLAT:.LC1
+  mov     edx, OFFSET FLAT:.LC1&nbsp;
   add     eax, 143165576
   cmp     eax, 286331152
   ...
@@ -417,7 +415,7 @@ fizz_buzz(int):
 
 ----
 
-#### Performance Is Not a Number! Microbenchmarking
+#### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
 <img src="images/cpu2.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
@@ -426,51 +424,111 @@ fizz_buzz(int):
 
 ----
 
-#### Performance Is Not a Number! Microbenchmarking
-<!-- .element: style="text-align:left" -->
-
-```cpp
-fizz_buzz                   0ns // ? (elided)
-fizz_buzz                  10ns // ? -> ✔️
-fizz_buzz                 100ns // ? -> ✔️
-fizz_buzz(15)              31ns // ? -> ✔️
-fizz_buzz(3)               41ns // ? -> ✔️
-fizz_buzz(5)               87ns // ? -> ✔️
-fizz_buzz(0)              121ns // ? -> ✔️
-fizz_buzz/{15,3,5}         33ns // ? -> ✔️
-fizz_buzz/{3,15,5}         33ns // ? -> ✔️
-fizz_buzz/{3,15,5}         33ns // ? -> ✔️
-fizz_buzz/{5,3,5}          33ns // ? -> ✔️
-fizz_buzz/{0,1,0}          33ns // ? -> ✔️
-fizz_buzz/{random}        137ns // ? -> ✔️
-```
-
-```cpp
-...
-```
-
-----
-
 ### Avoiding Microbenchmarking Pitfalls
 
 ----
 
-#### Avoiding Microbenchmarking Pitfalls - Operating System
+#### Disclaimer
 <!-- .element: style="text-align:left" -->
 
-```sh
-pip3 install pyperf # freq-scaling, turbo-boost
-pyperf system tune
+#### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+<!-- .element: style="text-align:left" -->
+
+#### - Powered by https://github.com/qlibs/perf 
+<!-- .element: style="text-align:left" -->
+
+```
+c++23, linux/perf, llvm/mca, gnuplot/sixel
+```
+<!-- .element: style="margin: 0px 30px; width: 60%; " -->
+
+-----
+
+#### UEFI - https://en.wikipedia.org/wiki/UEFI (ring 0)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int efi_main(void*, perf::uefi::sys* sys) { // no kernel
+  perf::cpu::core::disable(2);              // wrmsr
+  perf::cpu::cache::disable();              // wbinvd
+
+  perf::runner bench(perf::bench::latency{});
+
+  auto div = [] [[gnu::optimize("O3")]] (int a, int b) { 
+    return a / b; 
+  };
+
+  bench(div, unpredictable<int>, unpredictable<int>);
+
+  perf::report(
+    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    min, median, p90, p99
+  );
+
+  for (;;);
+}
 ```
 
 ----
 
-#### Avoiding Microbenchmarking Pitfalls - Operating System
+#### UEFI - https://en.wikipedia.org/wiki/UEFI (ring 0)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+$CXX -DPERF_UEFI  \
+  -target x86_64  \
+  -ffreestanding  \
+  -fno-exceptions \
+  -fno-rtti       \
+  ...
+```
+
+```
+$LD /entry:efi_main \
+    /out:bench.efi  \
+    ...
+```
+
+---
+
+```cpp
+qemu-system-x86_64 ... bench.efi # test
+sudo reboot                      # boot / USB
+```
+
+-----
+
+#### Linux
 <!-- .element: style="text-align:left" -->
 
 ```sh
-// Enable Kernel Mode Task-Isolation - https://lwn.net/Articles/816298
-// cat /sys/devices/system/cpu/isolated
+# Disable CPU Frequency Scaling
+sudo cpupower frequency-set --governor performance
+
+# Disable Processor Boosting
+echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
+
+# Disable Turbo Mode
+echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo
+
+# Disable Hyperthreading/SMT
+echo off | sudo tee /sys/devices/system/cpu/smt/control
+
+# Disable Address Space Randomization
+echo 0 > /proc/sys/kernel/randomize_va_space
+```
+
+```sh
+perf/scripts/tune.sh # or pyperf system tune
+```
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Linux / Kernel Mode Task-Isolation - https://lwn.net/Articles/816298
+<!-- .element: style="text-align:left" -->
+
+```sh
 isolcpus=<cpu number>,...,<cpu number>
 ```
 <!-- .element: style="text-align:left" -->
@@ -478,11 +536,30 @@ isolcpus=<cpu number>,...,<cpu number>
 <img src="images/isolcpus.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
 
 ```
-taskset # setAffinity
-nice # setPirioty
+cat /sys/devices/system/cpu/isolated # <cpu number>,...,<cpu number>
 ```
 
+----
+
+#### Linux / Affinity, Priority
+<!-- .element: style="text-align:left" -->
+
+```sh
+perf::thread::set_affinity(thread::self, 2u);  // taskset -c 2 ./bench
+perf::thread::set_priority(thread::self, max); // nice -n -20 ./bench
+```
+
+##### cores: 0, 1 usually used by the kernel
+<!-- .element: style="text-align:left" -->
+
+----
+
 memory
+  What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
+  https://github.com/ccurtsinger/stabilizer
+##### Statistically Sound Performance Evaluation - https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
+<!-- .element: style="text-align:left" -->
+
 
 ```cpp
 template<class T = std::size_t, class TAllocator = std::allocator<T>>
@@ -517,73 +594,66 @@ huge pages
 
 ----
 
-#### [Operating System] Avoiding Microbenchmarking Pitfalls
+#### x86-64
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// UEFI - https://en.wikipedia.org/wiki/UEFI
-wmsr - disable/enable cache (can't be done without user-space)
-```
+auto bench(auto fn, auto... ts) {
+  // cpu = {};
+  // cpu<branch>(ip) = 1;
+  // cpu<cache>(L1, addr) = 1; // clflush
+  // cpu<cache>(L2) = false;
+  // cpu<cache>(L3) = false;
+  // cpu<port>(Adl) = true;
+  // ...
 
-<img src="images/uefi.png" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
-
-https://github.com/qlibs/uefi
-
-----
-
-#### [CPU] - Avoiding Microbenchmarking Pitfalls
-<!-- .element: style="text-align:left" -->
-
-```cpp
-void benchmark() {
-  // vendor IP
-  set<TBT>(ip) = 1 //  branch prediction state (10'000 1/0 branches learn)
-  set<cache, L1>(ip) = 1 // cache/memory state
-  set<port>() =; which ports will be used
-
-  time();
+  auto start = time();
   fn(ts...);
-  time();
-}
-```
+  auto end = time();
 
-```cpp
-asm volatile("clflush (%0)" :: "r"(reinterpret_cast<const void*>(aligned_start + i)));
+  return end - start;
+}
 ```
 
 #### Difference between fast cpu and cpu which is easy to make fast and providing tools to do so (intel)
 <!-- .element: style="text-align:left" -->
 
------
+----
 
-#### [Compiler] Avoiding Microbenchmarking Pitfalls
+#### cpu/info
 <!-- .element: style="text-align:left" -->
 
 ```cpp
--O1                     # optimizations (O1)
--O2                     # optimizations (O1 + O2)
--O3                     # optimizations (O1 + O2 + O3)
--march=native           # architecture specific
--DNDEBUG                # disables asserts, etc.
+perf::info::spec spec{
+    {"perf",  perf::info::version()},
+    {"time",  std::chrono::system_clock::now()},
+    {"sys",   perf::info::sys::triple()},
+    {"cxx",   perf::info::compiler()},
+    {"cpu",   perf::info::cpu()},
+    {"cache", perf::info::memory::cache()},
+    // ...
+};
 ```
-
 ```cpp
--ffast-math             # [unsafe] faster but non-conforming math
--fcf-protection=none    # [unsafe] stops emmitting `endbr64`
--Ofast                  # [deprecated] (O3 + fast-math)
+perf::log(spec);
 ```
 
-```cpp
-[[gnu::optimize("O3")]]
-[[gnu::optimize("ffast-math")]
+```sh
+name  info
+----- -----------------------------------------------------------------
+perf  0.0.1
+time  2025-09-15 11:30:00
+sys   x86_64-pc-linux-gnu
+cxx   gcc-15.0.0
+cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
+cache iL1: 32Kb (64b), dL1: 48Kb/12 (64b)
+...
 ```
 
-```cpp
-[[gnu::target("avx2")]]
-[[gnu::target("bmi")]]
-```
 
-##### https://gcc.gnu.org/onlinedocs/gcc
+----
+
+#### [Compiler] Avoiding Microbenchmarking Pitfalls
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -598,6 +668,7 @@ int main() {
 
 ----
 
+
 ```cpp
 constexpr auto prevent_elision(auto&& t) {
   // simplified
@@ -608,12 +679,32 @@ constexpr auto prevent_elision(auto&& t) {
 ----
 
 ```cpp
-constexpr auto label(const auto id) {
+[[gnu::aligne]] [[gnu::optimize("O3")]] void foo() { }
+[[gnu::optimize("ffast-math")] void foo();
+[[gnu::target("avx2")]] void foo();
+```
+
+```cpp
+int main() {
+  auto fn = [] [[gnu::aligned(64u), gnu::optimize("O3"), gnu::target("avx2")]] { ... };
+
+  auto start = time();
+  perf::compiler::prevent_elision(fn(ts...));
+  auto end = time();
+  return end - start;
+}
+```
+
+----
+
+```cpp
+template<auto Id>
+constexpr auto label() {
   asm volatile goto(
     ".pushsection labels, \"aw\" \n"
     ".quad %c0, 0b \n`
     ".popsection \n"
-    : : "i"(id) : "memory"
+    : : "i"(Id) : "memory"
   );
 }
 ```
@@ -621,8 +712,7 @@ constexpr auto label(const auto id) {
 ```cpp
 extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
 extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
-constinit std::unordered_map<std::uint64_t, std::uint64_t>
-  labels{&__start_labels, &__stop_labels};
+std::unordered_map labels{&__start_labels, &__stop_labels};
 ```
 
 
@@ -635,87 +725,30 @@ constexpr auto is_elided(auto&& fn) -> bool {
     code::label<End>();
   };
   prevent_elision(&decltype(invoke)::operator());
-  return code::labels[Begin] == code::labels[End];
+  return labels[Begin] == labels[End];
 }
+```
+
+```cpp
+perf::code::label<"begin">(); // begin:
+perf::code::label<"end">();   // end:
+assert(perf::code::labels["begin"] != perf::code::labels["end"]); // assert(&&begin != &&end)
 ```
 
 ```cpp
 assert(perf::compiler::is_elided([] { }));
 assert(perf::compiler::is_elided([] { int i{}; i++; }));
 assert(not perf::compiler::is_elided([] {
-    int i{};
-    perf::compiler::prevent_elision(i++);
+ int i{};
+ perf::compiler::prevent_elision(i++);
 }));
 ```
 
-```cpp
-namespace perf::code {
-  constexpr auto align(std::align_val_t Alignment) {
-    asm volatile(".align %c0" : : "i"(Alignment));
-  }
-}
-```
-
 ----
 
-#### Avoiding Microbenchmarking Pitfalls
-<!-- .element: style="text-align:left" -->
-
-#### google-benchmark - https://github.com/google/benchmark
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### nanobench - https://github.com/martinus/nanobench
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### celero - https://github.com/DigitalInBlue/Celero
-<!-- .element: style="text-align:left; margin: 0 1;" -->
-
-#### nanoBench - https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### uarch-bench - https://github.com/travisdowns/uarch-bench
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### llvm-exegesis - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-...
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-#### https://github.com/qlibs/perf <-- this talk
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-----
-
-#### cpu/info
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::info::spec spec{
-    {"perf",    perf::info::version()},
-    {"time",    std::chrono::system_clock::now()},
-    {"sys",     perf::info::sys::triple()},
-    {"cxx",     perf::info::compiler()},
-    {"cpu",     perf::info::cpu()},
-    {"icache",  perf::info::memory::icache()},
-    {"dcache",  perf::info::memory::dcache()},
-};
-```
-```cpp
-perf::log(spec);
-```
-
-```sh
-name    info
-------- -------------------------------------------------------
-perf    0.0.1
-time    2025-09-15 11:30:00
-sys     x86_64-pc-linux-gnu
-cxx     gcc-15.0.0
-cpu     12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
-icache  L1: 32Kb (64b)
-dcache  L1: 48Kb/12 (64b), L2: , L3: ()
-```
-
-----
 
 ### Benchmarking without underlying hw/sftw not the valuable
-<!-- .slide: data-background="darkblue" -->
+<!-- .slide: data-background="black" -->
 
 ----
 
@@ -757,7 +790,9 @@ template<std::size_t N, std::align_val_t Alignment>
 ```
 
 - nanoBench: A Low-Overhead Tool for Running Microbenchmarks on x86 Systems - https://arxiv.org/abs/1911.03282
+https://www.agner.org/optimize
 - nanobench (unroll 2x - uroll 1x - link pdf) -> uops.table
+#### nanoBench - https://github.com/andreas-abel/nanoBench
 
 ```cpp
 template<std::size_t N>
@@ -781,6 +816,11 @@ Throughput - total number of operations or tasks completed in a given amount of 
 - increase throughput by decreasing latency
 - cpu -> gpu/tpu
 
+<img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+
+
+https://docs.nvidia.com/cuda/cuda-c-programming-guide/
+
 
 ```cpp
 perf::bench::throughput::policy::seq;
@@ -799,15 +839,30 @@ Data distrubtion (branch prediction)
 - branch_prediction
 
 
+
 ```cpp
 using perf::data::unpredictable;  // not elided and not predicted
 ```
+
+```cpp
+{1, 3, 5}
+```
+
+```cpp
+bench(to_string, perf::data::unpredictable);
+// random
+for (auto i = 0; i < 10; ++i) {
+  bench(to_string, perf::data::unpredictable);
+}
+```
+
+branch prediction state (10'000 1/0 branches learn)
 
 ----
 
 Not benchmarking the right thing
 Not benchmarking realsistc scenarios (alignment, cold, warm, threading, ...)
-<!-- .slide: data-background="darkblue" -->
+<!-- .slide: data-background="black" -->
 
 ----
 
@@ -861,9 +916,10 @@ report(bench[stat::tsc], min, median, p90, p99)
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
-- jupyter notebook (via json + python)
-- custom UI
-- gnuplot/terminal (suppoerts server side)
+Approaches
+- jupyter notebook - https://jupyter.org (save json + analyze python)
+- benchmark GUI - https://github.com/skarupke/benchmark-gui (save database + GUI)
+- gnuplot/terminal (supports the server side)
 
 ----
 
@@ -927,9 +983,29 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 ----
 
 ### Assuming measurements are independent
-### Assuming measruments are following normal distribution
+### Assuming measurements are following normal distribution
 ### Not using ratios, baseline (speedup, relative)
-<!-- .slide: data-background="darkred" -->
+<!-- .slide: data-background="black" -->
+
+----
+
+### Understanding?
+
+Approaches
+
+```sh
+perf record -g ./benchmark
+```
+
+```cpp
+int main() {
+  profiler profiler{};
+  profiler.start();
+  bench(fn);
+  profiler.stop();
+  // analyze
+}
+```
 
 ----
 
@@ -1146,6 +1222,9 @@ static_assert(profiler::is_mulitplexing_free);
 #### Analyzer - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
 <!-- .element: style="text-align:left" -->
 
+#### llvm-exegesis - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
 osaca - https://github.com/RRZE-HPC/OSACA
 uica - https://uica.uops.info
 
@@ -1286,7 +1365,30 @@ invoke(fizz_buzz, std::rand());
 ----
 
 Not understnaindg why
-<!-- .slide: data-background="darkred" -->
+<!-- .slide: data-background="black" -->
+
+----
+
+### Sometimes
+
+```cpp
+import prof; // https://github.com/qlibs/prof
+
+int main() {
+  prof::callgrind profiler{"profile"};
+
+  profiler.start(); // reset
+  if (trigger()) {
+    // ...
+    profiler.stop();
+    proflier.flush(); // dump
+  }
+}
+```
+
+```sh
+valgrind --tool=callgrind --instr-atstart=no ./app
+```
 
 ----
 
@@ -1326,11 +1428,7 @@ perf::self::test({.verbose = true});
 ----
 
 ### Not testing results
-<!-- .slide: data-background="darkblue" -->
-
-----
-
-### Studies
+<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1352,33 +1450,7 @@ perf::self::test({.verbose = true});
 - share studies!
   - github
 
-#### Continous benchmarking
-- show picture
-
 ### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
-
-----
-
-#### Optimizations
-<!-- .element: style="text-align:left" -->
-
-Measuring -> Hypthotesies -> Benchmarking -> Testing -> Production
-
-Techniques*
-- Harwdware
-- Software
-  -SWAR qlibs/swar
-  -SIMD (avx, neon) -> highway
-  - constexpr (avoid hard to predicted braches)
-  - DOD (data oriented design)
-  - branchless (jump-table, hashing)
-  - parallel
-  - design
-  - ...
-- Data driven
-  - PGO (profile guided optimization)
-  - bolt
-  - prepellar
 
 ----
 
@@ -1396,7 +1468,7 @@ Techniques*
 
 ---
 
-##### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide) (blogs, guides, books, videos, tools, ...)
+##### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide) (books, publications, guides, blogs, videos, tools, ...)
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
           </script>
