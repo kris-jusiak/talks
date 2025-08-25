@@ -89,81 +89,48 @@
 
 ----
 
-#### Always Measure?!
+#### Always Measure!
 <!-- .element: style="text-align:left" -->
 
 
 ```cpp
-0. performance requirements
-
-1. measuring/profiling
-  - end-2-end, production like enviornment, continous integration
-
-  - optimizations
-    - SIMD, SWAR, DoD, constexpr, branchless, par, PGO, ...
-
-  - microbenchmarking <- this talk
-    - understanding
-    - edge-cases/tails
-    - documentation
-    - testing
-
-
-
-  -
-
-  - microbenchmarking (understanding, edge-cases, tails, testing) <- this talk!
-
-  end-2-end production like enviornment
-    - profile/measure (continuous integration)
-      - microbenchmarking (understanding, edge-cases, tails, testing) <- this talk!
-    - verication
-    |
-   - |
-    | yes (push micro-benchmarkin (analysis/tests/fix))
+/- measure/profile (end-2-end, production like enviornment) / claiming performance without measurments
+|   - continous integration
+|    - [bottom-up] - hot-spot
+|      - sampling
+|    - [top-down]
+|      - tracing, instrumenting, simulating
+|
++----- optimize (design, complexity, PGO, ...)
+|
+|    /- microbenchmark (understanding, edge-cases/tails, testing) <- this talk
+|    +  - optimize (SIMD, SWAR, DoD, constexpr, branchless, par, ...)
+|    \++/
+\----/
 ```
 
-> starting from microbenchmarking
-> claiming performance without measurments
->
-
-- dont' start from micro-optimizations without end-2-end
--  if you can'affort the env (expensive)
-
-    best other thing
-
 ----
 
-[bootom-up]
+#### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+```cpp
+time ./app
+```
+
+<p align="left">
+<img src="images/time.png" style="width: 12%; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+perf stat ./app
+```
+
+<p align="left">
+<img src="images/stat.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
-Profiling answers: “Where should I optimize?”
-Micro-benchmarking answers: “How fast can this be under ideal conditions?”
-Start: Observe overall system performance
- ├─> Step 1: High-Level Profiling (Top-Down / Hot-Spot)
- │       ├─ Identify **slow areas or functions** in the program
- │       ├─ Tools: Hot-spot profiling (bottom-up), top-down call profiling
- │       └─ Goal: Narrow down **suspected bottlenecks**
- │
- ├─> Step 2: Drill Down into Critical Components
- │       ├─ Use **micro-benchmarking** on isolated functions or algorithms
- │       ├─ Compare alternative implementations
- │       ├─ Measure actual cycles, latency, throughput
- │       └─ Goal: Find **which specific implementation is optimal**
- │
- ├─> Step 3: Tune & Optimize
- │       ├─ Apply code-level or algorithmic improvements
- │       ├─ Optionally use **hardware-aware analysis** (TDAM, perf counters)
- │       └─ Goal: Address low-level inefficiencies (cache, pipeline stalls)
- │
- ├─> Step 4: Verify at High Level
- │       ├─ Re-run **high-level profiling** after optimization
- │       ├─ Check that changes translate into **real application-level gains**
- │       └─ Goal: Ensure improvements are meaningful for overall performance
- │
- └─> Repeat as Needed
-         ├─ If new bottlenecks appear, go back to Step 2
-         └─ Iterate until performance goals are met
 
 #### [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
@@ -211,6 +178,26 @@ Expected Range
 (source: Intel)
 ```
 
+----
+
+```cpp
+import prof; // https://github.com/qlibs/prof
+
+int main() {
+  prof::callgrind profiler{"profile"};
+
+  profiler.start(); // reset
+  if (trigger()) {
+    // ...
+    profiler.stop();
+    proflier.flush(); // dump
+  }
+}
+```
+
+```sh
+valgrind --tool=callgrind --instr-atstart=no ./app
+```
 
 ----
 
@@ -218,7 +205,7 @@ Expected Range
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-function(int, int):
+function():
   // nop word ptr [rax + rax + 512]    // -fxray-instrument
   lea eax, [rdi+rsi]
   ret
@@ -238,7 +225,6 @@ int main() {
   __xray_patch(); // nop -> jmp &handler [code patching]
 }
 ```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ```sh
 clang++ -fxray-instrument -fxray-function-list=function.txt
@@ -286,12 +272,11 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 #### - IO, allocations, ...
 <!-- .element: style="text-align:left" -->
 
-```cpp
-```
-
+<p align="left">
+<img src="images/profile.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+</p>
 
 #### Modern processors execute nearly as many instructions per cycle as you can supply*
-<!-- .element:  style="text-align:left" -->
 <!-- .element: style="text-align:left" -->
 ##### - Reduce overall instruction count (IPC you aslo have the max dispatch width)
 <!-- .element: style="text-align:left" -->
@@ -428,13 +413,13 @@ fizz_buzz(int):
 
 ----
 
-#### Disclaimer
+### Disclaimer
 <!-- .element: style="text-align:left" -->
 
 #### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
 
-#### - Powered by https://github.com/qlibs/perf 
+#### - Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -442,313 +427,443 @@ c++23, linux/perf, llvm/mca, gnuplot/sixel
 ```
 <!-- .element: style="margin: 0px 30px; width: 60%; " -->
 
------
+----
 
-#### UEFI - https://en.wikipedia.org/wiki/UEFI (ring 0)
+#### Benchmarking
+<!-- .element: style="text-align:left" -->
+
+#### google-benchmark - https://github.com/google/benchmark
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### nanobench - https://github.com/martinus/nanobench
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### celero - https://github.com/DigitalInBlue/Celero
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### nanoBench - https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### uarch-bench - https://github.com/travisdowns/uarch-bench
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### llvm-exegesis - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+----
+
+### [0] Not understanding why
+<!-- .slide: data-background="black" -->
+
+----
+
+#### Profiling
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int efi_main(void*, perf::uefi::sys* sys) { // no kernel
-  perf::cpu::core::disable(2);              // wrmsr
-  perf::cpu::cache::disable();              // wbinvd
+static_assert(requires {
+  profiler::is_syscall_free;
+  profiler::is_mulitplexing_free;
 
-  perf::runner bench(perf::bench::latency{});
+  profiler.start();
+  profiler.stop();
 
-  auto div = [] [[gnu::optimize("O3")]] (int a, int b) { 
-    return a / b; 
-  };
+  { profiler[] } -> tuple;
+  { profiler[ts...] } -> tuple;
+});
+```
 
-  bench(div, unpredictable<int>, unpredictable<int>);
+----
 
-  perf::report(
-    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
-    min, median, p90, p99
-  );
+#### Prevent Elision
+<!-- .element: style="text-align:left" -->
 
-  for (;;);
+```cpp
+int main() {
+  fizz_buzz(42);
+  // xor eax, exa
+  // ret
 }
 ```
 
+```cpp
+int main() {
+  perf::compiler::prevent_elision(fizz_buzz(42));
+  // imul eax, edi, -286331153
+  // ...
+  // ret
+}
+```
+
+```cpp
+perf::verify(is_elided([] { }));
+perf::verify(is_elided([] { int i{}; i++; }));
+perf::verify(not is_elided([] { int i{}; prevent_elision(i++); }));
+perf::verify(not is_elided([] { std::print("perf"); }));
+```
+
 ----
 
-#### UEFI - https://en.wikipedia.org/wiki/UEFI (ring 0)
+#### Stat / Timing
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-$CXX -DPERF_UEFI  \
-  -target x86_64  \
-  -ffreestanding  \
-  -fno-exceptions \
-  -fno-rtti       \
-  ...
+using perf::stat::tsc         // time-stamp-counter (rdtsc)
+using perf::stat::real_time   // std::chrono::system_clock (wall-clock-time)
+using perf::stat::steady_time // std::chrono::steady_clock (monotonic)
+using perf::stat::cpu_time    // clock_gettime<CLOCK_PROCESS_CPUTIME_ID>
+using perf::stat::tread_time  // clock_gettime<CLOCK_THREAD_CPUTIME_ID>
 ```
-
-```
-$LD /entry:efi_main \
-    /out:bench.efi  \
-    ...
-```
-
----
 
 ```cpp
-qemu-system-x86_64 ... bench.efi # test
-sudo reboot                      # boot / USB
+perf::profiler p{perf::stat::tsc};
+
+const auto invoke = [&](auto&& fn, auto&&... ts) {
+  profiler.start();
+  perf::compiler::prevent_elision(fn(ts...));
+  profiler.stop();
+};
+```
+
+```cpp
+perf::log(invoke(fizz_buzz, 42)[]); // 8ns
+perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
+```
+
+----
+
+#### Stat / Performance Measuring Counter (PMC)
+<!-- .element: style="text-align:left" -->
+
+
+```cpp
+using perf::stat::cycles;
+using perf::stat::instructions;
+using perf::stat::branch_misses;
+using perf::stat::branches;
+using perf::stat::llc_misses;
+using perf::stat::l1_misses;
+using perf::stat::l1_dcache_loads;
+using perf::stat::itlb_loads;
+using perf::stat::itlb_load_misses;
+...
+```
+
+```cpp
+perf::profiler p{perf::stat::cycles, perf::stat::instructions};
+static_assert(p::is_syscall_free);
+
+//start(); // RDPMC - Read Performance Monitoring Counters (current thread)
+perf::log(invoke(fizz_buzz, 42)[]); // 8ns
+perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
+```
+
+----
+
+#### Record / Sampling
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// LBR - Last Branch Record
+using perf::record::cycles;
+using perf::record::instructions;
+...
+```
+
+```cpp
+// PEBS - Precise Event-Based Sampling / IBS (AMD)
+using perf::record::mem_loads; // cycles 3
+using perf::record::mem_stores;
+```
+
+```cpp
+perf::profiler profiler{perf::record::mem_loads}
+profiler.start();
+profiler.stop();
+```
+
+----
+
+#### Trace / Tracing
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// IPT - Intel Processor Trace - (Intel, Apple M4)
+using perf::trace::instructions;
+using perf::trace::cycles;
+```
+
+```cpp
+profiler.start();
+foo();
+profiler.stop();
+```
+
+```cpp
+log // hexdump
+verify(5 == instructions);
+verify(3 == instructinos);
+```
+
+----
+
+### Difference between fast cpu and cpu which is easy to make fast and providing tools to do so (intel)
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
+
+----
+
+#### Stat / Metrics
+<!-- .element: style="text-align:left" -->
+
+```cpp
+auto ipc = instructions / cycles;
+auto cpi = cycles / instructions;
+auto l1_dcache_miss_rate = l1_dcache_load_misses / l1_dcache_loads;
+auto cache_miss_rate = cache_misses / cache_references;
+auto branch_miss_rate = branch_misses / branches;
+auto llc_miss_rate = llc_misses / cache_references;
+auto context_switch_rate = context_switches / cycles;
+auto dtlb_miss_rate = dtlb_load_misses / dtlb_loads;
+auto frontend_stall_rate = stalled_cycles_frontend / cycles;
+...
+```
+
+```cpp
+perf::log(profiler[ipc]);
+perf::log(profiler[cpi]);
+```
+
+----
+
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+
+<img src="images/tmam1.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+
+----
+
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+
+```cpp
+auto retiring = retiring / slots;
+auto heavy_operations = heavy_operations / slots;
+auto light_operations = retiring - heavy_operations;
+
+auto bad_speculation = bad_speculation / slots;
+auto branch_mispredict = branch_mispredict / slots;
+auto machine_clears = bad_speculation - branch_mispredict;
+
+auto frontend_bound = frontend_bound / slots;
+auto fetch_latency = fetch_latency / slots;
+auto fetch_bandwidth = frontend_bound - fetch_latency;
+
+auto backend_bound = backend_bound / slots;
+auto memory_bound = memory_bound / slots;
+auto core_bound = backend_bound - memory_bound;
+```
+
+```cpp
+perf::log(profiler[topdown]);
+perf::log(profiler[cpi]);
+```
+
+----
+
+
+#### Profiler
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::profiler profiler{
+  perf::stat::tsc, perf::stat:cycles, perf::stat::instructions,
+  perf::trace::instructions, perf::trace::cycles,
+  perf::record::mem_loads, perf::record::mem_stores
+};
+```
+
+```cpp
+static_assert(profiler::is_syscall_free);
+static_assert(profiler::is_mulitplexing_free);
+```
+
+```cpp
+profiler.start();
+profiler.stop();
 ```
 
 -----
 
-#### Linux
+#### Analyzer - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
 <!-- .element: style="text-align:left" -->
-
-```sh
-# Disable CPU Frequency Scaling
-sudo cpupower frequency-set --governor performance
-
-# Disable Processor Boosting
-echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
-
-# Disable Turbo Mode
-echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo
-
-# Disable Hyperthreading/SMT
-echo off | sudo tee /sys/devices/system/cpu/smt/control
-
-# Disable Address Space Randomization
-echo 0 > /proc/sys/kernel/randomize_va_space
-```
-
-```sh
-perf/scripts/tune.sh # or pyperf system tune
-```
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Linux / Kernel Mode Task-Isolation - https://lwn.net/Articles/816298
-<!-- .element: style="text-align:left" -->
-
-```sh
-isolcpus=<cpu number>,...,<cpu number>
-```
-<!-- .element: style="text-align:left" -->
-
-<img src="images/isolcpus.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
-
-```
-cat /sys/devices/system/cpu/isolated # <cpu number>,...,<cpu number>
-```
-
-----
-
-#### Linux / Affinity, Priority
-<!-- .element: style="text-align:left" -->
-
-```sh
-perf::thread::set_affinity(thread::self, 2u);  // taskset -c 2 ./bench
-perf::thread::set_priority(thread::self, max); // nice -n -20 ./bench
-```
-
-##### cores: 0, 1 usually used by the kernel
-<!-- .element: style="text-align:left" -->
-
-----
-
-memory
-  What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
-  https://github.com/ccurtsinger/stabilizer
-##### Statistically Sound Performance Evaluation - https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
-<!-- .element: style="text-align:left" -->
-
 
 ```cpp
-template<class T = std::size_t, class TAllocator = std::allocator<T>>
-inline constexpr auto pollute(const std::size_t size)
-  requires (requires { T{}; } or requires { T(size); }) {
-  verify(size > 0u);
-  std::list<T, TAllocator> data{};
-  auto n = size;
-  while (n--) {
-    if constexpr (requires { T(n); }) {
-      data.push_back(T(n));
-    } else {
-      data.push_back(T{});
-    }
+static_assert(requires {
+  analyzer{events...}
+  analyzer << instructions;
+})
+```
+
+----
+
+#### Analyzer
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+perf::mc::assembly;
+perf::mc::encoding;
+perf::mc::address;
+perf::mc::uops;
+perf::mc::latency;
+...
+```
+
+```cpp
+perf::mca::timeline;
+perf::mca::resource_pressure;
+perf::mca::bottleneck
+```
+
+```cpp
+perf::debug::source;
+```
+
+#### osaca - https://github.com/RRZE-HPC/OSACA
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### uica - https://uica.uops.info
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+----
+
+#### Analyzer
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+perf::analyzer analyzer{perf::mc::assembly};
+analyzer << profiler[trace::instructions];
+```
+
+```cpp
+perf::log(analyzer[perf::mca::timeline]);
+perf::log(analyzer[perf::mca::resource_pressure]);
+```
+
+----
+
+#### disassemble vs trace vs sample
+<!-- .element: style="text-align:left" -->
+
+```cpp
+if (foo) [[likely]] // taken (that's why you can use likely)
+[[gnu::always_inline]] inline void fast_path() { std::puts("fast_path"); }
+[[gnu::cold]] void slow_path() { std::puts("slow_path"); }
+```
+
+```cpp
+constexpr jmp::static_branch<bool> disarmed = false;
+
+void trigger() {
+  if (not disarmed) { // { false: nop, true: jmp }
+    fast_path();
+  } else {
+    slow_path();
   }
 }
 ```
 
 ```cpp
-inline constexpr auto pre_fault =
-  [](std::span<std::byte> data, const std::size_t page_size = info::sys::page_size()) {
-    for (auto i = 0u; i < data.size(); i += page_size) {
-      data[i] = {};
-    }
-  };
+trigger(): // $CXX -O3
+  nop                              # code patching (nop->jmp .Ltmp1)
+ .Ltmp0:                           # fast path (inlined)
+  mov edi, OFFSET FLAT:.LC1
+  jmp puts
+ .Ltmp1:                           # slow path (cold)
+  jmp slow_path() # [clone .cold]
 ```
 
-```cpp
-numa
-huge pages
-```
+##### [first-time] backwards = taken
+<!-- .element: style="text-align:left;" -->
 
 ----
 
-#### x86-64
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-auto bench(auto fn, auto... ts) {
-  // cpu = {};
-  // cpu<branch>(ip) = 1;
-  // cpu<cache>(L1, addr) = 1; // clflush
-  // cpu<cache>(L2) = false;
-  // cpu<cache>(L3) = false;
-  // cpu<port>(Adl) = true;
-  // ...
-
-  auto start = time();
-  fn(ts...);
-  auto end = time();
-
-  return end - start;
-}
+  disasm      trace    sample
+1   mov
+2
+3
+4
+5
+6
 ```
 
-#### Difference between fast cpu and cpu which is easy to make fast and providing tools to do so (intel)
+#### https://github.com/qlibs/jmp
 <!-- .element: style="text-align:left" -->
 
 ----
 
-#### cpu/info
+#### analyze vs profile
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::info::spec spec{
-    {"perf",  perf::info::version()},
-    {"time",  std::chrono::system_clock::now()},
-    {"sys",   perf::info::sys::triple()},
-    {"cxx",   perf::info::compiler()},
-    {"cpu",   perf::info::cpu()},
-    {"cache", perf::info::memory::cache()},
-    // ...
-};
+fizz_buzz(unpredictable)/latency:
+      trace.instructions record::mem_loads timeline timeline resource_pressure
+1     1                                      1
+2     2                                      1           1
+3                                                        1
+3
+4     10                                     1
+4     11
+5                                            1
+5     12
 ```
-```cpp
-perf::log(spec);
-```
-
-```sh
-name  info
------ -----------------------------------------------------------------
-perf  0.0.1
-time  2025-09-15 11:30:00
-sys   x86_64-pc-linux-gnu
-cxx   gcc-15.0.0
-cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
-cache iL1: 32Kb (64b), dL1: 48Kb/12 (64b)
-...
-```
-
 
 ----
 
-#### [Compiler] Avoiding Microbenchmarking Pitfalls
+#### trace & analyze
 <!-- .element: style="text-align:left" -->
-
-----
-
-#### [Compiler] Avoiding Microbenchmarking Pitfalls
-
 ```cpp
-int main() {
-  fizz_buzz(42); // 0 ns
-}
-```
-
-----
-
-
-```cpp
-constexpr auto prevent_elision(auto&& t) {
-  // simplified
-  asm volatile("" :: "r,m"(t) : "memory");
-}
-```
-
-----
-
-```cpp
-[[gnu::aligne]] [[gnu::optimize("O3")]] void foo() { }
-[[gnu::optimize("ffast-math")] void foo();
-[[gnu::target("avx2")]] void foo();
-```
-
-```cpp
-int main() {
-  auto fn = [] [[gnu::aligned(64u), gnu::optimize("O3"), gnu::target("avx2")]] { ... };
-
-  auto start = time();
+perf::profiler profiler{perf::trace::instructions, perf::trace::cycles}
+const auto invoke = [&](auto&& fn, auto&&... ts) {
+  profiler.start();
   perf::compiler::prevent_elision(fn(ts...));
-  auto end = time();
-  return end - start;
-}
+  profiler.stop();
+};
+invoke(fizz_buzz, std::rand());
 ```
+
+#### show ipc per instruction
+<!-- .element: style="text-align:left" -->
 
 ----
 
+#### Tune
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-template<auto Id>
-constexpr auto label() {
-  asm volatile goto(
-    ".pushsection labels, \"aw\" \n"
-    ".quad %c0, 0b \n`
-    ".popsection \n"
-    : : "i"(Id) : "memory"
+import perf;
+
+int main() {
+  perf::cpu::set(
+    {freq_scaling, performance},
+    {turbo_mode, false},
+    {hypethreading, false}
   );
+  perf::thread::set(thread::self, // 0, 1: used by kernel
+    {priority, max},
+    {affinity, 2},
+    {numa_node, 1}
+  );
+
+  perf::sys::enable_huge_pages();
+  perf::memory::cache::disable();
+  perf::memory::pre_fault();
+  perf::memory::pollute_heap();
+  perf::cache::flush(addr);           // clflush
+```
+
+```cpp
+  perf::cpu::branch::set(ip) = true; // NOT AVAIL!
+  perf::cpu::port(ADL1.) = true;    // NOT AVAIL!
+  // ...
+```
+
+```cpp
 }
 ```
-
-```cpp
-extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
-extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
-std::unordered_map labels{&__start_labels, &__stop_labels};
-```
-
-
-```cpp
-template<auto Begin = []{}, auto End = []{}>
-constexpr auto is_elided(auto&& fn) -> bool {
-  const auto invoke = [&] {
-    code::label<Begin>();
-    fn();
-    code::label<End>();
-  };
-  prevent_elision(&decltype(invoke)::operator());
-  return labels[Begin] == labels[End];
-}
-```
-
-```cpp
-perf::code::label<"begin">(); // begin:
-perf::code::label<"end">();   // end:
-assert(perf::code::labels["begin"] != perf::code::labels["end"]); // assert(&&begin != &&end)
-```
-
-```cpp
-assert(perf::compiler::is_elided([] { }));
-assert(perf::compiler::is_elided([] { int i{}; i++; }));
-assert(not perf::compiler::is_elided([] {
- int i{};
- perf::compiler::prevent_elision(i++);
-}));
-```
-
-----
-
-
-### Benchmarking without underlying hw/sftw not the valuable
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -761,66 +876,58 @@ assert(not perf::compiler::is_elided([] {
 
 <img src="images/fpga.gif" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
 
-##### network request / cpu -> fpga -> asic
+##### CPU -> FPGA -> Application-Specific Integrated Circuit (ASIC) / network-request
 <!-- .element: style="text-align:left" -->
 
 ----
 
-### Latency
-<!-- .element: style="text-align:left" -->
-
-```cpp
-for (auto i = 0; i < iterations; ++i) { // what is that meassuring
-  start();
-  fn();
-  stop();
-}
-```
-
-```cpp
-template<std::size_t N, std::align_val_t Alignment>
-[[gnu::section("latency")]] [[gnu::aligned(Alignment)]] constexpr auto latency(auto&& fn, auto&&... ts) {
-  auto checksum = 0u;
-  [[code::align]] for (auto i = 0u; i < N; ++i) {
-    checksum ^= fn(checksum ^ ts...); // data dependency
-    perf::memory::synchronize(); // required if there is a memory write
-  }
-  perf::compiler::prevent_elision(checksum);
-}
-```
-
-- nanoBench: A Low-Overhead Tool for Running Microbenchmarks on x86 Systems - https://arxiv.org/abs/1911.03282
-https://www.agner.org/optimize
-- nanobench (unroll 2x - uroll 1x - link pdf) -> uops.table
-#### nanoBench - https://github.com/andreas-abel/nanoBench
-
-```cpp
-template<std::size_t N>
-constexpr auto unroll(auto&& fn) {
-  [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
-    (fn(), ...);
-  }(std::make_index_sequence<N>{});
-}
-```
-
-```cpp
-time = unroll<N*2>(fn) - unroll<N>(fn);
-```
-
-<img src="images/uops.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-
-----
-
-Throughput - total number of operations or tasks completed in a given amount of time (op/s)
-- backtest/llms
-- increase throughput by decreasing latency
-- cpu -> gpu/tpu
+#### Throughput - Total number of operations or tasks completed in a given amount of time (op/s)
 
 <img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
 
 
-https://docs.nvidia.com/cuda/cuda-c-programming-guide/
+##### CPU -> GPU (https://docs.nvidia.com/cuda/cuda-c-programming-guide)/TPU / back-testing
+<!-- .element: style="text-align:left" -->
 
+----
+
+#### Latency vs. Throughput
+<!-- .element: style="text-align:left" -->
+
+```cpp
+constexpr auto latency(auto&& fn, auto&&... ts) {
+  auto checksum = 0u;
+  align(Alignment) for (auto i = 0u; i < N; ++i) {
+    checksum ^= fn(checksum ^ ts...); // data dependency
+    perf::memory::synchronize();      // fence / required if there is a memory write
+  }
+}
+```
+
+```cpp
+constexpr auto throghput(auto&& fn, auto&&... ts) {
+  align(Alignment) for (auto i = 0u; i < N; ++i) { // policy.seq
+    prevent_elision(fn(ts...));
+  }
+}
+```
+
+----
+
+#### [UOPS](https://uops.info) / [A Low-Overhead Tool for Running Microbenchmarks on x86 Systems](https://arxiv.org/abs/1911.03282)
+
+<img src="images/uops.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+
+```cpp
+template<std::size_t N, std::align_val_t Alignment>
+constexpr auto latency(auto&& fn, auto&&... ts) {
+  return perf::unroll<N * 2u>(fn) - perf::unroll<N>(fn);
+}
+```
+
+----
+
+#### Throughput
 
 ```cpp
 perf::bench::throughput::policy::seq;
@@ -831,13 +938,18 @@ perf::bench::throughput::policy::omp;
 perf::bench::throughput::policy::cuda;
 ```
 
-```cpp
-inverse_throughput = ns(time) / operations;
-```
+----
+
+### [2.1] Not benchmarking the right thing
+<!-- .element: style="text-align:left" -->
+### [2.2] Not benchmarking realistic scenarios (alignment, cold, warm, threading, ...)
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
+
+----
 
 Data distrubtion (branch prediction)
 - branch_prediction
-
 
 
 ```cpp
@@ -857,12 +969,6 @@ for (auto i = 0; i < 10; ++i) {
 ```
 
 branch prediction state (10'000 1/0 branches learn)
-
-----
-
-Not benchmarking the right thing
-Not benchmarking realsistc scenarios (alignment, cold, warm, threading, ...)
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -916,10 +1022,12 @@ report(bench[stat::tsc], min, median, p90, p99)
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
-Approaches
-- jupyter notebook - https://jupyter.org (save json + analyze python)
-- benchmark GUI - https://github.com/skarupke/benchmark-gui (save database + GUI)
-- gnuplot/terminal (supports the server side)
+#### - jupyter notebook - https://jupyter.org
+<!-- .element: style="text-align:left" -->
+#### - benchmark GUI - https://github.com/skarupke/benchmark-gui
+<!-- .element: style="text-align:left" -->
+#### - gnuplot/terminal - https://github.com/qlibs/perf
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -945,17 +1053,17 @@ PERF_IO_PLOT_TERM='png'                   # png
 
 ----
 
-Hist - Histogram
+#### Histogram
 <!-- .element: style="text-align:left" -->
 
 ----
 
-ECDF - https://en.wikipedia.org/wiki/Empirical_distribution_function
+#### [Empirical distribution function](https://en.wikipedia.org/wiki/Empirical_distribution_function)
 <!-- .element: style="text-align:left" -->
 
 ----
 
-Bar - Bar
+#### Bar
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -971,7 +1079,7 @@ perf::plot::complexity (big0)
 
 ----
 
-### flamegraph
+### Flamegraph
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -982,276 +1090,59 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 
 ----
 
-### Assuming measurements are independent
-### Assuming measurements are following normal distribution
-### Not using ratios, baseline (speedup, relative)
+#### Assuming measurements are independent
+<!-- .element: style="text-align:left" -->
+#### Assuming measurements are following normal distribution
+<!-- .element: style="text-align:left" -->
+#### Not using ratios, baseline (speedup, relative)
+<!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
 ----
 
-### Understanding?
+### [3] Not verifying/testing results
+<!-- .slide: data-background="black" -->
 
-Approaches
+----
 
-```sh
-perf record -g ./benchmark
-```
+#### Verifying/Debugging
+<!-- .element: style="text-align:left" -->
 
 ```cpp
+[]<bool debug = {}>(std::vector<int>& v) {
+  std::ranges::sort(v);
+  if constexpr (debug) {
+    assert(is_sorted(v));
+  }
+  std::sort(v);
+};
+```
+
+----
+
+#### Testing
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::verify(instructions.size)
+perf::verify(asm.instruciont == "mov")
+perf::verify(asm.instruciton.count < non optimizaed)
+perf::verify(as.minstruciton.count == c++optimization)
+```
+
+----
+
+#### Self-testing/tuning
+<!-- .element: style="text-align:left" -->
+
+```
 int main() {
-  profiler profiler{};
-  profiler.start();
-  bench(fn);
-  profiler.stop();
-  // analyze
+  setup();
+  perf::self::test({.verbose = true});
+  // shows cycles of add, sub,
+  // shows graph of rdtsc
 }
 ```
-
-----
-
-#### Profiling
-<!-- .element: style="text-align:left" -->
-
-```cpp
-static_assert(requires {
-  proifler{events...}
-  profiler::is_syscall_free;
-  profiler::is_mulitplexing_free;
-  profiler.start();
-  profiler.stop();
-})
-```
-
-----
-
-#### stat / counting
-<!-- .element: style="text-align:left" -->
-
-TSC - Time Stamp Counter
-
-Time is discrete: clock cycle
-Processors: 4 GHz (4*10^9 cycles per second)
-One cycle is 0.25 nanoseconds
-light: 7.5 centimeters per cycle
-One byte per cycle: 4 GB/s
-
-```tsc
-rdtscp from highway
-```
-
-```cpp
-perf::stat.cpu_time (wall) chrono
-perf::stat.real
-perf::stat.thread (clock-gettime)
-perf::stat.steady (monotonic)
-```
-
-----
-
-#### PMC - Perfomrmance mesuerning Counter / `perf list`
-<!-- .element: style="text-align:left" -->
-
-### RDPMC - Read Performance Monitoring Counters (current thread)
-
-inline constexpr auto rdpmc = [](const std::uint64_t id) {
-    std::uint64_t eax{}, edx{};
-    asm volatile(
-      "rdpmc" : "=a"(eax), "=d"(edx) : "c"(id)
-    );
-    return ((std::uint64_t>(edx)) << 32u) | static_cast<std::uint64_t>(eax);
-};
-
-----
-
-`perf list`
-```cpp
-using perf::stat::cpu_clock;
-using perf::stat::task_clock;
-using perf::stat::page_faults;
-using perf::stat::faults;
-using perf::stat::major_faults;
-using perf::stat::minor_faults;
-using perf::stat::alignment_faults;
-using perf::stat::emulation_faults;
-using perf::stat::context_switches;
-using perf::stat::cgroup_switches;
-using perf::stat::cpu_migrations;
-using perf::stat::migrations;
-using perf::stat::cycles;
-using perf::stat::instructions;
-using perf::stat::branch_misses;
-using perf::stat::bus_cycles;
-using perf::stat::cache_misses;
-using perf::stat::cache_references;
-using perf::stat::branches;
-using perf::stat::branch_instructions;
-using perf::stat::stalled_cycles_backend;
-using perf::stat::idle_cycles_backend;
-using perf::stat::stalled_cycles_frontend;
-using perf::stat::idle_cycles_frontend;
-using perf::stat::llc_misses;
-using perf::stat::l1_misses;
-using perf::stat::l1_dcache_loads;
-using perf::stat::l1_dcache_load_misses;
-using perf::stat::l1_icache_loads;
-using perf::stat::l1_icache_load_misses;
-using perf::stat::dtlb_loads;
-using perf::stat::dtlb_load_misses;
-using perf::stat::itlb_loads;
-using perf::stat::itlb_load_misses;
-...
-```
-
-----
-
-### Metrics
-<!-- .element: style="text-align:left" -->
-
-```
-inline constexpr auto ipc = instructions / cycles; // instruction per cycle (ipc)
-inline constexpr auto cpi = cycles / instructions; // // cycles per instruction (cpi, inverse of ipc)
-inline constexpr auto l1_dcache_miss_rate = l1_dcache_load_misses / l1_dcache_loads;
-inline constexpr auto cache_miss_rate = cache_misses / cache_references;
-inline constexpr auto branch_miss_rate = branch_misses / branches;
-inline constexpr auto llc_miss_rate = llc_misses / cache_references;
-...
-```
-
-```cpp
-perf::verify(max.ipc <= dispatch_width);
-```
-
-```cpp
-inline constexpr auto l1_icache_miss_rate = l1_icache_load_misses / l1_icache_loads;
-inline constexpr auto dtlb_miss_rate = dtlb_load_misses / dtlb_loads;
-inline constexpr auto itlb_miss_rate = itlb_load_misses / itlb_loads;
-inline constexpr auto frontend_stall_rate = stalled_cycles_frontend / cycles;
-inline constexpr auto backend_stall_rate = stalled_cycles_backend / cycles;
-inline constexpr auto memory_stall_ratio = stalled_cycles_backend / cycles;
-inline constexpr auto total_stall_rate = (stalled_cycles_backend + stalled_cycles_frontend) / cycles;
-inline constexpr auto cpu_migration_rate = cpu_migrations / cycles;
-inline constexpr auto context_switch_rate = context_switches / cycles;
-inline constexpr auto page_fault_rate = faults / cycles;
-inline constexpr auto major_fault_rate = major_faults / cycles;
-inline constexpr auto minor_fault_rate = minor_faults / cycles;
-```
-
-A Top-Down method for performance analysis
-
-```
-// leve1l
-inline constexpr auto retiring = aux::retiring / aux::slots;
-
-// level2
-inline constexpr auto heavy_operations = aux::heavy_operations / aux::slots;
-inline constexpr auto light_operations = retiring - heavy_operations;
-
-// level1
-inline constexpr auto bad_speculation = aux::bad_speculation / aux::slots;
-
-// level2
-inline constexpr auto branch_mispredict = aux::branch_mispredict / aux::slots;
-inline constexpr auto machine_clears = bad_speculation - branch_mispredict;
-
-inline constexpr auto frontend_bound = aux::frontend_bound / aux::slots;
-inline constexpr auto fetch_latency = aux::fetch_latency / aux::slots;
-inline constexpr auto fetch_bandwidth = frontend_bound - fetch_latency;
-
-inline constexpr auto backend_bound = aux::backend_bound / aux::slots;
-inline constexpr auto memory_bound = aux::memory_bound / aux::slots; // LLMs
-inline constexpr auto core_bound = backend_bound - memory_bound;
-```
-
-#### Pioneered by Intel suppoerted by ARM, AMD, Apple
-
-----
-
-#### Record / Sampling
-<!-- .element: style="text-align:left" -->
-
-LBR  - Last Branch Record
-PEBS  - Precise Event-Based Sampling / IBS (Amd)
-
-```cpp
-using perf::record::mem_loads; // cycles 3
-using perf::record::mem_stores;
-```
-
-----
-
-#### Trace / Tracing
-<!-- .element: style="text-align:left" -->
-
-IPT -  Intel Processor Trace - (intel, m4)
-
-```cpp
-using perf::trace::instructions;
-using perf::trace::cycles;
-```
-
-```
-invoke fn = [] {
-};
-
-log // hexdump
-
-verify(5 == instructions);
-verify(3 == instructinos);
-```
-
-----
-
-#### Profiler
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::profiler profiler{
-  perf::stat::tsc, perf::stat:cycles, perf::stat::instructions,
-  perf::trace::instructions, perf::trace::cycles,
-  perf::record::mem_loads, perf::record::mem_stores
-};
-```
-
-```cpp
-static_assert(profiler::is_syscall_free);
-static_assert(profiler::is_mulitplexing_free);
-```
-
------
-
-#### Analyzer - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
-<!-- .element: style="text-align:left" -->
-
-#### llvm-exegesis - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-osaca - https://github.com/RRZE-HPC/OSACA
-uica - https://uica.uops.info
-
-```cpp
-static_assert(requires {
-  analyzer{events...}
-  analyzer << instructions;
-})
-```
-
-```cpp
-perf::mc::latency;
-perf::mc::uops;
-...
-```
-
-```cpp
-perf::mca::timeline;
-perf::mca::resource_pressure;
-perf::mca::bottleneck
-```
-
-```cpp
-perf::debug::source;
-```
-
-----
 
 ```cpp
 auto add  = [](int a, int b) { return a + b; };
@@ -1265,170 +1156,52 @@ log
 | mca.cycles | cycles   |
 | 1          | 3 cycles |
 
-----
-
-```cpp
-perf::annotate<perf::vsplit>(bench[mca::timeline])
-```
 
 ----
 
-#### disassemble vs trace vs sample
+### fizz_buzz!!!
 <!-- .element: style="text-align:left" -->
 
-Branches that jump backward (loops) and are actually taken the first time → taken without miss.
-All other branches (forward jumps that are taken) → mispredict on first encounter.
-
 ```cpp
-if (foo) [[likely]] // taken (that's why you can use likely)
-[[gnu::always_inline]] inline void fast_path() { std::puts("fast_path"); }
-[[gnu::cold]] void slow_path() { std::puts("slow_path"); }
-```
-
-```cpp
-constexpr jmp::static_branch<bool> disarmed = false;
-
-void trigger() {
-  if (not disarmed) { // { false: nop, true: jmp }
-    fast_path();
-  } else {
-    slow_path();
-  }
-}
-```
-
-```cpp
-trigger(): // $CXX -O3
-  nop                              # code patching (nop->jmp .Ltmp1)
- .Ltmp0:                           # fast path (inlined)
-  mov edi, OFFSET FLAT:.LC1
-  jmp puts
- .Ltmp1:                           # slow path (cold)
-  jmp slow_path() # [clone .cold]
-```
-```
-
-----
-
-
-```cpp
-  disasm      trace    sample
-1   mov
-2
-3
-4
-5
-6
-```
-
-https://github.com/qlibs/jmp
-
-----
-
-analyze vs profile
-<!-- .element: style="text-align:left" -->
-
-  - mph /table
-  - condition move
-  - align to cacheline
-
-  ```cpp
-  fizz_buzz(unpredictable)/latency:
-        trace.instructions record::mem_loads timeline timeline resource_pressure
-  1     1                                      1
-  2     2                                      1           1
-  3                                                        1
-  3
-  4     10                                     1
-  4     11
-  5                                            1
-  5     12
-  ```
-
-----
-
-trace + analyze
-- profiler {mem_loads, trace::instrcutions, stat::cycles};
-- ipc perf ip
-
-```cpp perf::profiler profiler{perf::trace::instructions, perf::trace::cycles}
-const auto invoke = [&](auto&& fn, auto&&... ts) {
-  profiler.start();
-  perf::compiler::prevent_elision(fn(ts...));
-  profiler.stop();
-};
-invoke(fizz_buzz, std::rand());
-```
-
-- show ipc per instruction
-
-----
-
-Not understnaindg why
-<!-- .slide: data-background="black" -->
-
-----
-
-### Sometimes
-
-```cpp
-import prof; // https://github.com/qlibs/prof
+import perf;
 
 int main() {
-  prof::callgrind profiler{"profile"};
-
-  profiler.start(); // reset
-  if (trigger()) {
+  perf::log(perf::info::spec{
+    {"perf",  perf::info::version()},
+    {"time",  std::chrono::system_clock::now()},
+    {"sys",   perf::info::sys::triple()},
+    {"cxx",   perf::info::compiler()},
+    {"cpu",   perf::info::cpu()},
+    {"cache", perf::info::memory::cache()},
     // ...
-    profiler.stop();
-    proflier.flush(); // dump
-  }
-}
+  });
+
+
+  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
+  auto target        = [] [[gnu::target("avx2")]] { };
+  auto aligned_fn    = [] [[gnu::aligned(64)]] { };
+  auto aligned_loop  = [] {
+    perf::code::align(64) for (;;) { // clang::code_align(64)
+      // ...
+    }
+  };
+
+  // ...
 ```
+
+----
 
 ```sh
-valgrind --tool=callgrind --instr-atstart=no ./app
+name  info
+----- -----------------------------------------------------------------
+perf  0.0.1
+time  2025-09-15 11:30:00
+sys   x86_64-pc-linux-gnu
+cxx   gcc-15.0.0
+cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
+cache iL1: 32Kb (64b), dL1: 48Kb/12 (64b)
+...
 ```
-
-----
-
-### Debuging/Testing
-<!-- .element: style="text-align:left" -->
-
-- verify results (fatest but wrong)
-- debug verify results / can be done in warmup phase
-
-```cpp
-[]<bool debug = {}>(std::vector<int>& v) {
-  std::ranges::sort(v);
-  if constexpr (debug) {
-    assert(is_sorted(v));
-  }
-};
-```
-
-----
-
-```cpp
-perf::verify(instructions.size)
-perf::verify(asm.instruciont == "mov")
-perf::verify(asm.instruciton.count < non optimizaed)
-perf::verify(as.minstruciton.count == c++optimization)
-```
-
-----
-
-### Self-testing/tuning
-<!-- .element: style="text-align:left" -->
-
-```
-perf::self::test({.verbose = true});
-```
-
-----
-
-### Not testing results
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1454,6 +1227,75 @@ perf::self::test({.verbose = true});
 
 ----
 
+### Avoiding Microbenchmarking Pitfalls: Enhancements
+
+----
+
+#### Linux / Kernel Mode Task-Isolation - https://lwn.net/Articles/816298
+<!-- .element: style="text-align:left" -->
+
+```sh
+isolcpus=<cpu number>,...,<cpu number> # bootloader
+```
+<!-- .element: style="text-align:left" -->
+
+<img src="images/isolcpus.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
+
+```
+cat /sys/devices/system/cpu/isolated # <cpu number>,...,<cpu number>
+```
+
+----
+
+#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int efi_main(void*, perf::uefi::sys* sys) { // no kernel
+  perf::cpu::cache::disable();              // wbinvd, wrmsr
+
+  perf::runner bench(perf::bench::latency{});
+
+  auto div = [] [[gnu::optimize("O3")]] (int a, int b) {
+    return a / b;
+  };
+
+  bench(div, unpredictable<int>, unpredictable<int>);
+
+  perf::report(
+    sys->stdout,
+    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    min, median, p90, p99
+  );
+
+  return {};
+}
+```
+
+----
+
+#### UEFI - https://en.wikipedia.org/wiki/UEFI
+<!-- .element: style="text-align:left" -->
+
+```cpp
+$CXX -DPERF_UEFI \
+  -target x86_64 -ffreestanding -fno-exceptions -fno-rtti \
+  ...
+```
+
+```
+$LD /entry:efi_main /out:bench.efi ...
+```
+
+---
+
+```cpp
+qemu-system-x86_64 ... bench.efi # test
+sudo reboot                      # boot (USB)
+```
+
+----
+
 ### Further readings
 <!-- .element: style="text-align:left" -->
 
@@ -1468,8 +1310,12 @@ perf::self::test({.verbose = true});
 
 ---
 
-##### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide) (books, publications, guides, blogs, videos, tools, ...)
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
+<!-- .element: style="text-align:left; " -->
+```cpp
+books, publications, guides, blogs, videos, tools, ...
+```
+<!-- .element: style="margin: 0px 10px; width: 77%; " -->
 
           </script>
         </section>
