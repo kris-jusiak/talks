@@ -56,7 +56,7 @@
 
 ----
 
-### Performance?
+#### Performance?
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -92,43 +92,29 @@
 #### Always Measure!
 <!-- .element: style="text-align:left" -->
 
-
 ```cpp
-/- measure/profile (end-2-end, production like enviornment) / claiming performance without measurments
-|   - continous integration
-|    - [bottom-up] - hot-spot
-|      - sampling
-|    - [top-down]
-|      - tracing, instrumenting, simulating
-|
-+----- optimize (design, complexity, PGO, ...)
-|
-|    /- microbenchmark (understanding, edge-cases/tails, testing) <- this talk
-|    +  - optimize (SIMD, SWAR, DoD, constexpr, branchless, par, ...)
-|    \++/
-\----/
+/----------------------------------------------------------\
+|                                                          |
+Measure → Profile → Analyze                                |  → Apply
+                           \ Optimize (design, big0, ...) -/
+                                                          /
+                                    /---------------------
+                           \ Microbenchmark               +
+                                    |                     |
+                            /- Measure →                  |
+                            |  Profile →                  |
+                            |  Analyze →                  |
+                            |  Optimize →                 |
+                            |  Test                       |
+                            \-/  \------------------------/
 ```
 
-----
-
-#### Performance Is Not a Number!
+##### claiming results without measuments
 <!-- .element: style="text-align:left" -->
-
-```cpp
-time ./app
-```
-
-<p align="left">
-<img src="images/time.png" style="width: 12%; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-perf stat ./app
-```
-
-<p align="left">
-<img src="images/stat.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-</p>
+#### end-2-end, production like environment)
+<!-- .element: style="text-align:left" -->
+##### continuous integration
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -196,7 +182,7 @@ int main() {
 ```
 
 ```sh
-valgrind --tool=callgrind --instr-atstart=no ./app
+valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./app
 ```
 
 ----
@@ -232,9 +218,6 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-#### https://github.com/qlibs/prof/blob/main/.github/workflows/Dockerfile
-<!-- .element: style="text-align:left" -->
-
 ##### linux-perf - https://perf.wiki.kernel.org
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### dtrace - https://perf.wiki.kernel.org
@@ -261,27 +244,24 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### ...
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### [cpp] prof - https://github.com/qlibs/prof (linux-perf, intel-vtune, amd-uprof, callgrind, ...)
-<!-- .element: style="text-align:left" -->
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
-### hot spot profiling [bottom-up] can get thus far
-<!-- .element: style="text-align:left" -->
-#### - IO, allocations, ...
+#### hot-spot profiling (I/O, allocations, ...)
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
-<img src="images/profile.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+<img src="images/profile.png" style="width: 25%; background:none; border:none; box-shadow:none;" />
 </p>
 
-#### Modern processors execute nearly as many instructions per cycle as you can supply*
-<!-- .element: style="text-align:left" -->
-##### - Reduce overall instruction count (IPC you aslo have the max dispatch width)
-<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
 
-##### - I/O, branch, memory
+----
+
+#### Modern processors execute nearly as many instructions per cycle as you can supply (I/O, branch, memory)
+<!-- .element: style="text-align:left" -->
+##### - Reduce overall instruction count / instruction per cycle (IPC)
 <!-- .element: style="text-align:left" -->
 
 <!-- .slide: data-background="black" -->
@@ -291,16 +271,11 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 #### Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
-```
-auto bench(auto fn, auto... ts) {
-  const auto start = time();
-  fn(ts...);
-  const auto end = time();
-  return end - start;
-}
+```cpp
+auto bench(auto fn) -> std::chrono::nanoseconds;
 ```
 
-##### Faster iterations / Isolation / Understanding / Tuning / Scientific
+##### Faster iterations / Isolation / Understanding
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -422,27 +397,26 @@ fizz_buzz(int):
 #### - Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 
-```
-c++23, linux/perf, llvm/mca, gnuplot/sixel
-```
-<!-- .element: style="margin: 0px 30px; width: 60%; " -->
-
 ----
 
 #### Benchmarking
 <!-- .element: style="text-align:left" -->
 
-#### google-benchmark - https://github.com/google/benchmark
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-#### nanobench - https://github.com/martinus/nanobench
+#### - google-benchmark - https://github.com/google/benchmark
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-#### celero - https://github.com/DigitalInBlue/Celero
+#### - nanobench - https://github.com/martinus/nanobench
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-#### nanoBench - https://github.com/andreas-abel/nanoBench
+#### - celero - https://github.com/DigitalInBlue/Celero
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-#### uarch-bench - https://github.com/travisdowns/uarch-bench
+
+---
+
+#### - nanoBench - https://github.com/andreas-abel/nanoBench
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-#### llvm-exegesis - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+#### - uarch-bench - https://github.com/travisdowns/uarch-bench
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### - llvm-exegesis - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
@@ -452,7 +426,7 @@ c++23, linux/perf, llvm/mca, gnuplot/sixel
 
 ----
 
-#### Profiling
+#### Profiling - dynamic collet
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -664,15 +638,14 @@ perf::log(profiler[cpi]);
 
 ----
 
-
 #### Profiler
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::profiler profiler{
-  perf::stat::tsc, perf::stat:cycles, perf::stat::instructions,
-  perf::trace::instructions, perf::trace::cycles,
-  perf::record::mem_loads, perf::record::mem_stores
+  perf::stat::tsc, perf::stat:cycles, perf::stat::instructions, // RDPMC
+  perf::trace::instructions, perf::trace::cycles,               // IPT
+  perf::record::mem_loads, perf::record::mem_stores             // PEBS, LBR
 };
 ```
 
@@ -688,7 +661,7 @@ profiler.stop();
 
 -----
 
-#### Analyzer - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
+#### Analyzing - static analysis
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -700,7 +673,7 @@ static_assert(requires {
 
 ----
 
-#### Analyzer
+#### Analyzer - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -726,6 +699,8 @@ perf::debug::source;
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 #### uica - https://uica.uops.info
 <!-- .element: style="text-align:left; margin: 0 0;" -->
+
+<img src="images/uops.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -874,60 +849,39 @@ int main() {
 #### Latency - Time it takes for a single operation to complete (ns/op)
 <!-- .element: style="text-align:left" -->
 
+```cpp
+align(alignment) for (auto i = 0u; i < N; ++i) {
+  checksum ^= fn(checksum ^ ts...);       // data dependency
+  std::atomic_thread_fence(memory_order); // [optional]
+}
+```
+
+```
+align(alignment) for (auto i = 0u; i < N; ++i) {
+  perf::unroll(2x) - perf::unroll(1x);
+}
+```
+
+----
+
+#### Latency / CPU -> FPGA -> Application-Specific Integrated Circuit (ASIC)
+<!-- .element: style="text-align:left" -->
+
 <img src="images/fpga.gif" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
 
-##### CPU -> FPGA -> Application-Specific Integrated Circuit (ASIC) / network-request
+##### network-request
 <!-- .element: style="text-align:left" -->
 
 ----
 
 #### Throughput - Total number of operations or tasks completed in a given amount of time (op/s)
-
-<img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-
-
-##### CPU -> GPU (https://docs.nvidia.com/cuda/cuda-c-programming-guide)/TPU / back-testing
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Latency vs. Throughput
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-constexpr auto latency(auto&& fn, auto&&... ts) {
-  auto checksum = 0u;
-  align(Alignment) for (auto i = 0u; i < N; ++i) {
-    checksum ^= fn(checksum ^ ts...); // data dependency
-    perf::memory::synchronize();      // fence / required if there is a memory write
-  }
+align(Alignment) for (auto i = 0u; i < N; ++i) {
+  prevent_elision(fn(ts...));
 }
 ```
-
-```cpp
-constexpr auto throghput(auto&& fn, auto&&... ts) {
-  align(Alignment) for (auto i = 0u; i < N; ++i) { // policy.seq
-    prevent_elision(fn(ts...));
-  }
-}
-```
-
-----
-
-#### [UOPS](https://uops.info) / [A Low-Overhead Tool for Running Microbenchmarks on x86 Systems](https://arxiv.org/abs/1911.03282)
-
-<img src="images/uops.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-
-```cpp
-template<std::size_t N, std::align_val_t Alignment>
-constexpr auto latency(auto&& fn, auto&&... ts) {
-  return perf::unroll<N * 2u>(fn) - perf::unroll<N>(fn);
-}
-```
-
-----
-
-#### Throughput
 
 ```cpp
 perf::bench::throughput::policy::seq;
@@ -937,20 +891,34 @@ perf::bench::throughput::policy::par;
 perf::bench::throughput::policy::omp;
 perf::bench::throughput::policy::cuda;
 ```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ----
 
-### [2.1] Not benchmarking the right thing
+#### Throughput / CPU -> GPU/TPU
+
+<img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+
+##### https://docs.nvidia.com/cuda/cuda-c-programming-guide / back-testing
 <!-- .element: style="text-align:left" -->
-### [2.2] Not benchmarking realistic scenarios (alignment, cold, warm, threading, ...)
-<!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
+
+----
+
+```cpp
+perf::runner bench{perf::bench::latency{}};
+
+bench(fizz_buzz, 3);
+bench(fizz_buzz, 5);
+bench(fizz_buzz, 15);
+
+report
+
+```
+
 
 ----
 
 Data distrubtion (branch prediction)
-- branch_prediction
-
 
 ```cpp
 using perf::data::unpredictable;  // not elided and not predicted
@@ -969,6 +937,34 @@ for (auto i = 0; i < 10; ++i) {
 ```
 
 branch prediction state (10'000 1/0 branches learn)
+
+----
+
+### Warm/Cold/Alignment
+
+```cpp
+```
+
+```cpp
+int main() {
+  auto aligned_fn    = [] [[gnu::aligned(64)]] { };
+  auto aligned_loop  = [] {
+    perf::code::align(64) for (;;) { // clang::code_align(64)
+      // ...
+    }
+  };
+```
+
+----
+
+
+----
+
+### [2.1] Not benchmarking the right thing
+<!-- .element: style="text-align:left" -->
+### [2.2] Not benchmarking realistic scenarios (alignment, cold, warm, threading, ...)
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1008,13 +1004,12 @@ perf::metric::stat::t_score;
 ----
 
 ```cpp
-import perf;
-
 perf::runner bench{perf::bench::latency{}};
-
-bench(perf::bench::baseline([]{});
-bench(fizz_buzz, 1);
+bench(fizz_buzz, perf::data::unpredictable<int>);
 report(bench[stat::tsc], min, median, p90, p99)
+```
+
+```cp
 ```
 
 ----
@@ -1109,15 +1104,17 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[]<bool debug = {}>(std::vector<int>& v) {
+auto sort = []<bool debug>(std::vector<int>& v) {
   std::ranges::sort(v);
   if constexpr (debug) {
-    assert(is_sorted(v));
+    perf::verify(is_sorted(v));
   }
-  std::sort(v);
 };
 ```
 
+```cpp
+bench(sort);
+```
 ----
 
 #### Testing
@@ -1159,7 +1156,7 @@ log
 
 ----
 
-### fizz_buzz!!!
+### fizz_buzz
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1227,7 +1224,8 @@ cache iL1: 32Kb (64b), dL1: 48Kb/12 (64b)
 
 ----
 
-### Avoiding Microbenchmarking Pitfalls: Enhancements
+### [3] Not having reproducible results
+<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1252,9 +1250,10 @@ cat /sys/devices/system/cpu/isolated # <cpu number>,...,<cpu number>
 
 ```cpp
 int efi_main(void*, perf::uefi::sys* sys) { // no kernel
-  perf::cpu::cache::disable();              // wbinvd, wrmsr
-
-  perf::runner bench(perf::bench::latency{});
+  perf::runner bench(perf::bench::latency{
+    .setup    = [] { perf::cpu::cache::disable(); },
+    .teardown = [] { perf::cpu::cache::enable(); },
+  });
 
   auto div = [] [[gnu::optimize("O3")]] (int a, int b) {
     return a / b;
@@ -1267,36 +1266,17 @@ int efi_main(void*, perf::uefi::sys* sys) { // no kernel
     bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
     min, median, p90, p99
   );
-
-  return {};
 }
 ```
-
-----
-
-#### UEFI - https://en.wikipedia.org/wiki/UEFI
-<!-- .element: style="text-align:left" -->
-
 ```cpp
 $CXX -DPERF_UEFI \
   -target x86_64 -ffreestanding -fno-exceptions -fno-rtti \
   ...
 ```
 
-```
-$LD /entry:efi_main /out:bench.efi ...
-```
-
----
-
-```cpp
-qemu-system-x86_64 ... bench.efi # test
-sudo reboot                      # boot (USB)
-```
-
 ----
 
-### Further readings
+### Further reading
 <!-- .element: style="text-align:left" -->
 
 ##### Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
@@ -1312,10 +1292,6 @@ sudo reboot                      # boot (USB)
 
 ##### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
 <!-- .element: style="text-align:left; " -->
-```cpp
-books, publications, guides, blogs, videos, tools, ...
-```
-<!-- .element: style="margin: 0px 10px; width: 77%; " -->
 
           </script>
         </section>
