@@ -56,7 +56,11 @@
 
 ----
 
-#### Performance?
+### Nanosecond count!
+
+----
+
+#### Performance
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -68,7 +72,7 @@
    - Power Limits
    - Leakage
    - 'Dark Silicon'
- - 1 cycle (5Ghz): 0.20ns&nbsp;
+ - 1 cycle (4Ghz): 0.25ns&nbsp;
   </pre>
   <pre>
 (⬆️) Number of transistors
@@ -115,6 +119,9 @@ Measure → Profile → Analyze                                |  → Apply
 <!-- .element: style="text-align:left" -->
 ##### continuous integration
 <!-- .element: style="text-align:left" -->
+0: Not optimizing the right things (starting from micro-benchmarking -> not using the right tool for the job)
+1. Not verifying in end-2-end env
+2. cant' measure the right thing' = can't optimize the right thing <- this talk
 
 ----
 
@@ -146,25 +153,27 @@ perf stat --control=fifo:/dev/shm/perf --delay=-1 ./app
 <!-- .element: style="text-align:left" -->
 
 ```sh
-perf stat --topdown --td-level 1
+perf stat --topdown --td-level 1 \
   --control=fifo:/dev/shm/perf --delay=-1 ./app
 ```
 <!-- .element: style="text-align:left" -->
 
-```
-Expected Range
-
-  Category         Desktop Server    HPC
-  ---------------- ------- ------ ------
-  Retiring          20–50% 10–30% 30–70%
-  Back-End Bound    20–40% 20–60% 20–40%
-  Front-End Bound    5–10% 10–25%  5–10%
-  Bad Speculation    5–10%  5–10%   1–5%
-
-(source: Intel)
-```
+<table><tr><td>
+<h5>Expected Range (Intel)</h5>
+<pre><code>Category        Desktop Server    HPC
+--------------- ------- ------ ------
+Retiring         20–50% 10–30% 30–70%
+Back-End Bound   20–40% 20–60% 20–40%
+Front-End Bound   5–10% 10–25%  5–10%
+Bad Speculation   5–10%  5–10%   1–5%
+</code></pre>
+</td><td><img src="images/tmam1.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td></tr>
+</table>
 
 ----
+
+#### [Callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 import prof; // https://github.com/qlibs/prof
@@ -172,11 +181,11 @@ import prof; // https://github.com/qlibs/prof
 int main() {
   prof::callgrind profiler{"profile"};
 
-  profiler.start(); // reset
-  if (trigger()) {
+  profiler.start(); // resets
+  if (action) {
     // ...
     profiler.stop();
-    proflier.flush(); // dump
+    proflier.flush(); // dumps profile
   }
 }
 ```
@@ -272,10 +281,10 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto bench(auto fn) -> std::chrono::nanoseconds;
+auto bench(auto code) -> measurement;
 ```
 
-##### Faster iterations / Isolation / Understanding
+##### Faster iterations / isolation / understanding
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -444,35 +453,6 @@ static_assert(requires {
 
 ----
 
-#### Prevent Elision
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  fizz_buzz(42);
-  // xor eax, exa
-  // ret
-}
-```
-
-```cpp
-int main() {
-  perf::compiler::prevent_elision(fizz_buzz(42));
-  // imul eax, edi, -286331153
-  // ...
-  // ret
-}
-```
-
-```cpp
-perf::verify(is_elided([] { }));
-perf::verify(is_elided([] { int i{}; i++; }));
-perf::verify(not is_elided([] { int i{}; prevent_elision(i++); }));
-perf::verify(not is_elided([] { std::print("perf"); }));
-```
-
-----
-
 #### Stat / Timing
 <!-- .element: style="text-align:left" -->
 
@@ -501,7 +481,7 @@ perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
 
 ----
 
-#### Stat / Performance Measuring Counter (PMC)
+#### Stat / Performance Measuring Unit (PMU)
 <!-- .element: style="text-align:left" -->
 
 
@@ -823,6 +803,11 @@ int main() {
     {numa_node, 1}
   );
 
+  set<cache.mesi> = 1
+  auto time(); // 0 overhead
+  fn(ts...);
+  time();
+
   perf::sys::enable_huge_pages();
   perf::memory::cache::disable();
   perf::memory::pre_fault();
@@ -896,6 +881,7 @@ perf::bench::throughput::policy::cuda;
 ----
 
 #### Throughput / CPU -> GPU/TPU
+<!-- .element: style="text-align:left" -->
 
 <img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
 
@@ -912,13 +898,16 @@ bench(fizz_buzz, 5);
 bench(fizz_buzz, 15);
 
 report
+#### - jupyter notebook - https://jupyter.org
+<!-- .element: style="text-align:left" -->
 
 ```
 
 
 ----
 
-Data distrubtion (branch prediction)
+#### Data distribution
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 using perf::data::unpredictable;  // not elided and not predicted
@@ -930,23 +919,23 @@ using perf::data::unpredictable;  // not elided and not predicted
 
 ```cpp
 bench(to_string, perf::data::unpredictable);
+// branch prediction state (10'000 1/0 branches learn)
 // random
 for (auto i = 0; i < 10; ++i) {
   bench(to_string, perf::data::unpredictable);
 }
 ```
 
-branch prediction state (10'000 1/0 branches learn)
 
 ----
 
-### Warm/Cold/Alignment
-
-```cpp
-```
+#### Warm/Cold/Alignment
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 int main() {
+  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
+  auto target        = [] [[gnu::target("avx2")]] { };
   auto aligned_fn    = [] [[gnu::aligned(64)]] { };
   auto aligned_loop  = [] {
     perf::code::align(64) for (;;) { // clang::code_align(64)
@@ -954,9 +943,6 @@ int main() {
     }
   };
 ```
-
-----
-
 
 ----
 
@@ -1009,19 +995,12 @@ bench(fizz_buzz, perf::data::unpredictable<int>);
 report(bench[stat::tsc], min, median, p90, p99)
 ```
 
-```cp
-```
-
 ----
 
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
-#### - jupyter notebook - https://jupyter.org
-<!-- .element: style="text-align:left" -->
-#### - benchmark GUI - https://github.com/skarupke/benchmark-gui
-<!-- .element: style="text-align:left" -->
-#### - gnuplot/terminal - https://github.com/qlibs/perf
+#### - gnuplot/sixel
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -1096,6 +1075,7 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 ----
 
 ### [3] Not verifying/testing results
+<!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
 ----
@@ -1106,7 +1086,7 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 ```cpp
 auto sort = []<bool debug>(std::vector<int>& v) {
   std::ranges::sort(v);
-  if constexpr (debug) {
+  if constexpr (debug) { // doesn't affect benchmarking
     perf::verify(is_sorted(v));
   }
 };
@@ -1127,66 +1107,58 @@ perf::verify(asm.instruciton.count < non optimizaed)
 perf::verify(as.minstruciton.count == c++optimization)
 ```
 
-----
-
-#### Self-testing/tuning
-<!-- .element: style="text-align:left" -->
-
-```
-int main() {
-  setup();
-  perf::self::test({.verbose = true});
-  // shows cycles of add, sub,
-  // shows graph of rdtsc
-}
+```cpp
+//mca
+entry.cycle_dispatched
 ```
 
 ```cpp
-auto add  = [](int a, int b) { return a + b; };
-auto sub  = [](int a, int b) { return a - b; };
-auto mult = [](int a, int b) { return a * b; };
-auto div  = [](int a, int b) { return a / b; };
+perf::verify(optimized == []{}); // disassemble compare
+perf::verify(optimized < []{}); // disassemble compare
 ```
 
-stat vs mca::stat
-log
-| mca.cycles | cycles   |
-| 1          | 3 cycles |
-
+```cpp
+auto ok(int x) { return x + 1 > 0; }
+auto ub(int x) { return x + 1 > x; }
+```
 
 ----
 
-### fizz_buzz
+### Document export & share results
+<!-- .element: style="text-align:left" -->
+
+----
+
+### Code says only what works and not what doesn't
+<!-- .element: style="text-align:left" -->
+
+##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+<!-- .element: style="text-align:left" -->
+
+<!-- .slide: data-background="black" -->
+
+----
+
+### [3] Not having reproducible results
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
+
+----
+
+#### cpu/info
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-import perf;
-
-int main() {
-  perf::log(perf::info::spec{
-    {"perf",  perf::info::version()},
-    {"time",  std::chrono::system_clock::now()},
-    {"sys",   perf::info::sys::triple()},
-    {"cxx",   perf::info::compiler()},
-    {"cpu",   perf::info::cpu()},
-    {"cache", perf::info::memory::cache()},
-    // ...
-  });
-
-
-  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
-  auto target        = [] [[gnu::target("avx2")]] { };
-  auto aligned_fn    = [] [[gnu::aligned(64)]] { };
-  auto aligned_loop  = [] {
-    perf::code::align(64) for (;;) { // clang::code_align(64)
-      // ...
-    }
-  };
-
+perf::log(perf::info::spec{
+  {"perf",  perf::info::version()},
+  {"time",  std::chrono::system_clock::now()},
+  {"sys",   perf::info::sys::triple()},
+  {"cxx",   perf::info::compiler()},
+  {"cpu",   perf::info::cpu()},
+  {"cache", perf::info::memory::cache()},
   // ...
+});
 ```
-
-----
 
 ```sh
 name  info
@@ -1202,30 +1174,46 @@ cache iL1: 32Kb (64b), dL1: 48Kb/12 (64b)
 
 ----
 
-#### Document export & share results
+#### sanity-checks
 <!-- .element: style="text-align:left" -->
 
-- show stiesd link
-- jupyter notbeeok is good
-- learning
-- test it perf::verify(assembly)
-- continous integration
-- jupyter notebook approach
+```cpp
+perf::verify(perf::info::ndebug);
+perf::verify(perf::info::optimize);
+perf::verify(not perf::info::freq_scalling);
+```
 
-#### Eport/Share (jupyter)
-<!-- .element: style="text-align:left" -->
-- perf::json
-- code says only what works and not what doesn't
-- what didn't what work
-- share studies!
-  - github
-
-### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+```cpp
+perf::verify(perf::compiler::is_elided([] { }));
+perf::verify(perf::compiler::is_elided([] { int i{}; i++; }));
+perf::verify(not perf::compiler::is_elided([] { int i{}; perf::compiler::prevent_elision(i++); }));
+perf::verify(not perf::compiler::is_elided([] { std::print("perf"); }));
+```
 
 ----
 
-### [3] Not having reproducible results
-<!-- .slide: data-background="black" -->
+#### self-testing
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::self::test({.verbose = true});
+```
+
+```cpp
+// add chart
+// add vs mca
+// shows cycles of add, sub,
+// shows graph of rdtsc
+auto add  = [](int a, int b) { return a + b; };
+auto sub  = [](int a, int b) { return a - b; };
+auto mult = [](int a, int b) { return a * b; };
+auto div  = [](int a, int b) { return a / b; };
+
+stat vs mca::stat
+log
+| mca.cycles | cycles   |
+| 1          | 3 cycles |
+```
 
 ----
 
@@ -1290,8 +1278,12 @@ $CXX -DPERF_UEFI \
 
 ---
 
-##### [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
-<!-- .element: style="text-align:left; " -->
+##### Resources - [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+##### Studies - [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
 
           </script>
         </section>
