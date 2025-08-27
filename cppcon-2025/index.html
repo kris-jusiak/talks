@@ -52,11 +52,10 @@
 <br />&nbsp;
 <br />&nbsp;
 
+#### &nbsp; &nbsp; &nbsp; Nanosecond count!
+<!-- .element: style="text-align:left" -->
+
 <img src="images/qr.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
-
-----
-
-### Nanosecond count!
 
 ----
 
@@ -125,7 +124,7 @@ Measure → Profile → Analyze                                |  → Apply
 
 ----
 
-#### [linux-perf](https://perf.wiki.kernel.org)
+#### Counting / [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -145,11 +144,9 @@ int main() {
 perf stat --control=fifo:/dev/shm/perf --delay=-1 ./app
 ```
 
-<!-- .element: style="text-align:left" -->
-
 ----
 
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+####  Sampling / [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
 <!-- .element: style="text-align:left" -->
 
 ```sh
@@ -159,7 +156,7 @@ perf stat --topdown --td-level 1 \
 <!-- .element: style="text-align:left" -->
 
 <table><tr><td>
-<h5>Expected Range (Intel)</h5>
+<h5>Expected Range</h5>
 <pre><code>Category        Desktop Server    HPC
 --------------- ------- ------ ------
 Retiring         20–50% 10–30% 30–70%
@@ -167,12 +164,12 @@ Back-End Bound   20–40% 20–60% 20–40%
 Front-End Bound   5–10% 10–25%  5–10%
 Bad Speculation   5–10%  5–10%   1–5%
 </code></pre>
-</td><td><img src="images/tmam1.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td></tr>
+</td><td><img src="images/tma.png" style="width: 100%; height: 200px; background:none; border:none; box-shadow:none;" /></td></tr>
 </table>
 
 ----
 
-#### [Callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+#### Simulating / [Callgrind](https://valgrind.org/docs/manual/cl-manual.html)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -181,11 +178,11 @@ import prof; // https://github.com/qlibs/prof
 int main() {
   prof::callgrind profiler{"profile"};
 
-  profiler.start(); // resets
+  profiler.start(); // new profile (if not flushed discarded)
   if (action) {
     // ...
     profiler.stop();
-    proflier.flush(); // dumps profile
+    proflier.flush();
   }
 }
 ```
@@ -196,7 +193,7 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./app
 
 ----
 
-#### [llvm-xray](https://llvm.org/docs/XRay.html)
+#### Instrumenting / [llvm-xray](https://llvm.org/docs/XRay.html)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -251,8 +248,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### magic-trace - https://github.com/janestreet/magic-trace
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### ...
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### prof - https://github.com/qlibs/prof*
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
@@ -273,6 +269,14 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 ##### - Reduce overall instruction count / instruction per cycle (IPC)
 <!-- .element: style="text-align:left" -->
 
+```cpp
+max.ipc <= dispatch_width; // we know the target
+```
+
+#### Prefer `perf stat` over `time`
+<!-- .element: style="text-align:left" -->
+
+
 <!-- .slide: data-background="black" -->
 
 ----
@@ -284,7 +288,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 auto bench(auto code) -> measurement;
 ```
 
-##### Faster iterations / isolation / understanding
+##### Faster iteration / isolation / understanding
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -324,7 +328,7 @@ fizz_buzz(uniform{1,15})      137.00ns
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -355,7 +359,7 @@ int main(int, const char**) {&nbsp;
 
 ----
 
-### Performance Is Not a Number!
+#### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -394,6 +398,7 @@ fizz_buzz(int):
 ----
 
 ### Avoiding Microbenchmarking Pitfalls
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -435,7 +440,7 @@ fizz_buzz(int):
 
 ----
 
-#### Profiling - dynamic collet
+#### Profiling
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -454,6 +459,9 @@ static_assert(requires {
 ----
 
 #### Stat / Timing
+<!-- .element: style="text-align:left" -->
+
+#### Timing data is usually skewed, not symmetric
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -533,7 +541,7 @@ profiler.stop();
 
 ----
 
-#### Trace / Tracing
+#### Tracing
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -586,12 +594,14 @@ perf::log(profiler[cpi]);
 ----
 
 #### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
 
 <img src="images/tmam1.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
 ----
 
 #### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 auto retiring = retiring / slots;
@@ -675,12 +685,16 @@ perf::mca::bottleneck
 perf::debug::source;
 ```
 
-#### osaca - https://github.com/RRZE-HPC/OSACA
+----
+
+#### llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
+
 #### uica - https://uica.uops.info
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
-<img src="images/uops.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+#### osaca - https://github.com/RRZE-HPC/OSACA
+<!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
@@ -765,6 +779,9 @@ fizz_buzz(unpredictable)/latency:
 5                                            1
 5     12
 ```
+
+##### https://uops.info/table.html / https://www.agner.org/optimize/instruction_tables.pdf
+<!-- .element: style="text-align:left; " -->
 
 ----
 
@@ -863,18 +880,18 @@ align(alignment) for (auto i = 0u; i < N; ++i) {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-align(Alignment) for (auto i = 0u; i < N; ++i) {
-  prevent_elision(fn(ts...));
+align(Alignment) for (auto i = 0u; i < N; ++i) { // policy::seq
+  prevent_elision(fn(ts[i]...));
 }
 ```
 
 ```cpp
-perf::bench::throughput::policy::seq;
-perf::bench::throughput::policy::unseq;
-perf::bench::throughput::policy::unroll;
-perf::bench::throughput::policy::par;
-perf::bench::throughput::policy::omp;
-perf::bench::throughput::policy::cuda;
+throughput::policy::seq;
+throughput::policy::unseq;
+throughput::policy::unroll;
+throughput::policy::par;
+throughput::policy::omp;
+throughput::policy::cuda;
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
@@ -898,15 +915,14 @@ bench(fizz_buzz, 5);
 bench(fizz_buzz, 15);
 
 report
-#### - jupyter notebook - https://jupyter.org
-<!-- .element: style="text-align:left" -->
-
 ```
 
+#### jupyter notebook - https://jupyter.org
+<!-- .element: style="text-align:left" -->
 
 ----
 
-#### Data distribution
+#### realistic data
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -929,7 +945,7 @@ for (auto i = 0; i < 10; ++i) {
 
 ----
 
-#### Warm/Cold/Alignment
+#### warm/cold/alignment/...
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -957,34 +973,26 @@ int main() {
 #### Reporting
 <!-- .element: style="text-align:left" -->
 
-- Timing data is usually skewed, not symmetric
-- taking mean!
-      - use min, median, percentials instead
-- statistical / scientifi approach
-- baseline (speedup, relative)
-      - mesuremnets are not following normal distrubution
-
-----
+#### mean! >  use min, median, percentiles instead
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::metric::stat::min;
-perf::metric::stat::max;
-perf::metric::stat::mean;
-perf::metric::stat::geomean;
-perf::metric::stat::median;
-perf::metric::stat::percentile;
-perf::metric::stat::p99;
-perf::metric::stat::p75;
-perf::metric::stat::p50;
-perf::metric::stat::p25;
-perf::metric::stat::variance;
-perf::metric::stat::stddev;      // degrees_of_freedom = 1
-perf::metric::stat::sem;         // standard error
-perf::metric::stat::mae;         // median absolute errror
-perf::metric::stat::mad;         // median absolute deviation
-perf::metric::stat::cv;          // coefficient of variation
-perf::metric::stat::z_score;
-perf::metric::stat::t_score;
+perf::metric::min;         perf::metric::percentile;
+perf::metric::max;         perf::metric::p10;
+perf::metric::mean;        perf::metric::p50;
+perf::metric::geomean;     perf::metric::p90;
+perf::metric::median;      perf::metric::p99;
+```
+
+```cpp
+perf::metric::variance;
+perf::metric::stddev;      // degrees_of_freedom = 1
+perf::metric::sem;         // standard error
+perf::metric::mae;         // median absolute errror
+perf::metric::mad;         // median absolute deviation
+perf::metric::cv;          // coefficient of variation
+perf::metric::z_score;
+perf::metric::t_score;
 ```
 
 ----
@@ -997,21 +1005,20 @@ report(bench[stat::tsc], min, median, p90, p99)
 
 ----
 
-#### Plotting
-<!-- .element: style="text-align:left" -->
-
-#### - gnuplot/sixel
+#### baseline (speedup, relative)
 <!-- .element: style="text-align:left" -->
 
 ----
 
-```cpp
-perf::plot::hist;
-perf::plot::bar; // show error bars (show where the previous one could be slower)
-perf::plot::box;
-perf::plot::ecdf;
-perf::plot::flamegraph;
-```
+#### Plotting
+<!-- .element: style="text-align:left" -->
+
+#### gnuplot - http://www.gnuplot.info
+<!-- .element: style="text-align:left" -->
+#### sixel - https://arewesixelyet.com
+<!-- .element: style="text-align:left" -->
+
+----
 
 ```cpp
 PERF_IO_PLOT_TERM='sixel'                 # terminal
@@ -1022,30 +1029,34 @@ PERF_IO_PLOT_TERM='canvas'                # html
 PERF_IO_PLOT_TERM='png'                   # png
 ```
 
-#### https://arewesixelyet.com
-<!-- .element: style="text-align:left" -->
-
 ----
 
 #### Histogram
 <!-- .element: style="text-align:left" -->
 
+```cpp
+perf::plot::hist;
+```
+
 ----
 
-#### [Empirical distribution function](https://en.wikipedia.org/wiki/Empirical_distribution_function)
-<!-- .element: style="text-align:left" -->
+```cpp
+perf::plot::box;
+```
 
 ----
 
 #### Bar
 <!-- .element: style="text-align:left" -->
 
+```cpp
+perf::plot::bar; // show error bars (show where the previous one could be slower)
+```
+
 ----
 
-- gnuplot charts (sixel) and (console)
-- running on the server side - sixel / show console picture
-
-----
+#### ErrorBar
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::plot::complexity (big0)
@@ -1053,7 +1064,15 @@ perf::plot::complexity (big0)
 
 ----
 
-### Flamegraph
+#### [Empirical distribution function](https://en.wikipedia.org/wiki/Empirical_distribution_function)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::ecdf;
+```
+----
+
+#### Flamegraph - https://github.com/brendangregg/FlameGraph
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1172,6 +1191,9 @@ cache iL1: 32Kb (64b), dL1: 48Kb/12 (64b)
 ...
 ```
 
+##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
+<!-- .element: style="text-align:left" -->
+
 ----
 
 #### sanity-checks
@@ -1184,6 +1206,7 @@ perf::verify(not perf::info::freq_scalling);
 ```
 
 ```cpp
+perf::verify(perf::compiler::is_elided([] { fizz_buzz(42); }));
 perf::verify(perf::compiler::is_elided([] { }));
 perf::verify(perf::compiler::is_elided([] { int i{}; i++; }));
 perf::verify(not perf::compiler::is_elided([] { int i{}; perf::compiler::prevent_elision(i++); }));
@@ -1237,11 +1260,11 @@ cat /sys/devices/system/cpu/isolated # <cpu number>,...,<cpu number>
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int efi_main(void*, perf::uefi::sys* sys) { // no kernel
-  perf::runner bench(perf::bench::latency{
+int efi_main(perf::uefi::sys* sys) { // no kernel
+  perf::runner bench{perf::bench::latency{
     .setup    = [] { perf::cpu::cache::disable(); },
     .teardown = [] { perf::cpu::cache::enable(); },
-  });
+  }};
 
   auto div = [] [[gnu::optimize("O3")]] (int a, int b) {
     return a / b;
