@@ -102,49 +102,6 @@ App → Measure → Profile → Analyze → Microbenchmarking → Verify
 
 ```cpp
 Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
-
- ┌──────────┐
- │  Measure │
- └────┬─────┘
-      │
- ┌────▼────┐
- │ Profile │
- └────┬────┘
-      │
- ┌────▼────┐
- │ Analyze │
- └────┬────┘
-      │
-      ▼
- ┌─────────────────────────────┐
- │ Microbenchmark needed?      │
- │ (Small hot path optimization)│
- └─────────┬───────────────────┘
-     Yes   │    No
-      ▼    ▼
- ┌─────────┐   ┌─────────┐
- │Microbench│   │ Optimize│
- │ & Optimize│  │         │
- └────┬─────┘   └────┬────┘
-      │              │
-      ▼              ▼
-    ┌───────────────────┐
-    │ Re-measure & Test │
-    └────┬──────────────┘
-         ▼
-    ┌─────────┐
-    │ Verify  │ (End-to-End Benchmark)
-    └────┬────┘
-         │
-         ▼
-      ┌───┴───┐
-      │Success│
-      └───┬───┘
-          │No
-          ▼
- ┌──────────┐
- │  Measure │ ◀─── Loop back if NOT optimized
- └──────────┘
 ```
 
 ##### * Design, Big0, ...
@@ -485,9 +442,30 @@ fizz_buzz(int):
 
 ----
 
-### [0] Not understanding why
+[0] Not having accurate/correct results
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
+
+    multiple runs
+    Data distribution - branch prediction
+    Latency vs. Throughput
+    cold/warm/alignment
+    <debug>
+    prevent_elision on the lambda -> otherwise don't need it
+
+----
+
+### [1] Not understanding the results
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
+
+    timers, counters (metrics)    
+    report median, mean, p90
+    plotting    
+    profiler/analyzer
+    profile vs analyze
+    trace vs disassemble
+    trace + analyze
 
 ----
 
