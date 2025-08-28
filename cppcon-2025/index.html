@@ -231,6 +231,18 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
+<p align="left">
+<img src="images/bpf.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+</p>
+
+
+##### https://github.com/iovisor/bcc
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### https://github.com/bpftrace/bpftrace
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+----
+
 ##### linux-perf - https://perf.wiki.kernel.org
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### dtrace - https://perf.wiki.kernel.org
@@ -254,8 +266,6 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 ##### tracy - https://github.com/wolfpld/tracy
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### magic-trace - https://github.com/janestreet/magic-trace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### prof - https://github.com/qlibs/prof*
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
@@ -415,7 +425,7 @@ fizz_buzz(int):
 #### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
 
-#### - Powered by https://github.com/qlibs/perf
+#### - Powered by https://github.com/qlibs/perf (c++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel)
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -442,7 +452,7 @@ fizz_buzz(int):
 
 ----
 
-[0] Not having accurate/correct results
+[0] Not having realistic/accurate results
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
@@ -518,7 +528,7 @@ perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
 
 ----
 
-#### Stat / Performance Measuring Unit (PMU)
+#### Stat / Performance Measuring Counters (PMC)
 <!-- .element: style="text-align:left" -->
 
 
@@ -1074,17 +1084,12 @@ perf::plot::box;
 
 ----
 
-#### Bar
+#### Bar / ErrorBar
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::plot::bar; // show error bars (show where the previous one could be slower)
 ```
-
-----
-
-#### ErrorBar
-<!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::plot::complexity (big0)
