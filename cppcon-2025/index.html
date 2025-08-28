@@ -96,21 +96,61 @@
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-/----------------------------------------------------------\
-|                                                          |
-Measure → Profile → Analyze                                |  → Apply
-                           \ Optimize (design, big0, ...) -/
-                                                          /
-                                    /---------------------
-                           \ Microbenchmark               +
-                                    |                     |
-                            /- Measure →                  |
-                            |  Profile →                  |
-                            |  Analyze →                  |
-                            |  Optimize →                 |
-                            |  Test                       |
-                            \-/  \------------------------/
+App → Measure → Profile → Analyze → Optimize* → Verify
+App → Measure → Profile → Analyze → Microbenchmarking → Verify
 ```
+
+```cpp
+Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
+
+ ┌──────────┐
+ │  Measure │
+ └────┬─────┘
+      │
+ ┌────▼────┐
+ │ Profile │
+ └────┬────┘
+      │
+ ┌────▼────┐
+ │ Analyze │
+ └────┬────┘
+      │
+      ▼
+ ┌─────────────────────────────┐
+ │ Microbenchmark needed?      │
+ │ (Small hot path optimization)│
+ └─────────┬───────────────────┘
+     Yes   │    No
+      ▼    ▼
+ ┌─────────┐   ┌─────────┐
+ │Microbench│   │ Optimize│
+ │ & Optimize│  │         │
+ └────┬─────┘   └────┬────┘
+      │              │
+      ▼              ▼
+    ┌───────────────────┐
+    │ Re-measure & Test │
+    └────┬──────────────┘
+         ▼
+    ┌─────────┐
+    │ Verify  │ (End-to-End Benchmark)
+    └────┬────┘
+         │
+         ▼
+      ┌───┴───┐
+      │Success│
+      └───┬───┘
+          │No
+          ▼
+ ┌──────────┐
+ │  Measure │ ◀─── Loop back if NOT optimized
+ └──────────┘
+```
+
+##### * Design, Big0, ...
+<!-- .element: style="text-align:left" -->
+
+----
 
 ##### claiming results without measuments
 <!-- .element: style="text-align:left" -->
