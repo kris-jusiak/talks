@@ -143,10 +143,9 @@ int main() {
 ```sh
 perf stat --control=fifo:/dev/shm/perf --delay=-1 ./app
 ```
-
 ----
 
-####  Sampling / [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+####  [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
 <!-- .element: style="text-align:left" -->
 
 ```sh
@@ -155,7 +154,9 @@ perf stat --topdown --td-level 1 \
 ```
 <!-- .element: style="text-align:left" -->
 
-<table><tr><td>
+<table>
+<tr><td><img src="images/tma.png" style="width: 120%; height: 200px; background:none; border:none; box-shadow:none;" /></td>
+<td>
 <h5>Expected Range</h5>
 <pre><code>Category        Desktop Server    HPC
 --------------- ------- ------ ------
@@ -164,8 +165,17 @@ Back-End Bound   20–40% 20–60% 20–40%
 Front-End Bound   5–10% 10–25%  5–10%
 Bad Speculation   5–10%  5–10%   1–5%
 </code></pre>
-</td><td><img src="images/tma.png" style="width: 100%; height: 200px; background:none; border:none; box-shadow:none;" /></td></tr>
+</td></tr>
 </table>
+
+----
+
+#### Sampling / [linux-perf](https://perf.wiki.kernel.org)
+<!-- .element: style="text-align:left" -->
+
+```sh
+perf record -g --control=fifo:/dev/shm/perf --delay=-1 ./app
+```
 
 ----
 
@@ -178,7 +188,7 @@ import prof; // https://github.com/qlibs/prof
 int main() {
   prof::callgrind profiler{"profile"};
 
-  profiler.start(); // new profile (if not flushed discarded)
+  profiler.start(true);
   if (action) {
     // ...
     profiler.stop();
@@ -436,6 +446,7 @@ fizz_buzz(int):
 ----
 
 ### [0] Not understanding why
+<!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
 ----
@@ -844,84 +855,6 @@ int main() {
 
 ----
 
-### Latency vs. Throughput
-
-----
-
-#### Latency - Time it takes for a single operation to complete (ns/op)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-align(alignment) for (auto i = 0u; i < N; ++i) {
-  checksum ^= fn(checksum ^ ts...);       // data dependency
-  std::atomic_thread_fence(memory_order); // [optional]
-}
-```
-
-```
-align(alignment) for (auto i = 0u; i < N; ++i) {
-  perf::unroll(2x) - perf::unroll(1x);
-}
-```
-
-----
-
-#### Latency / CPU -> FPGA -> Application-Specific Integrated Circuit (ASIC)
-<!-- .element: style="text-align:left" -->
-
-<img src="images/fpga.gif" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
-
-##### network-request
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Throughput - Total number of operations or tasks completed in a given amount of time (op/s)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-align(Alignment) for (auto i = 0u; i < N; ++i) { // policy::seq
-  prevent_elision(fn(ts[i]...));
-}
-```
-
-```cpp
-throughput::policy::seq;
-throughput::policy::unseq;
-throughput::policy::unroll;
-throughput::policy::par;
-throughput::policy::omp;
-throughput::policy::cuda;
-```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-----
-
-#### Throughput / CPU -> GPU/TPU
-<!-- .element: style="text-align:left" -->
-
-<img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-
-##### https://docs.nvidia.com/cuda/cuda-c-programming-guide / back-testing
-<!-- .element: style="text-align:left" -->
-
-----
-
-```cpp
-perf::runner bench{perf::bench::latency{}};
-
-bench(fizz_buzz, 3);
-bench(fizz_buzz, 5);
-bench(fizz_buzz, 15);
-
-report
-```
-
-#### jupyter notebook - https://jupyter.org
-<!-- .element: style="text-align:left" -->
-
-----
-
 #### realistic data
 <!-- .element: style="text-align:left" -->
 
@@ -967,6 +900,84 @@ int main() {
 ### [2.2] Not benchmarking realistic scenarios (alignment, cold, warm, threading, ...)
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
+
+----
+
+### Latency vs. Throughput
+
+----
+
+#### Latency - Time it takes for a single operation to complete (ns/op)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+align(alignment) for (auto i = 0u; i < N; ++i) {
+  checksum ^= fn(checksum ^ ts...);       // data dependency
+  std::atomic_thread_fence(memory_order); // [optional]
+}
+```
+
+```
+align(alignment) for (auto i = 0u; i < N; ++i) {
+  perf::unroll(2x) - perf::unroll(1x);
+}
+```
+
+----
+
+#### Latency / CPU -> FPGA -> Application-Specific Integrated Circuit (ASIC)
+<!-- .element: style="text-align:left" -->
+
+<img src="images/fpga.gif" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
+
+##### network-request
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Throughput - Total number of operations or tasks completed in a given amount of time (op/s)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+align(Alignment) for (auto i = 0u; i < N; ++i) { // policy::seq
+  checksum ^= fn(ts[i]...);
+}
+```
+
+```cpp
+throughput::policy::seq;
+throughput::policy::unseq;
+throughput::policy::unroll;
+throughput::policy::par;
+throughput::policy::omp;
+throughput::policy::cuda;
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+----
+
+#### Throughput / CPU -> GPU/TPU
+<!-- .element: style="text-align:left" -->
+
+<img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+
+##### https://docs.nvidia.com/cuda/cuda-c-programming-guide / back-testing
+<!-- .element: style="text-align:left" -->
+
+----
+
+```cpp
+perf::runner bench{perf::bench::latency{}};
+
+bench(fizz_buzz, 3);
+bench(fizz_buzz, 5);
+bench(fizz_buzz, 15);
+
+report
+```
+
+#### jupyter notebook - https://jupyter.org
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -1121,14 +1132,15 @@ bench(sort);
 
 ```cpp
 perf::verify(instructions.size)
-perf::verify(asm.instruciont == "mov")
-perf::verify(asm.instruciton.count < non optimizaed)
+perf::verify(asm.instruction == "mov")
+perf::verify(asm.instruction.count < non optimizaed)
 perf::verify(as.minstruciton.count == c++optimization)
 ```
 
 ```cpp
 //mca
-entry.cycle_dispatched
+perf::verify(entry[0].cycle_dispatched);
+perf::verify(entry[0].cycle_executed);
 ```
 
 ```cpp
@@ -1140,21 +1152,6 @@ perf::verify(optimized < []{}); // disassemble compare
 auto ok(int x) { return x + 1 > 0; }
 auto ub(int x) { return x + 1 > x; }
 ```
-
-----
-
-### Document export & share results
-<!-- .element: style="text-align:left" -->
-
-----
-
-### Code says only what works and not what doesn't
-<!-- .element: style="text-align:left" -->
-
-##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
-<!-- .element: style="text-align:left" -->
-
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1283,6 +1280,28 @@ int efi_main(perf::uefi::sys* sys) { // no kernel
 $CXX -DPERF_UEFI \
   -target x86_64 -ffreestanding -fno-exceptions -fno-rtti \
   ...
+```
+
+----
+
+### [5] Not documenting/sharing results
+<!-- .slide: data-background="black" -->
+<!-- .element: style="text-align:left" -->
+
+----
+
+### Code says only what works and not what doesn't
+<!-- .element: style="text-align:left" -->
+
+##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+<!-- .element: style="text-align:left" -->
+
+<!-- .slide: data-background="black" -->
+
+----
+
+```cpp
+./perf.out | scripts/export.sh markdown | gh gist create --public
 ```
 
 ----
