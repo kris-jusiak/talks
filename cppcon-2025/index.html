@@ -99,7 +99,7 @@
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-App → Measure → Profile → Analyze → Optimize* → Verify
+App → Measure → Profile → Analyze → Optimize* → Verify // End-2-end, production like environment)
 App → Measure → Profile → Analyze → Microbenchmarking → Verify
 ```
 
@@ -107,22 +107,26 @@ App → Measure → Profile → Analyze → Microbenchmarking → Verify
 Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
 ```
 
-##### * Design, Big0, ...
+##### * design, complexity, hardware, ...
 <!-- .element: style="text-align:left" -->
 
 ----
 
-##### claiming results without measuments
+#### Claiming results without measuments
 <!-- .element: style="text-align:left" -->
-#### end-2-end, production like environment)
+#### Not optimizing the right things (starting from micro-benchmarking -> not using the right tool for the job)
 <!-- .element: style="text-align:left" -->
-##### continuous integration
+#### Not verifying in end-2-end env
 <!-- .element: style="text-align:left" -->
-0: Not optimizing the right things (starting from micro-benchmarking -> not using the right tool for the job)
-1. Not verifying in end-2-end env
-2. cant' measure the right thing' = can't optimize the right thing <- this talk
+#### Not measuring the right thing' = not optimizing the right thing
+<!-- .element: style="text-align:left" -->
+
+<!-- .slide: data-background="black" -->
 
 ----
+
+#### linux tracing
+<!-- .element: style="text-align:left" -->
 
 <table>
 <tr>
@@ -243,7 +247,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-##### Profiling
+##### tooling
 <!-- .element: style="text-align:left;" -->
 
 ##### - linux-perf - https://perf.wiki.kernel.org
