@@ -84,7 +84,7 @@
  ~ L2:              3.00ns
  ~ L3:             10.00ns
  ~ RAM:            70.00ns
- ~ Missprediction:  3.00ns
+ ~ Misprediction:   3.00ns
   </pre>
   </td>
   <td>
@@ -105,6 +105,7 @@ App → Measure → Profile → Analyze → Microbenchmarking → Verify
 
 ```cpp
 Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
+Optimize → SIMD, SWAR, DoD, contexpr, parallel, ...
 ```
 
 ##### * design, complexity, hardware, ...
@@ -112,6 +113,8 @@ Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
 
 ----
 
+#### First step in optimizing is a correct measurment
+<!-- .element: style="text-align:left" -->
 #### Claiming results without measuments
 <!-- .element: style="text-align:left" -->
 #### Not optimizing the right things (starting from micro-benchmarking -> not using the right tool for the job)
@@ -125,7 +128,7 @@ Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
 
 ----
 
-#### linux tracing
+#### linux tracing # no code changes
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -135,9 +138,16 @@ Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
 </tr>
 </table>
 
+```
+perf stat/record
+perf probe
+bftrace syscals
+```
+<!-- .element: style="text-align:left" -->
+
 ----
 
-#### [linux-perf](https://perf.wiki.kernel.org)
+#### [linux-perf](https://perf.wiki.kernel.org) # from cpp
 <!-- .element: style="text-align:left" -->
 
 ```cpp
