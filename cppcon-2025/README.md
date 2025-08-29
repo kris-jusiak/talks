@@ -17,3 +17,4 @@ Resources
 - https://lucisqr.substack.com/p/leveraging-llvm-mca?r=2laeyk
 - https://probablydance.com/2025/05/31/im-open-sourcing-my-custom-benchmark-gui/
 - https://github.com/ccurtsinger/stabilizer
+- https://travisdowns.github.io/blog/2019/06/11/speed-limits.html

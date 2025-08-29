@@ -71,17 +71,20 @@
    - Power Limits
    - Leakage
    - 'Dark Silicon'
- - 1 cycle (4Ghz): 0.25ns&nbsp;
   </pre>
   <pre>
 (⬆️) Number of transistors
  - (⬆️) Cores
  - (⬆️) IPC
-   - L1 cache:     0.50ns
-   - L2 cache:     3.00ns
-   - L3 cache:    10.00ns
-   - Main memory: 70.00ns
-   - Branch miss:  3.00ns
+
+</pre>
+<pre>
+ ~ 1 cycle (4Ghz):  0.25ns&nbsp;
+ ~ L1:              0.50ns
+ ~ L2:              3.00ns
+ ~ L3:             10.00ns
+ ~ RAM:            70.00ns
+ ~ Missprediction:  3.00ns
   </pre>
   </td>
   <td>
@@ -121,9 +124,6 @@ Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
 
 ----
 
-#### Tracing
-<!-- .element: style="text-align:left" -->
-
 <table>
 <tr>
 <td><img src="images/perf_map.png" style="width: 500px; background:none; border:none; box-shadow:none;" /></td>
@@ -133,7 +133,7 @@ Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
 
 ----
 
-#### Counting / [linux-perf](https://perf.wiki.kernel.org)
+#### [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -179,7 +179,7 @@ Bad Speculation   5–10%  5–10%   1–5%
 
 ----
 
-#### Sampling / [linux-perf](https://perf.wiki.kernel.org)
+#### [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
 
 ```sh
@@ -188,7 +188,7 @@ perf record -g --control=fifo:/dev/shm/perf --delay=-1 ./app
 
 ----
 
-#### Simulating / [Callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+#### [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -212,7 +212,7 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./app
 
 ----
 
-#### Instrumenting / [llvm-xray](https://llvm.org/docs/XRay.html)
+#### [llvm-xray](https://llvm.org/docs/XRay.html)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -242,6 +242,9 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 ```
 
 ----
+
+##### Profiling
+<!-- .element: style="text-align:left;" -->
 
 ##### - linux-perf - https://perf.wiki.kernel.org
 <!-- .element: style="text-align:left; margin: 0 0;" -->
@@ -1340,7 +1343,7 @@ $CXX -DPERF_UEFI \
 
 ##### Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### AMD - https://www.amd.com/content/dam/amd/en/documents
+##### AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### ARM - https://developer.arm.com/documentation/ddi0487/latest
 <!-- .element: style="text-align:left; margin: 0 0;" -->
@@ -1354,8 +1357,6 @@ $CXX -DPERF_UEFI \
 
 ##### Studies - [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-
-
           </script>
         </section>
 
