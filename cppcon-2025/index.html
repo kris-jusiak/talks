@@ -121,6 +121,18 @@ Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
 
 ----
 
+#### Tracing
+<!-- .element: style="text-align:left" -->
+
+<table>
+<tr>
+<td><img src="images/perf_map.png" style="width: 500px; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/bpf.png" style="width: 580px; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+</table>
+
+----
+
 #### Counting / [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
 
@@ -231,41 +243,33 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-<p align="left">
-<img src="images/bpf.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-</p>
-
-
-##### https://github.com/iovisor/bcc
+##### - linux-perf - https://perf.wiki.kernel.org
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### https://github.com/bpftrace/bpftrace
+##### - dtrace - https://github.com/opendtrace
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-
-----
-
-##### linux-perf - https://perf.wiki.kernel.org
+##### - intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### dtrace - https://perf.wiki.kernel.org
+##### - amd-uprof - https://www.amd.com/en/developer/uprof.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+##### - toplev - https://github.com/andikleen/pmu-tools
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### amd-uprof - https://www.amd.com/en/developer/uprof.html
+##### - bcc - https://github.com/iovisor/bcc
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### toplev - https://github.com/andikleen/pmu-tools
+##### - bpftrace - https://github.com/bpftrace/bpftrace
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### flamegraph - https://github.com/brendangregg/FlameGraph
+##### - flamegraph - https://github.com/brendangregg/FlameGraph
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### callgrind - https://valgrind.org/docs/manual/cl-manual.html
+##### - callgrind - https://valgrind.org/docs/manual/cl-manual.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### coz - https://github.com/plasma-umass/coz
+##### - coz - https://github.com/plasma-umass/coz
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### gperftools - https://github.com/gperftools/gperftools
+##### - gperftools - https://github.com/gperftools/gperftools
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### likwid - https://github.com/RRZE-HPC/likwid
+##### - likwid - https://github.com/RRZE-HPC/likwid
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### tracy - https://github.com/wolfpld/tracy
+##### - tracy - https://github.com/wolfpld/tracy
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### magic-trace - https://github.com/janestreet/magic-trace
+##### - magic-trace - https://github.com/janestreet/magic-trace
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
@@ -425,8 +429,11 @@ fizz_buzz(int):
 #### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
 
-#### - Powered by https://github.com/qlibs/perf (c++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel)
+#### - Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
+```
+C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel
+```
 
 ----
 
