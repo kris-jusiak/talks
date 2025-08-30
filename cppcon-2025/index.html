@@ -100,20 +100,26 @@
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-App → Measure → Profile → Analyze → Optimize* → Verify // End-2-end, production like environment)
-App → Measure → Profile → Analyze → Microbenchmarking → Verify
+App
+  + Measure
+  + Profile
+  + Analyze
+  + Optimize // High level: Hardware, Design, Algorithms, ...
+     + Microbenchmark
+       + Measure  
+       + Profile  
+       + Analyze  
+       + Optimize // Low Level: SIMD, SWAR, DoD, MP, Par, ...
+       + Test
+  + Verify
 ```
-
-```cpp
-Microbenchmarking → Measure → Profile → Analyze → Optimize → Test
-Optimize → SIMD, SWAR, DoD, contexpr, parallel, ...
-```
-
-##### * design, complexity, hardware, ...
-<!-- .element: style="text-align:left" -->
 
 ----
 
+#### End-2-end, production like environment)
+<!-- .element: style="text-align:left" -->
+#### First step in optimizing is a correct measurment
+<!-- .element: style="text-align:left" -->
 #### First step in optimizing is a correct measurment
 <!-- .element: style="text-align:left" -->
 #### Claiming results without measuments
