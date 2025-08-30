@@ -80,16 +80,16 @@
 
 </pre>
 <pre>
- ~ 1 cycle (4Ghz):   .25ns&nbsp;
- ~ L1:                .5ns
- ~ L2:                 3ns
- ~ Mispredict:         3ns
- ~ L3:                10ns
- ~ RAM:               70ns
+ ~ 1 cycle (4Ghz):  0.25ns&nbsp;
+ ~ L1:              0.50ns
+ ~ L2:              3.00ns
+ ~ Mispredict:      3.00ns
+ ~ L3:             10.00ns
+ ~ RAM:            70.00ns
   </pre>
   </td>
   <td>
-    <img src="images/moore.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+    <img src="images/moore.png" style="height:450px; background:none; border:none; box-shadow:none;" />
   </td>
 </tr>
 </table>
@@ -100,24 +100,24 @@
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-App
+SUT                         // System Under Test
+  + [Requirements]
   + Measure
   + Profile
   + Analyze
-  + Optimize // High level: Hardware, Design, Algorithms, ...
-     + Microbenchmark
+  + Optimize                // HL: Design, Algorithms, ...
+     + Microbenchmark's
+       + [Hypothesis]
        + Measure
        + Profile
        + Analyze
-       + Optimize // Low Level: SIMD, SWAR, DoD, MP, Par, ...
+       + Optimize           // LL: SIMD, SWAR, DOD, CTE, Par, ...
        + Test
-  + Verify
+  + Test                    // E2E: Prod-like
 ```
 
 ----
 
-#### End-2-end, production like environment)
-<!-- .element: style="text-align:left" -->
 #### First step in optimizing is a correct measurment
 <!-- .element: style="text-align:left" -->
 #### First step in optimizing is a correct measurment
@@ -135,7 +135,7 @@ App
 
 ----
 
-#### linux tracing # no code changes
+#### Bottlenecks
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -152,9 +152,12 @@ bftrace syscals
 ```
 <!-- .element: style="text-align:left" -->
 
+##### https://www.brendangregg.com
+<!-- .element: style="text-align:left" -->
+
 ----
 
-#### [linux-perf](https://perf.wiki.kernel.org) # from cpp
+#### [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -162,6 +165,8 @@ import prof; // https://github.com/qlibs/prof
 
 int main() {
   prof::linux_perf profiler{"/dev/shm/perf"};
+
+  // startup
 
   profiler.start();
   // ...
@@ -171,8 +176,13 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```sh
-perf stat --control=fifo:/dev/shm/perf --delay=-1 ./app
+perf stat   --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
+
+```sh
+perf record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
+```
+
 ----
 
 ####  [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
@@ -180,32 +190,20 @@ perf stat --control=fifo:/dev/shm/perf --delay=-1 ./app
 
 ```sh
 perf stat --topdown --td-level 1 \
-  --control=fifo:/dev/shm/perf --delay=-1 ./app
+  --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
-<!-- .element: style="text-align:left" -->
 
-<table>
-<tr><td><img src="images/tma.png" style="width: 120%; height: 200px; background:none; border:none; box-shadow:none;" /></td>
-<td>
-<h5>Expected Range</h5>
-<pre><code>Category        Desktop Server    HPC
+<img src="images/tma.png" style="width: 60%; background:none; border:none; box-shadow:none;" />
+
+```cpp
+Category        Desktop Server    HPC
 --------------- ------- ------ ------
 Retiring         20–50% 10–30% 30–70%
 Back-End Bound   20–40% 20–60% 20–40%
 Front-End Bound   5–10% 10–25%  5–10%
 Bad Speculation   5–10%  5–10%   1–5%
-</code></pre>
-</td></tr>
-</table>
-
-----
-
-#### [linux-perf](https://perf.wiki.kernel.org)
-<!-- .element: style="text-align:left" -->
-
-```sh
-perf record -g --control=fifo:/dev/shm/perf --delay=-1 ./app
 ```
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -218,17 +216,21 @@ import prof; // https://github.com/qlibs/prof
 int main() {
   prof::callgrind profiler{"profile"};
 
-  profiler.start(true);
-  if (action) {
-    // ...
-    profiler.stop();
-    proflier.flush();
+  while (true) {
+    profiler.reset();
+    profiler.start();
+
+    if (action) {
+      // ...
+      profiler.stop();
+      profiler.flush();
+    }
   }
 }
 ```
 
 ```sh
-valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./app
+valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./a.out
 ```
 
 ----
@@ -238,15 +240,15 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./app
 
 ```cpp
 function():
-  // nop word ptr [rax + rax + 512]    // -fxray-instrument
-  lea eax, [rdi+rsi]
+  // nop ...    // -fxray-instrument
+  xor eax, eax
   ret
-  // nop word ptr cs:[rax + rax + 512] // -fxray-instrument
+  // nop ...    // -fxray-instrument
 ```
 
 ```cpp
 int main() {
-  auto handler = [](int32_t func_id, XRayEntryType entry) {
+  auto handler = [](int func_id, XRayEntryType entry) {
     if (entry == XRayEntryType::ENTRY) {
       profiler.start();
     } else {
@@ -254,7 +256,7 @@ int main() {
     }
   };
   __xray_set_handler(+handler);
-  __xray_patch(); // nop -> jmp &handler [code patching]
+  __xray_patch(); // [code patching] nop -> jmp &handler
 }
 ```
 
@@ -264,7 +266,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-##### tooling
+##### The right tool for the job
 <!-- .element: style="text-align:left;" -->
 
 ##### - linux-perf - https://perf.wiki.kernel.org
@@ -296,6 +298,9 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 ##### - magic-trace - https://github.com/janestreet/magic-trace
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
+##### ...
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
 ----
 
 #### hot-spot profiling (I/O, allocations, ...)
@@ -320,7 +325,6 @@ max.ipc <= dispatch_width; // we know the target
 
 #### Prefer `perf stat` over `time`
 <!-- .element: style="text-align:left" -->
-
 
 <!-- .slide: data-background="black" -->
 
@@ -350,26 +354,9 @@ auto bench(auto code) -> measurement;
 }
 ```
 ```cpp
-fizz_buzz                     100.00ns
+fizz_buzz 42ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-```
-fizz_buzz                       0.00ns
-fizz_buzz                     100.00ns
-fizz_buzz                     500.00ns
-fizz_buzz(15)                  31.00ns
-fizz_buzz(3)                   41.00ns
-fizz_buzz(5)                   87.00ns
-fizz_buzz(0)                  121.00ns
-fizz_buzz(sequence{15,3,5})    33.00ns
-fizz_buzz(sequence{3,15,5})    33.00ns
-fizz_buzz(sequence{3,15,5})    33.00ns
-fizz_buzz(sequence{5,3,5})     33.00ns
-fizz_buzz(uniform{1,15})      137.00ns
-...
-```
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left" -->
 
 ----
 
@@ -379,26 +366,16 @@ fizz_buzz(uniform{1,15})      137.00ns
 <table>
 <tr>
   <td>
- <pre><code>
-int main(int, const char**) {&nbsp;
+ <pre><code>int main() {
   bench(fizz_buzz);
-}
- </code></pre>
+  // ...
+}</code></pre>
   </td>
   <td>
-  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  <img src="images/linux2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
   </tr>
 </table>
-
-###### `./fizz_buzz`
-
-----
-
-#### Performance Is Not a Number!
-<!-- .element: style="text-align:left" -->
-
-<img src="images/linux2.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
 
 ##### Linux 6.x - https://makelinux.github.io/kernel/map
 
@@ -410,33 +387,19 @@ int main(int, const char**) {&nbsp;
 <table>
 <tr>
   <td>
- <pre><code>
-fizz_buzz(int):
-  imul    eax, edi, -286331153
-  mov     edx, OFFSET FLAT:.LC1&nbsp;
-  add     eax, 143165576
-  cmp     eax, 286331152
-  ...
-  jbe     .L13
-  ...
-  mov     rax, rdx
-  ret
- </code></pre>
+ <pre><code>fizz_buzz:
+ imul ...
+ mov  ...
+ cmp  ...
+ jbe  ...
+ ...
+ ret</code></pre>
   </td>
   <td>
-  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  <img src="images/cpu2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
   </tr>
 </table>
-
-###### `fizz_buzz(n);`
-
-----
-
-#### Performance Is Not a Number!
-<!-- .element: style="text-align:left" -->
-
-<img src="images/cpu2.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
 
 ##### AMD Zen5 - https://chipsandcheese.com
 
@@ -506,7 +469,13 @@ C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel
     profiler/analyzer
     profile vs analyze
     trace vs disassemble
+      // fizzbuzz
+      // jmp
     trace + analyze
+    trace + analyze + profile
+
+instruction have different latencies (show on analyze)
+less doesn't mean fast
 
 ----
 
@@ -962,6 +931,7 @@ int main() {
 ----
 
 ### Latency vs. Throughput
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -1208,6 +1178,12 @@ auto ub(int x) { return x + 1 > x; }
 
 ----
 
+Treat benchmarking code like the production code!
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
+
+----
+
 ### [3] Not having reproducible results
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
@@ -1221,7 +1197,7 @@ auto ub(int x) { return x + 1 > x; }
 perf::log(perf::info::spec{
   {"perf",  perf::info::version()},
   {"time",  std::chrono::system_clock::now()},
-  {"sys",   perf::info::sys::triple()},
+  {"sys",   perf::info::::triple()},
   {"cxx",   perf::info::compiler()},
   {"cpu",   perf::info::cpu()},
   {"cache", perf::info::memory::cache()},
@@ -1237,7 +1213,7 @@ time  2025-09-15 11:30:00
 sys   x86_64-pc-linux-gnu
 cxx   gcc-15.0.0
 cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
-cache iL1: 32Kb (64b), dL1: 48Kb/12 (64b)
+cache iL1: 32Kb/64b, dL1: 48Kb/12/64b
 ...
 ```
 
@@ -1265,7 +1241,7 @@ perf::verify(not perf::compiler::is_elided([] { std::print("perf"); }));
 
 ----
 
-#### self-testing
+#### self-tests
 <!-- .element: style="text-align:left" -->
 
 ```cpp
