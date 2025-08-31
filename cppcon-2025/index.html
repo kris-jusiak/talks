@@ -59,7 +59,7 @@
 
 ----
 
-#### Performance
+#### Performance - [https://www.intel.com/.../articles/moores-law.html](https://www.intel.com/content/www/us/en/history/virtual-vault/articles/moores-law.html)
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -67,58 +67,44 @@
   <td>
   <pre>
 (~) Frequency
- - Heat
-   - Power Limits
-   - Leakage
-   - 'Dark Silicon'
-  </pre>
-  <pre>
+ - 1 cycle (4Ghz)      0.25ns&nbsp;<br />
 (⬆️) Number of transistors
- - (⬆️) Cores
- - (⬆️) Cache
- - (⬆️) Complexity
-
+ - Cores/Cache/IPC
+   ~ L1 cache          0.50ns
+   ~ L2 cache          3.00ns
+   ~ Branch Mispredict 3.00ns
+   ~ L3 cache         10.00ns
+   ~ RAM              70.00ns
 </pre>
-<pre>
- ~ 1 cycle (4Ghz):  0.25ns&nbsp;
- ~ L1:              0.50ns
- ~ L2:              3.00ns
- ~ Mispredict:      3.00ns
- ~ L3:             10.00ns
- ~ RAM:            70.00ns
-  </pre>
   </td>
   <td>
-    <img src="images/moore.png" style="height:450px; background:none; border:none; box-shadow:none;" />
+    <img src="images/moore.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
 </tr>
 </table>
 
 ----
 
-#### Always Measure!
+#### Always Measure! - "If you can’t measure it, you can’t improve it"
 <!-- .element: style="text-align:left" -->
 
+```c
+System Under Test (SUT)
+ ┐
+ ├─ Measure
+ ├─ Profile
+ ├─ Analyze
+ ├─ Optimize // High-Level: Design, Algorithms, ...
+ │  └─ Microbenchmarks
+ │     ├─ [Hypothesis]
+ │     ├─ Measure
+ │     ├─ Profile
+ │     ├─ Analyze
+ │     ├─ Optimize // Low-Level: SIMD, SWAR, DOD, CTE, Par, ...
+ │     └─ Test
+ └─ Test // End-to-End: Prod-like
 ```
-# System Under Test (SUT)
-
-- **Requirements**
-- **Measure**
-- **Profile**
-- **Analyze**
-- **Optimize** *(High-Level: Design, Algorithms, etc.)*
-  - **Microbenchmarks**
-    - **Hypothesis**
-    - **Measure**
-    - **Profile**
-    - **Analyze**
-    - **Optimize** *(Low-Level: SIMD, SWAR, DOD, CTE, Parallelism, etc.)*
-    - **Test**
-- **Test** *(End-to-End: Prod-like)*
-```
-
-#### If you can’t measure it, you can’t improve it
-<!-- .element: style="text-align:left" -->
+<!-- .element: style="background-color:black" -->
 
 ----
 
@@ -153,8 +139,6 @@ import prof; // https://github.com/qlibs/prof
 int main() {
   prof::linux_perf profiler{"/dev/shm/perf"};
 
-  // startup
-
   profiler.start();
   // ...
   profiler.stop();
@@ -176,24 +160,15 @@ perf stat --topdown --td-level 1 \
   --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
 
+---
+
 ```cpp
-Category/Level                Desktop   Server    HPC
------------------------       -------   ------    ------
-- [1] Retiring                 20–50%   10–30%    30–70%
-  - [2] Heavy Operations
-  - [2] Light Operations
-
-- [1] Back-End Bound           20–40%   20–60%    20–40%
-  - [2] Memory Bound
-  - [2] Core Bound
-
-- [1] Front-End Bound          05–10%   10–25%    05–10%
-  - [2] Fetch Latency
-  - [2] Fetch Bandwidth
-
-- [1] Bad Speculation          05–10%   05–10%    01–05%
-  - [2] Branch Mispredict
-  - [2] Machine Clears
+[Level] Category             Desktop  Server   HPC
+---------------------------- -------  ------   ------
+[1] Retiring                  20–50%  10–30%   30–70%
+[1] Back-End Bound            20–40%  20–60%   20–40%
+[1] Front-End Bound           05–10%  10–25%   05–10%
+[1] Bad Speculation           05–10%  05–10%   01–05%
 ```
 <!-- .element: style="text-align:left" -->
 ----
@@ -230,7 +205,7 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./a.out
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-function():
+function:
   // nop ...    // -fxray-instrument
   xor eax, eax
   ret
@@ -273,8 +248,6 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 ##### - bcc - https://github.com/iovisor/bcc
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### - bpftrace - https://github.com/bpftrace/bpftrace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - flamegraph - https://github.com/brendangregg/FlameGraph
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### - callgrind - https://valgrind.org/docs/manual/cl-manual.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
@@ -333,7 +306,7 @@ we know the target (uOps)
 
 ```cpp
 /**
-* Faster iteration
+* Iteration speed
 * Understanding
 * Isolation
 */
@@ -360,7 +333,7 @@ bench(fizz_buzz) -> 42ns // ?
 
 ----
 
-#### Performance Is Not a Number!
+#### Performance Is Not a Number! - https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -377,11 +350,9 @@ bench(fizz_buzz) -> 42ns // ?
   </tr>
 </table>
 
-##### Linux 6.x - https://makelinux.github.io/kernel/map
-
 ----
 
-#### Performance Is Not a Number!
+#### Performance Is Not a Number! - https://chipsandcheese.com
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -401,8 +372,6 @@ bench(fizz_buzz) -> 42ns // ?
   </tr>
 </table>
 
-##### AMD Zen5 - https://chipsandcheese.com
-
 ----
 
 ### Avoiding Microbenchmarking Pitfalls
@@ -413,25 +382,25 @@ bench(fizz_buzz) -> 42ns // ?
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
 
-#### - Powered by https://github.com/qlibs/perf
+##### - Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 
 ```
 C++23, linux/perf, llvm/mca, gnuplot/sixel
 ```
-<!-- .element: style="margin: 2% 5%;" -->
+<!-- .element: style="margin: 2% 3%;" -->
 
-#### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+##### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
 ```
 TSC   - Time-Stamp-Counter
 RDPMC - Read Performance-Monitoring Counters
-LBR   - Last Branch Record
-IPT   - Intel Processor Trace
 IBS   - Instruction-Based Sampling
 PEBS  - Precise Event-Based Sampling
+LBR   - Last Branch Record
+IPT   - Intel Processor Trace
 ```
-<!-- .element: style="margin: 2% 5%;" -->
+<!-- .element: style="margin: 2% 3%;" -->
 
 ----
 
@@ -476,13 +445,31 @@ PEBS  - Precise Event-Based Sampling
 
 ----
 
-```
-perf record ./benchmark
-other profiles
+#### Profiling
+<!-- .element: style="text-align:left" -->
+
+```sh
+perf record -g --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
 
+```sh
+vtune -collect performance-snapshot -start-paused -finalization-mode=full -r result ./a.out
 ```
-jupter notbook
+
+```sh
+AMDuProfCLI collect --config tbp --start-paused ./a.out
+```
+
+```sh
+llvm-xray account xray-log.* --top=10 --sort=sum --sortorder=dsc --instr_map=./a.out
+```
+
+```sh
+valgrind --tool=callgrind --instr-atstart=no ./a.out
+```
+
+```sh
+CPUPROFILE_FREQUENCY=1000 ./a.out
 ```
 
 ----
@@ -982,10 +969,7 @@ align(alignment) for (auto i = 0u; i < N; ++i) {
 #### Latency / CPU -> FPGA -> Application-Specific Integrated Circuit (ASIC)
 <!-- .element: style="text-align:left" -->
 
-<img src="images/fpga.gif" style="width: 70%; height=600px; background:none; border:none; box-shadow:none;" />
-
-##### network-request
-<!-- .element: style="text-align:left" -->
+<img src="images/fpga.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -1013,9 +997,9 @@ throughput::policy::cuda;
 #### Throughput / CPU -> GPU/TPU
 <!-- .element: style="text-align:left" -->
 
-<img src="images/cpu-gpu.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/cpu-gpu.png" style="width: 95%; height=600px; background:none; border:none; box-shadow:none;" />
 
-##### https://docs.nvidia.com/cuda/cuda-c-programming-guide / back-testing
+##### https://docs.nvidia.com/cuda/cuda-c-programming-guide
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -1060,9 +1044,7 @@ perf::metric::t_score;
 ----
 
 ```cpp
-perf::runner bench{perf::bench::latency{}};
-bench(fizz_buzz, perf::data::unpredictable<int>);
-report(bench[stat::tsc], min, median, p90, p99)
+perf::report(bench[perf::stat::tsc], min, median, p90, p99);
 ```
 
 ----
@@ -1075,16 +1057,24 @@ report(bench[stat::tsc], min, median, p90, p99)
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
-#### - jupyter notebook - https://jupyter.org
-<!-- .element: style="text-align:left" -->
-#### - gnuplot - http://www.gnuplot.info
-<!-- .element: style="text-align:left" -->
-#### - sixel - https://arewesixelyet.com
-<!-- .element: style="text-align:left" -->
-#### - custom ui
-<!-- .element: style="text-align:left" -->
+#### - jupyter notebook + matplotlib - https://jupyter.org
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### - gnuplot + sixel - http://www.gnuplot.info / https://arewesixelyet.com
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+---
+
+#### - flamegraph - https://github.com/brendangregg/FlameGraph
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### - perfetto - https://perfetto.dev
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### - ...
+<!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
+
+#### Gnuplot
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 PERF_IO_PLOT_TERM='sixel'                 # terminal
@@ -1219,7 +1209,7 @@ auto ub(int x) { return x + 1 > x; }
 <!-- .slide: data-background="black" -->
 
 ```
-perf system tune # pip install pyperf
+pyperf system tune # pip install pyperf
 ```
 <!-- .element: style="text-align:left" -->
 
@@ -1301,7 +1291,7 @@ log
 
 ----
 
-#### Linux / Kernel Mode Task-Isolation - https://lwn.net/Articles/816298
+#### linux / kernel mode task-isolation - https://lwn.net/articles/816298
 <!-- .element: style="text-align:left" -->
 
 ```sh
@@ -1349,12 +1339,6 @@ $CXX -DPERF_UEFI \
 ----
 
 ### [5] Not documenting/sharing results
-<!-- .slide: data-background="black" -->
-<!-- .element: style="text-align:left" -->
-
-----
-
-### Code says only what works and not what doesn't
 <!-- .element: style="text-align:left" -->
 
 ##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
@@ -1368,7 +1352,13 @@ $CXX -DPERF_UEFI \
 ./a.out | scripts/export.sh markdown | gh gist create --public
 ```
 
-<img src="images/share.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+<img src="images/share.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+
+----
+
+### "Code tells you what worked, not what didn't"
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
 
 ----
 

@@ -12,13 +12,7 @@
  *********************************************/
 body {
   background: #1c1e20;
-  background: -moz-radial-gradient(center, circle cover, #555a5f 0%, #1c1e20 100%);
-  background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%, #555a5f), color-stop(100%, #1c1e20));
-  background: -webkit-radial-gradient(center, circle cover, #555a5f 0%, #1c1e20 100%);
-  background: -o-radial-gradient(center, circle cover, #555a5f 0%, #1c1e20 100%);
-  background: -ms-radial-gradient(center, circle cover, #555a5f 0%, #1c1e20 100%);
-  background: radial-gradient(center, circle cover, #555a5f 0%, #1c1e20 100%);
-  background-color: #2b2b2b; 
+  background-color: black; 
 }
 
 .reveal {
@@ -164,6 +158,7 @@ body {
 
 .reveal pre code {
   display: block;
+  background-color: black;
   padding: 5px;
   overflow: hidden;
   max-height: 400px;
@@ -277,4 +272,4 @@ body {
  *********************************************/
 @media print {
   .backgrounds {
-    background-color: #2b2b2b; } }
+    background-color: black; } }
