@@ -538,6 +538,27 @@ perf::log(invoke(fizz_buzz, 42)[]); // 8ns
 perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
 ```
 
+```cpp
+template<class... Ts, auto StartLabel = +[]{}>
+start(Ts...):
+  if constexpr (sw) {
+    prctl(PR_TASK_PERF_EVENTS_ENABLE);
+  }
+
+  if constexpr (hw) {
+    rdpmc...
+  } else if constexpr (sw) {
+    read(group);
+  }
+
+  if constexpr (time) {
+    lfence
+    rdtsc
+  }
+
+  code::label(StartLabel); // .section .labels (no assembly)
+```
+
 ----
 
 #### Stat / Performance Measuring Counters (PMC)
