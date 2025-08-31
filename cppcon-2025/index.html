@@ -176,11 +176,7 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```sh
-perf stat   --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-```
-
-```sh
-perf record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
+perf stat/record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
 
 ----
@@ -1212,7 +1208,7 @@ auto ub(int x) { return x + 1 > x; }
 
 ----
 
-Treat benchmarking code like the production code!
+#### Treat benchmarking code like the production code!
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
@@ -1344,6 +1340,14 @@ $CXX -DPERF_UEFI \
   -target x86_64 -ffreestanding -fno-exceptions -fno-rtti \
   ...
 ```
+
+----
+
+```
+perf system tune
+```
+<!-- .slide: data-background="black" -->
+<!-- .element: style="text-align:left" -->
 
 ----
 
