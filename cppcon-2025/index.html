@@ -135,24 +135,24 @@ SUT                         // System Under Test
 
 ----
 
-#### Bottlenecks
+#### Always Measure! - https://www.brendangregg.com
 <!-- .element: style="text-align:left" -->
 
 <table>
 <tr>
 <td><img src="images/perf_map.png" style="width: 500px; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/bpf.png" style="width: 580px; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/bpf.png" style="width: 583px; background:none; border:none; box-shadow:none;" /></td>
 </tr>
 </table>
 
+```sh
+perf stat -e cycles,instructions,cache-misses ./a.out
+perf probe -x /usr/lib/libc.so malloc
+perf record -e probe_libc:malloc ./a.out
+bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
+bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
+...
 ```
-perf stat/record
-perf probe
-bftrace syscals
-```
-<!-- .element: style="text-align:left" -->
-
-##### https://www.brendangregg.com
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -190,13 +190,16 @@ perf stat --topdown --td-level 1 \
 ```
 
 ```cpp
-Category        Desktop Server    HPC
---------------- ------- ------ ------
-Retiring         20–50% 10–30% 30–70%
-Back-End Bound   20–40% 20–60% 20–40%
-Front-End Bound   5–10% 10–25%  5–10%
-Bad Speculation   5–10%  5–10%   1–5%
+Category          Desktop   Server    HPC
+---------------   -------   ------    ------
+Retiring           20–50%   10–30%    30–70%
+Back-End Bound     20–40%   20–60%    20–40%
+Front-End Bound     5–10%   10–25%     5–10%
+Bad Speculation     5–10%    5–10%      1–5%
 ```
+<!-- .element: style="text-align:left" -->
+
+##### https://github.com/andikleen/pmu-tools
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -404,7 +407,7 @@ fizz_buzz 42ns // ?
 
 ----
 
-### Disclaimer
+#### Disclaimer
 <!-- .element: style="text-align:left" -->
 
 #### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
@@ -461,9 +464,8 @@ C++23, linux/perf, llvm/mca, gnuplot/sixel
 
 ```
 perf record ./benchmark
-```
-
 other profiles
+```
 
 ```
 jupter notbook
@@ -471,19 +473,23 @@ jupter notbook
 
 ----
 
-    timers, counters (metrics)
-    report median, mean, p90
-    plotting
-    profiler/analyzer
-    profile vs analyze
-    trace vs disassemble
-      // fizzbuzz
-      // jmp
-    trace + analyze
-    trace + analyze + profile
+```cpp
+timers, counters (metrics)
+report median, mean, p90
+plotting
+profiler/analyzer
+profile vs analyze
+trace vs disassemble
+// fizzbuzz
+// jmp
+trace + analyze
+trace + analyze + profile
+```
 
-instruction have different latencies (show on analyze)
-less doesn't mean fast
+#### instruction have different latencies (show on analyze)
+<!-- .element: style="text-align:left" -->
+#### less doesn't mean fast
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -533,6 +539,8 @@ const auto invoke = [&](auto&& fn, auto&&... ts) {
 perf::log(invoke(fizz_buzz, 42)[]); // 8ns
 perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
 ```
+
+----
 
 ```cpp
 template<class... Ts, auto StartLabel = +[]{}>
@@ -755,13 +763,16 @@ perf::debug::source;
 
 ----
 
-#### llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
+#### Static-analysis
+<!-- .element: style="text-align:left;" -->
+
+#### - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
-#### uica - https://uica.uops.info
+#### - uica - https://uica.uops.info
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
-#### osaca - https://github.com/RRZE-HPC/OSACA
+#### - osaca - https://github.com/RRZE-HPC/OSACA
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
@@ -772,6 +783,8 @@ perf::debug::source;
 ```cpp
 perf::analyzer analyzer{perf::mc::assembly};
 analyzer << profiler[trace::instructions];
+analyzer << region{labels["a"], labels["b"]};
+analyzer << region{&&a, &&b};
 ```
 
 ```cpp
@@ -874,14 +887,13 @@ invoke(fizz_buzz, std::rand());
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-import perf;
-
 int main() {
   perf::cpu::set(
     {freq_scaling, performance},
     {turbo_mode, false},
     {hypethreading, false}
   );
+
   perf::thread::set(thread::self, // 0, 1: used by kernel
     {priority, max},
     {affinity, 2},
@@ -898,15 +910,8 @@ int main() {
   perf::memory::pre_fault();
   perf::memory::pollute_heap();
   perf::cache::flush(addr);           // clflush
-```
-
-```cpp
   perf::cpu::branch::set(ip) = true; // NOT AVAIL!
   perf::cpu::port(ADL1.) = true;    // NOT AVAIL!
-  // ...
-```
-
-```cpp
 }
 ```
 
@@ -1078,13 +1083,13 @@ report(bench[stat::tsc], min, median, p90, p99)
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
-#### jupyter notebook - https://jupyter.org
+#### - jupyter notebook - https://jupyter.org
 <!-- .element: style="text-align:left" -->
-#### custom ui
+#### - gnuplot - http://www.gnuplot.info
 <!-- .element: style="text-align:left" -->
-#### gnuplot - http://www.gnuplot.info
+#### - sixel - https://arewesixelyet.com
 <!-- .element: style="text-align:left" -->
-#### sixel - https://arewesixelyet.com
+#### - custom ui
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -1108,6 +1113,9 @@ perf::plot::hist;
 ```
 
 ----
+
+#### Box
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::plot::box;
@@ -1208,7 +1216,7 @@ auto ub(int x) { return x + 1 > x; }
 
 ----
 
-#### Treat benchmarking code like the production code!
+### Treat benchmarking code like the production code!
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
