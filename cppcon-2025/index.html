@@ -273,7 +273,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
   <h4>Hot-spot</h4>
 </td>
 <td>
-  <h4>IPC</h4>
+  <h4>Instruction count</h4>
 </td>
 </tr>
 <tr>
@@ -388,7 +388,7 @@ bench(fizz_buzz) -> 42ns // ?
 ```
 C++23, linux/perf, llvm/mca, gnuplot/sixel
 ```
-<!-- .element: style="margin: 2% 3%;" -->
+<!-- .element: style="margin: 2% 1%;" -->
 
 ##### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
@@ -400,7 +400,7 @@ PEBS  - Precise Event-Based Sampling
 LBR   - Last Branch Record
 IPT   - Intel Processor Trace
 ```
-<!-- .element: style="margin: 2% 3%;" -->
+<!-- .element: style="margin: 2% 1%;" -->
 
 ----
 
@@ -924,8 +924,8 @@ for (auto i = 0; i < 10; ++i) {
 ```cpp
 int main() {
   auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
-  auto target        = [] [[gnu::target("avx2")]] { };
-  auto aligned_fn    = [] [[gnu::aligned(64)]] { };
+  auto target        = [] [[gnu::target("avx512f")]] { };
+  auto aligned_fn    = [] [[gnu::aligned(16)]] { };
   auto aligned_loop  = [] {
     perf::code::align(64) for (;;) { // clang::code_align(64)
       // ...
@@ -948,59 +948,65 @@ int main() {
 
 ----
 
-#### Latency - Time it takes for a single operation to complete (ns/op)
+#### Latency - time it takes for a single operation to complete (ns/op)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-align(alignment) for (auto i = 0u; i < N; ++i) {
-  checksum ^= fn(checksum ^ ts...);       // data dependency
-  std::atomic_thread_fence(memory_order); // [optional]
-}
-```
-
-```
-align(alignment) for (auto i = 0u; i < N; ++i) {
-  perf::unroll(2x) - perf::unroll(1x);
+perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
+  checksum ^= fn(checksum ^ ts...); // data dependency
+  std::atomic_thread_fence(memory_order);
 }
 ```
 
 ----
 
-#### Latency / CPU -> FPGA -> Application-Specific Integrated Circuit (ASIC)
+#### [uops.info] [A Low-Overhead Tool for Running Microbenchmarks](https://arxiv.org/abs/1911.03282)
+<!-- .element: style="text-align:left" -->
+
+```
+perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
+  perf::unroll<M*2>(fn) -
+  perf::unroll<M*1>(fn)
+}
+```
+
+----
+
+#### Latency / CPU ➔ FPGA ➔ Application-Specific Integrated Circuit (ASIC)
 <!-- .element: style="text-align:left" -->
 
 <img src="images/fpga.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
 
 ----
 
-#### Throughput - Total number of operations or tasks completed in a given amount of time (op/s)
+#### Throughput - total number of operations completed in a given amount of time (op/s)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-align(Alignment) for (auto i = 0u; i < N; ++i) { // policy::seq
-  checksum ^= fn(ts[i]...);
+perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
+  perf::compiler::prevent_elision(fn(ts...));
 }
 ```
 
 ```cpp
-throughput::policy::seq;
-throughput::policy::unseq;
-throughput::policy::unroll;
-throughput::policy::par;
-throughput::policy::omp;
-throughput::policy::cuda;
+perf::bench::policy::seq;
+perf::bench::policy::unseq;
+perf::bench::policy::unroll;
+perf::bench::policy::par;
+perf::bench::policy::omp;
+perf::bench::policy::cuda;
+...
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ----
 
-#### Throughput / CPU -> GPU/TPU
+#### Throughput / CPU ➔ GPU/TPU
 <!-- .element: style="text-align:left" -->
 
 <img src="images/cpu-gpu.png" style="width: 95%; height=600px; background:none; border:none; box-shadow:none;" />
 
 ##### https://docs.nvidia.com/cuda/cuda-c-programming-guide
-<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -1353,12 +1359,6 @@ $CXX -DPERF_UEFI \
 ```
 
 <img src="images/share.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-
-----
-
-### "Code tells you what worked, not what didn't"
-<!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
