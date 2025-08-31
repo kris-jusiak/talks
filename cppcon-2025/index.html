@@ -118,11 +118,11 @@ SUT                         // System Under Test
 
 ----
 
-#### First step in optimizing is a correct measurment
+#### First step in optimizing is a correct measurement
 <!-- .element: style="text-align:left" -->
-#### First step in optimizing is a correct measurment
+#### First step in optimizing is a correct measurement
 <!-- .element: style="text-align:left" -->
-#### Claiming results without measuments
+#### Claiming results without easements
 <!-- .element: style="text-align:left" -->
 #### Not optimizing the right things (starting from micro-benchmarking -> not using the right tool for the job)
 <!-- .element: style="text-align:left" -->
@@ -192,8 +192,6 @@ perf record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 perf stat --topdown --td-level 1 \
   --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
-
-<img src="images/tma.png" style="width: 60%; background:none; border:none; box-shadow:none;" />
 
 ```cpp
 Category        Desktop Server    HPC
@@ -266,7 +264,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-##### The right tool for the job
+##### Profiling/Tracing/Simulating
 <!-- .element: style="text-align:left;" -->
 
 ##### - linux-perf - https://perf.wiki.kernel.org
@@ -419,7 +417,7 @@ fizz_buzz 42ns // ?
 #### - Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 ```
-C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel
+C++23, linux/perf, llvm/mca, gnuplot/sixel
 ```
 
 ----
@@ -446,7 +444,7 @@ C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel
 
 ----
 
-[0] Not having realistic/accurate results
+#### [0] Not having realistic/accurate results
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
@@ -462,6 +460,20 @@ C++23, intel/pt, linux/perf, llvm/mca, gnuplot/sixel
 ### [1] Not understanding the results
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
+
+----
+
+```
+perf record ./benchmark
+```
+
+other profiles
+
+```
+jupter notbook
+```
+
+----
 
     timers, counters (metrics)
     report median, mean, p90
@@ -1004,9 +1016,6 @@ bench(fizz_buzz, 15);
 report
 ```
 
-#### jupyter notebook - https://jupyter.org
-<!-- .element: style="text-align:left" -->
-
 ----
 
 #### Reporting
@@ -1052,6 +1061,10 @@ report(bench[stat::tsc], min, median, p90, p99)
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
+#### jupyter notebook - https://jupyter.org
+<!-- .element: style="text-align:left" -->
+#### custom ui
+<!-- .element: style="text-align:left" -->
 #### gnuplot - http://www.gnuplot.info
 <!-- .element: style="text-align:left" -->
 #### sixel - https://arewesixelyet.com
