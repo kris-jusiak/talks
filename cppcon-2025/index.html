@@ -76,7 +76,7 @@
 (⬆️) Number of transistors
  - (⬆️) Cores
  - (⬆️) Cache
- - (⬆️) IPC
+ - (⬆️) Complexity
 
 </pre>
 <pre>
@@ -99,39 +99,26 @@
 #### Always Measure!
 <!-- .element: style="text-align:left" -->
 
-```cpp
-SUT                         // System Under Test
-  + [Requirements]
-  + Measure
-  + Profile
-  + Analyze
-  + Optimize                // HL: Design, Algorithms, ...
-     + Microbenchmark's
-       + [Hypothesis]
-       + Measure
-       + Profile
-       + Analyze
-       + Optimize           // LL: SIMD, SWAR, DOD, CTE, Par, ...
-       + Test
-  + Test                    // E2E: Prod-like
+```
+# System Under Test (SUT)
+
+- **Requirements**
+- **Measure**
+- **Profile**
+- **Analyze**
+- **Optimize** *(High-Level: Design, Algorithms, etc.)*
+  - **Microbenchmarks**
+    - **Hypothesis**
+    - **Measure**
+    - **Profile**
+    - **Analyze**
+    - **Optimize** *(Low-Level: SIMD, SWAR, DOD, CTE, Parallelism, etc.)*
+    - **Test**
+- **Test** *(End-to-End: Prod-like)*
 ```
 
-----
-
-#### First step in optimizing is a correct measurement
+#### If you can’t measure it, you can’t improve it
 <!-- .element: style="text-align:left" -->
-#### First step in optimizing is a correct measurement
-<!-- .element: style="text-align:left" -->
-#### Claiming results without easements
-<!-- .element: style="text-align:left" -->
-#### Not optimizing the right things (starting from micro-benchmarking -> not using the right tool for the job)
-<!-- .element: style="text-align:left" -->
-#### Not verifying in end-2-end env
-<!-- .element: style="text-align:left" -->
-#### Not measuring the right thing' = not optimizing the right thing
-<!-- .element: style="text-align:left" -->
-
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -157,7 +144,7 @@ bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
 
 ----
 
-#### [linux-perf](https://perf.wiki.kernel.org)
+#### Always Measure! - [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -181,7 +168,7 @@ perf stat/record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 
 ----
 
-####  [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+#### Always Measure! - [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
 <!-- .element: style="text-align:left" -->
 
 ```sh
@@ -204,7 +191,7 @@ Bad Speculation     5–10%    5–10%      1–5%
 
 ----
 
-#### [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+#### Always Measure! - [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -232,7 +219,7 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./a.out
 
 ----
 
-#### [llvm-xray](https://llvm.org/docs/XRay.html)
+#### Always Measure! - [llvm-xray](https://llvm.org/docs/XRay.html)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -263,7 +250,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-##### Profiling/Tracing/Simulating
+#### Always Measure!
 <!-- .element: style="text-align:left;" -->
 
 ##### - linux-perf - https://perf.wiki.kernel.org
@@ -300,28 +287,35 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-#### hot-spot profiling (I/O, allocations, ...)
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/profile.png" style="width: 25%; background:none; border:none; box-shadow:none;" />
-</p>
-
-<!-- .slide: data-background="black" -->
-
-----
-
-#### Modern processors execute nearly as many instructions per cycle as you can supply (I/O, branch, memory)
-<!-- .element: style="text-align:left" -->
-##### - Reduce overall instruction count / instruction per cycle (IPC)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-max.ipc <= dispatch_width; // we know the target
-```
-
-#### Prefer `perf stat` over `time`
-<!-- .element: style="text-align:left" -->
+<table>
+<tr>
+<td>
+  <h5>Hot-spot</h5>
+</td>
+<td>
+  <h5>IPC</h5>
+</td>
+</tr>
+<tr>
+<td>
+<img src="images/profile.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+<pre>
+I/O, allocations, ...
+</pre>
+</td>
+<td>
+<pre>
+Modern processors execute nearly as
+many instructions per cycle as you
+can supply (I/O, branch, memory)
+- Reduce overall instruction count
+instruction per cycle (IPC)
+max.ipc <= dispatch_width;
+we know the target (uOps)
+</pre>
+</td>
+</tr>
+</table>
 
 <!-- .slide: data-background="black" -->
 
@@ -331,11 +325,13 @@ max.ipc <= dispatch_width; // we know the target
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+/**
+* Faster iteration
+* Understanding
+* Isolation
+*/
 auto bench(auto code) -> measurement;
 ```
-
-##### Faster iteration / isolation / understanding
-<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -351,7 +347,7 @@ auto bench(auto code) -> measurement;
 }
 ```
 ```cpp
-fizz_buzz 42ns // ?
+bench(fizz_buzz) -> 42ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
@@ -410,14 +406,25 @@ fizz_buzz 42ns // ?
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
 
-#### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
-<!-- .element: style="text-align:left" -->
-
 #### - Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
+
 ```
 C++23, linux/perf, llvm/mca, gnuplot/sixel
 ```
+<!-- .element: style="margin: 2% 5%;" -->
+
+#### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+<!-- .element: style="text-align:left" -->
+```
+TSC   - Time-Stamp-Counter
+RDPMC - Read Performance-Monitoring Counters
+LBR   - Last Branch Record
+IPT   - Intel Processor Trace
+IBS   - Instruction-Based Sampling
+PEBS  - Precise Event-Based Sampling
+```
+<!-- .element: style="margin: 2% 5%;" -->
 
 ----
 
@@ -538,29 +545,6 @@ const auto invoke = [&](auto&& fn, auto&&... ts) {
 ```cpp
 perf::log(invoke(fizz_buzz, 42)[]); // 8ns
 perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
-```
-
-----
-
-```cpp
-template<class... Ts, auto StartLabel = +[]{}>
-start(Ts...):
-  if constexpr (sw) {
-    prctl(PR_TASK_PERF_EVENTS_ENABLE);
-  }
-
-  if constexpr (hw) {
-    rdpmc...
-  } else if constexpr (sw) {
-    read(group);
-  }
-
-  if constexpr (time) {
-    lfence
-    rdtsc
-  }
-
-  code::label(StartLabel); // .section .labels (no assembly)
 ```
 
 ----
@@ -709,9 +693,10 @@ perf::log(profiler[cpi]);
 
 ```cpp
 perf::profiler profiler{
-  perf::stat::tsc, perf::stat:cycles, perf::stat::instructions, // RDPMC
-  perf::trace::instructions, perf::trace::cycles,               // IPT
-  perf::record::mem_loads, perf::record::mem_stores             // PEBS, LBR
+  perf::stat::tsc,                                   // RDTSC
+  perf::stat:cycles, perf::stat::instructions,       // RDPMC
+  perf::trace::instructions, perf::trace::cycles,    // IPT
+  perf::record::mem_loads, perf::record::mem_stores  // PEBS, LBR
 };
 ```
 
@@ -727,7 +712,7 @@ profiler.stop();
 
 -----
 
-#### Analyzing - static analysis
+#### static analysis
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1226,6 +1211,11 @@ auto ub(int x) { return x + 1 > x; }
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
+```
+perf system tune # pip install pyperf
+```
+<!-- .element: style="text-align:left" -->
+
 ----
 
 #### cpu/info
@@ -1351,14 +1341,6 @@ $CXX -DPERF_UEFI \
 
 ----
 
-```
-perf system tune
-```
-<!-- .slide: data-background="black" -->
-<!-- .element: style="text-align:left" -->
-
-----
-
 ### [5] Not documenting/sharing results
 <!-- .slide: data-background="black" -->
 <!-- .element: style="text-align:left" -->
@@ -1376,8 +1358,10 @@ perf system tune
 ----
 
 ```cpp
-./perf.out | scripts/export.sh markdown | gh gist create --public
+./a.out | scripts/export.sh markdown | gh gist create --public
 ```
+
+<img src="images/share.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
 
 ----
 
