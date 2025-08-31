@@ -74,7 +74,7 @@
    ~ L2 cache          3.00ns
    ~ Branch Mispredict 3.00ns
    ~ L3 cache         10.00ns
-   ~ RAM              70.00ns
+   ~ DRAM             70.00ns
 </pre>
   </td>
   <td>
@@ -450,25 +450,10 @@ IPT   - Intel Processor Trace
 
 ```sh
 perf record -g --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-```
-
-```sh
 vtune -collect performance-snapshot -start-paused -finalization-mode=full -r result ./a.out
-```
-
-```sh
 AMDuProfCLI collect --config tbp --start-paused ./a.out
-```
-
-```sh
 llvm-xray account xray-log.* --top=10 --sort=sum --sortorder=dsc --instr_map=./a.out
-```
-
-```sh
 valgrind --tool=callgrind --instr-atstart=no ./a.out
-```
-
-```sh
 CPUPROFILE_FREQUENCY=1000 ./a.out
 ```
 
@@ -650,34 +635,42 @@ perf::log(profiler[cpi]);
 #### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
 <!-- .element: style="text-align:left" -->
 
-<img src="images/tmam1.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+```cpp
+ ├─ [1] Retiring
+ │   ├─ [2] Base
+ │   └─ [2] MS-ROM (complex µops)
+ │
+ ├─ [1] Bad Speculation
+ │   ├─ [2] Branch Mispredictions
+ │   └─ [2] Machine Clears
+ │
+ ├─ [1] Front-End Bound
+ │   ├─ [2] Front-End Latency
+ │   │   ├─ [3] Instruction Cache Misses
+ │   │   ├─ [3] iTLB Misses
+ │   │   └─ [3] Branch Resteers
+ │   └─ [2] Front-End Bandwidth
+ │
+ └─ [1] Back-End Bound
+     ├─ [2] Core Bound
+     │   └─ [3] Execution ports utilization
+     └─ [2] Memory Bound
+         ├─ [3] L1 Bound
+         ├─ [3] L2 Bound
+         ├─ [3] L3 Bound
+         └─ [3] DRAM Bound
+```
+<!-- .element: style="font-size:20px;" -->
 
 ----
 
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-auto retiring = retiring / slots;
-auto heavy_operations = heavy_operations / slots;
-auto light_operations = retiring - heavy_operations;
-
-auto bad_speculation = bad_speculation / slots;
-auto branch_mispredict = branch_mispredict / slots;
-auto machine_clears = bad_speculation - branch_mispredict;
-
-auto frontend_bound = frontend_bound / slots;
-auto fetch_latency = fetch_latency / slots;
-auto fetch_bandwidth = frontend_bound - fetch_latency;
-
-auto backend_bound = backend_bound / slots;
-auto memory_bound = memory_bound / slots;
-auto core_bound = backend_bound - memory_bound;
-```
-
-```cpp
-perf::log(profiler[topdown]);
-perf::log(profiler[cpi]);
+perf::report(bench[
+  perf::stat::top_down::retiring, 
+  perf::stat::top_down::bad_speculation, 
+  perf::stat::top_down::frontend_bound, 
+  perf::stat::top_down::backend_bound
+], p10, p50, p75, p99);
 ```
 
 ----
@@ -1011,13 +1004,19 @@ perf::bench::policy::cuda;
 ----
 
 ```cpp
-perf::runner bench{perf::bench::latency{}};
+int main() {
+  perf::runner bench{perf::bench::latency{}};
 
-bench(fizz_buzz, 3);
-bench(fizz_buzz, 5);
-bench(fizz_buzz, 15);
+  bench(fizz_buzz, 3);
+  bench(fizz_buzz, 5);
+  bench(fizz_buzz, 15);
 
-report
+  perf::report(bench[perf::stat::tsc]);
+}
+```
+
+```
+/// all runs
 ```
 
 ----
@@ -1172,7 +1171,9 @@ auto sort = []<bool debug>(std::vector<int>& v) {
 ```
 
 ```cpp
-bench(sort);
+for (auto i = 1; i < 1024; i <<= 1) {
+  bench(sort, unpredictable<int> | to<std::vector>(i));
+}
 ```
 ----
 
@@ -1185,6 +1186,8 @@ perf::verify(asm.instruction == "mov")
 perf::verify(asm.instruction.count < non optimizaed)
 perf::verify(as.minstruciton.count == c++optimization)
 ```
+
+----
 
 ```cpp
 //mca
@@ -1201,12 +1204,6 @@ perf::verify(optimized < []{}); // disassemble compare
 auto ok(int x) { return x + 1 > 0; }
 auto ub(int x) { return x + 1 > x; }
 ```
-
-----
-
-### Treat benchmarking code like the production code!
-<!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1257,17 +1254,18 @@ cache iL1: 32Kb/64b, dL1: 48Kb/12/64b
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::verify(perf::info::ndebug);
-perf::verify(perf::info::optimize);
-perf::verify(not perf::info::freq_scalling);
+int main() {
+  perf::verify(perf::info::compiler::NDEBUG);
+  perf::verify(perf::info::compiler::OPTIMIZED);
+  perf::verify(not perf::info::cpu::freq_scaling);
+  perf::verify(perf::info::cpu::features().contains("avx512"));
 ```
 
 ```cpp
-perf::verify(perf::compiler::is_elided([] { fizz_buzz(42); }));
-perf::verify(perf::compiler::is_elided([] { }));
-perf::verify(perf::compiler::is_elided([] { int i{}; i++; }));
-perf::verify(not perf::compiler::is_elided([] { int i{}; perf::compiler::prevent_elision(i++); }));
-perf::verify(not perf::compiler::is_elided([] { std::print("perf"); }));
+  perf::verify(perf::compiler::is_elided(
+    [] { fizz_buzz(42); }
+  );
+}
 ```
 
 ----
@@ -1305,7 +1303,9 @@ isolcpus=<cpu number>,...,<cpu number> # bootloader
 ```
 <!-- .element: style="text-align:left" -->
 
+<p align="left">
 <img src="images/isolcpus.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ```
 cat /sys/devices/system/cpu/isolated # <cpu number>,...,<cpu number>
