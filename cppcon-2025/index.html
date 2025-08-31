@@ -70,10 +70,10 @@
  - 1 cycle (4Ghz)      0.25ns&nbsp;<br />
 (⬆️) Number of transistors
  - Cores/Cache/IPC
-   ~ L1 cache          0.50ns
-   ~ L2 cache          3.00ns
+   ~ dL1 cache         0.50ns
+   ~ dL2 cache         3.00ns
    ~ Branch Mispredict 3.00ns
-   ~ L3 cache         10.00ns
+   ~ dL3 cache        10.00ns
    ~ DRAM             70.00ns
 </pre>
   </td>
@@ -90,13 +90,12 @@
 
 ```c
 System Under Test (SUT)
- ┐
+
  ├─ Measure
  ├─ Profile
  ├─ Analyze
  ├─ Optimize // High-Level: Design, Algorithms, ...
  │  └─ Microbenchmarks
- │     ├─ [Hypothesis]
  │     ├─ Measure
  │     ├─ Profile
  │     ├─ Analyze
@@ -121,7 +120,7 @@ System Under Test (SUT)
 ```sh
 perf stat -e cycles,instructions,cache-misses ./a.out
 perf probe -x /usr/lib/libc.so malloc
-perf record -e probe_libc:malloc ./a.out
+perf record -g probe_libc:malloc ./a.out
 bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
 bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
 ...
@@ -147,30 +146,9 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```sh
-perf stat/record --control=fifo:/dev/shm/perf --delay=-1 ./a.out
+perf stat/record ... --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 ```
 
-----
-
-#### Always Measure! - [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
-<!-- .element: style="text-align:left" -->
-
-```sh
-perf stat --topdown --td-level 1 \
-  --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-```
-
----
-
-```cpp
-[Level] Category             Desktop  Server   HPC
----------------------------- -------  ------   ------
-[1] Retiring                  20–50%  10–30%   30–70%
-[1] Back-End Bound            20–40%  20–60%   20–40%
-[1] Front-End Bound           05–10%  10–25%   05–10%
-[1] Bad Speculation           05–10%  05–10%   01–05%
-```
-<!-- .element: style="text-align:left" -->
 ----
 
 #### Always Measure! - [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
@@ -280,7 +258,7 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 <td>
 <img src="images/profile.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
 <pre>
-I/O, allocations, ...
+I/O
 </pre>
 </td>
 <td>
@@ -345,7 +323,7 @@ bench(fizz_buzz) -> 42ns // ?
 }</code></pre>
   </td>
   <td>
-  <img src="images/linux2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
   </tr>
 </table>
@@ -367,7 +345,7 @@ bench(fizz_buzz) -> 42ns // ?
  ret</code></pre>
   </td>
   <td>
-  <img src="images/cpu2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
   </tr>
 </table>
@@ -376,6 +354,29 @@ bench(fizz_buzz) -> 42ns // ?
 
 ### Avoiding Microbenchmarking Pitfalls
 <!-- .element: style="text-align:left" -->
+
+----
+
+  perf::thread::set(thread::self, // 0, 1: used by kernel
+    {priority, max},
+    {affinity, 2},
+    {numa_node, 1}
+  );
+
+  set<cache.mesi> = 1
+  auto time(); // 0 overhead
+  fn(ts...);
+  time();
+
+  perf::sys::enable_huge_pages();
+  perf::memory::cache::disable();
+  perf::memory::pre_fault();
+  perf::memory::pollute_heap();
+  perf::cache::flush(addr);           // clflush
+  perf::cpu::branch::set(ip) = true; // NOT AVAIL!
+  perf::cpu::port(ADL1.) = true;    // NOT AVAIL!
+}
+```
 
 ----
 
@@ -426,38 +427,187 @@ IPT   - Intel Processor Trace
 
 ----
 
-#### [0] Not having realistic/accurate results
-<!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
-
-    multiple runs
-    Data distribution - branch prediction
-    Latency vs. Throughput
-    cold/warm/alignment
-    <debug>
-    prevent_elision on the lambda -> otherwise don't need it
-
-----
-
-### [1] Not understanding the results
+#### [0] Not measuring the right things
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
 ----
 
-#### Profiling
+not having significnt number of samples
+
+
+
+
+#### realistic data
 <!-- .element: style="text-align:left" -->
 
-```sh
-perf record -g --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-vtune -collect performance-snapshot -start-paused -finalization-mode=full -r result ./a.out
-AMDuProfCLI collect --config tbp --start-paused ./a.out
-llvm-xray account xray-log.* --top=10 --sort=sum --sortorder=dsc --instr_map=./a.out
-valgrind --tool=callgrind --instr-atstart=no ./a.out
-CPUPROFILE_FREQUENCY=1000 ./a.out
+```cpp
+using perf::data::unpredictable;  // not elided and not predicted
+```
+
+```cpp
+// CPU::BTB::set(ip) = true;
+// CPU::ALU.1 = true;
+// ...
+```
+
+```cpp
+{1, 3, 5}
+```
+
+```cpp
+bench(to_string, perf::data::unpredictable);
+// branch prediction state (10'000 1/0 branches learn)
+// random
+for (auto i = 0; i < 10; ++i) {
+  bench(to_string, perf::data::unpredictable);
+}
 ```
 
 ----
+
+#### warm/cold/alignment/...
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
+  auto target        = [] [[gnu::target("avx512f")]] { };
+  auto aligned_fn    = [] [[gnu::aligned(16)]] { };
+  auto aligned_loop  = [] {
+    perf::code::align(64) for (;;) { // clang::code_align(64)
+      // ...
+    }
+  };
+```
+
+----
+
+### Latency vs. Throughput
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Latency - time it takes for a single operation to complete (ns/op)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
+  checksum ^= fn(checksum ^ ts...); // data dependency
+  std::atomic_thread_fence(memory_order);
+}
+```
+
+----
+
+#### [uops.info] [A Low-Overhead Tool for Running Microbenchmarks](https://arxiv.org/abs/1911.03282)
+<!-- .element: style="text-align:left" -->
+
+```
+perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
+  perf::unroll<M*2>(fn) -
+  perf::unroll<M*1>(fn)
+}
+```
+
+----
+
+#### CPU vs. FPGA
+<!-- .element: style="text-align:left" -->
+
+<img src="images/fpga.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
+
+----
+
+#### Throughput - total number of operations completed in a given amount of time (op/s)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
+  perf::compiler::prevent_elision(fn(ts...));
+}
+```
+
+```cpp
+perf::bench::policy::seq;
+perf::bench::policy::unseq;
+perf::bench::policy::unroll;
+perf::bench::policy::par;
+perf::bench::policy::omp;
+perf::bench::policy::cuda;
+...
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+----
+
+```cpp
+int main() {
+  perf::runner bench{perf::bench::latency{}};
+
+  bench(fizz_buzz, 3);
+  bench(fizz_buzz, 5);
+  bench(fizz_buzz, 15);
+
+  perf::report(bench[perf::stat::tsc]);
+}
+```
+
+```
+/// all runs
+```
+
+----
+
+#### [1] Not following structured analysis method
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
+
+----
+
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ ├─ [1] Retiring
+ │   ├─ [2] Base
+ │   └─ [2] Complex µops
+ │
+ ├─ [1] Bad Speculation
+ │   ├─ [2] Branch Mispredictions
+ │   └─ [2] Machine Clears
+ │
+ ├─ [1] Front-End Bound
+ │   ├─ [2] Front-End Latency
+ │   │   ├─ [3] iL1 Misses
+ │   │   ├─ [3] iTLB Misses
+ │   │   └─ [3] Branch Resteers
+ │   └─ [2] Front-End Bandwidth
+ │
+ └─ [1] Back-End Bound
+     ├─ [2] Core Bound
+     │   └─ [3] Execution ports utilization
+     │   └─ [3] Divider
+     └─ [2] Memory Bound
+         ├─ [3] dL1 Bound
+         ├─ [3] dL2 Bound
+         ├─ [3] dL3 Bound
+         └─ [3] DRAM Bound
+```
+<!-- .element: style="font-size:19px;" -->
+
+----
+
+```cpp
+perf::report(bench[
+  perf::stat::top_down::retiring, 
+  perf::stat::top_down::bad_speculation, 
+  perf::stat::top_down::frontend_bound, 
+  perf::stat::top_down::backend_bound
+]);
+```
+
+-----
 
 ```cpp
 timers, counters (metrics)
@@ -497,22 +647,21 @@ static_assert(requires {
 
 ----
 
-#### Stat / Timing
-<!-- .element: style="text-align:left" -->
-
 #### Timing data is usually skewed, not symmetric
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-using perf::stat::tsc         // time-stamp-counter (rdtsc)
-using perf::stat::real_time   // std::chrono::system_clock (wall-clock-time)
-using perf::stat::steady_time // std::chrono::steady_clock (monotonic)
-using perf::stat::cpu_time    // clock_gettime<CLOCK_PROCESS_CPUTIME_ID>
-using perf::stat::tread_time  // clock_gettime<CLOCK_THREAD_CPUTIME_ID>
+perf::stat::tsc         // time-stamp-counter (rdtsc)
+perf::stat::real_time   // std::chrono::system_clock (wall-clock-time)
+perf::stat::steady_time // std::chrono::steady_clock (monotonic)
+perf::stat::cpu_time    // clock_gettime<CLOCK_PROCESS_CPUTIME_ID>
+perf::stat::tread_time  // clock_gettime<CLOCK_THREAD_CPUTIME_ID>
 ```
 
+----
+
 ```cpp
-perf::profiler p{perf::stat::tsc};
+perf::profiler profiler{perf::stat::tsc};
 
 const auto invoke = [&](auto&& fn, auto&&... ts) {
   profiler.start();
@@ -533,21 +682,19 @@ perf::log(invoke(fizz_buzz, 1)[]);  // 2ns
 
 
 ```cpp
-using perf::stat::cycles;
-using perf::stat::instructions;
-using perf::stat::branch_misses;
-using perf::stat::branches;
-using perf::stat::llc_misses;
-using perf::stat::l1_misses;
-using perf::stat::l1_dcache_loads;
-using perf::stat::itlb_loads;
-using perf::stat::itlb_load_misses;
+perf::stat::cycles;
+perf::stat::instructions;
+perf::stat::branch_misses;
+perf::stat::branches;
+perf::stat::l1_misses;
+perf::stat::itlb_loads;
+perf::stat::itlb_load_misses;
 ...
 ```
 
 ```cpp
-perf::profiler p{perf::stat::cycles, perf::stat::instructions};
-static_assert(p::is_syscall_free);
+perf::profiler profiler{perf::stat::cycles, perf::stat::instructions};
+static_assert(profiler.is_syscall_free);
 
 //start(); // RDPMC - Read Performance Monitoring Counters (current thread)
 perf::log(invoke(fizz_buzz, 42)[]); // 8ns
@@ -616,11 +763,11 @@ verify(3 == instructinos);
 auto ipc = instructions / cycles;
 auto cpi = cycles / instructions;
 auto l1_dcache_miss_rate = l1_dcache_load_misses / l1_dcache_loads;
+auto llc_miss_rate = llc_misses / cache_references;
 auto cache_miss_rate = cache_misses / cache_references;
 auto branch_miss_rate = branch_misses / branches;
-auto llc_miss_rate = llc_misses / cache_references;
-auto context_switch_rate = context_switches / cycles;
 auto dtlb_miss_rate = dtlb_load_misses / dtlb_loads;
+auto context_switch_rate = context_switches / cycles;
 auto frontend_stall_rate = stalled_cycles_frontend / cycles;
 ...
 ```
@@ -628,49 +775,6 @@ auto frontend_stall_rate = stalled_cycles_frontend / cycles;
 ```cpp
 perf::log(profiler[ipc]);
 perf::log(profiler[cpi]);
-```
-
-----
-
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
-<!-- .element: style="text-align:left" -->
-
-```cpp
- ├─ [1] Retiring
- │   ├─ [2] Base
- │   └─ [2] MS-ROM (complex µops)
- │
- ├─ [1] Bad Speculation
- │   ├─ [2] Branch Mispredictions
- │   └─ [2] Machine Clears
- │
- ├─ [1] Front-End Bound
- │   ├─ [2] Front-End Latency
- │   │   ├─ [3] Instruction Cache Misses
- │   │   ├─ [3] iTLB Misses
- │   │   └─ [3] Branch Resteers
- │   └─ [2] Front-End Bandwidth
- │
- └─ [1] Back-End Bound
-     ├─ [2] Core Bound
-     │   └─ [3] Execution ports utilization
-     └─ [2] Memory Bound
-         ├─ [3] L1 Bound
-         ├─ [3] L2 Bound
-         ├─ [3] L3 Bound
-         └─ [3] DRAM Bound
-```
-<!-- .element: style="font-size:20px;" -->
-
-----
-
-```cpp
-perf::report(bench[
-  perf::stat::top_down::retiring, 
-  perf::stat::top_down::bad_speculation, 
-  perf::stat::top_down::frontend_bound, 
-  perf::stat::top_down::backend_bound
-], p10, p50, p75, p99);
 ```
 
 ----
@@ -688,8 +792,8 @@ perf::profiler profiler{
 ```
 
 ```cpp
-static_assert(profiler::is_syscall_free);
-static_assert(profiler::is_mulitplexing_free);
+static_assert(profiler.is_syscall_free);
+static_assert(profiler.is_mulitplexing_free);
 ```
 
 ```cpp
@@ -711,26 +815,24 @@ static_assert(requires {
 
 ----
 
-#### Analyzer - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
+#### static analysis
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-perf::mc::assembly;
-perf::mc::encoding;
-perf::mc::address;
-perf::mc::uops;
-perf::mc::latency;
+using perf::mca::assembly;
+using perf::mca::encoding;
+using perf::mca::address;
+using perf::mca::uops;
+using perf::mca::latency;
+using perf::mca::rthroughput;
+using perf::mca::may_load;
+using perf::mca::may_store;
+using perf::mca::has_side_effects;
+using perf::mca::timeline;
+using perf::mca::resource_pressure;
+using perf::mca::bottleneck;
+using perf::mca::source;
 ...
-```
-
-```cpp
-perf::mca::timeline;
-perf::mca::resource_pressure;
-perf::mca::bottleneck
-```
-
-```cpp
-perf::debug::source;
 ```
 
 ----
@@ -753,10 +855,10 @@ perf::debug::source;
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-perf::analyzer analyzer{perf::mc::assembly};
+perf::analyzer analyzer{perf::mca::assembly};
 analyzer << profiler[trace::instructions];
 analyzer << region{labels["a"], labels["b"]};
-analyzer << region{&&a, &&b};
+analyzer << region{&&a, &&b}; // gnu
 ```
 
 ```cpp
@@ -855,169 +957,11 @@ invoke(fizz_buzz, std::rand());
 
 ----
 
-#### Tune
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::cpu::set(
-    {freq_scaling, performance},
-    {turbo_mode, false},
-    {hypethreading, false}
-  );
-
-  perf::thread::set(thread::self, // 0, 1: used by kernel
-    {priority, max},
-    {affinity, 2},
-    {numa_node, 1}
-  );
-
-  set<cache.mesi> = 1
-  auto time(); // 0 overhead
-  fn(ts...);
-  time();
-
-  perf::sys::enable_huge_pages();
-  perf::memory::cache::disable();
-  perf::memory::pre_fault();
-  perf::memory::pollute_heap();
-  perf::cache::flush(addr);           // clflush
-  perf::cpu::branch::set(ip) = true; // NOT AVAIL!
-  perf::cpu::port(ADL1.) = true;    // NOT AVAIL!
-}
-```
-
-----
-
-#### realistic data
-<!-- .element: style="text-align:left" -->
-
-```cpp
-using perf::data::unpredictable;  // not elided and not predicted
-```
-
-```cpp
-{1, 3, 5}
-```
-
-```cpp
-bench(to_string, perf::data::unpredictable);
-// branch prediction state (10'000 1/0 branches learn)
-// random
-for (auto i = 0; i < 10; ++i) {
-  bench(to_string, perf::data::unpredictable);
-}
-```
-
-----
-
-#### warm/cold/alignment/...
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
-  auto target        = [] [[gnu::target("avx512f")]] { };
-  auto aligned_fn    = [] [[gnu::aligned(16)]] { };
-  auto aligned_loop  = [] {
-    perf::code::align(64) for (;;) { // clang::code_align(64)
-      // ...
-    }
-  };
-```
-
-----
-
 ### [2.1] Not benchmarking the right thing
 <!-- .element: style="text-align:left" -->
 ### [2.2] Not benchmarking realistic scenarios (alignment, cold, warm, threading, ...)
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
-
-----
-
-### Latency vs. Throughput
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Latency - time it takes for a single operation to complete (ns/op)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
-  checksum ^= fn(checksum ^ ts...); // data dependency
-  std::atomic_thread_fence(memory_order);
-}
-```
-
-----
-
-#### [uops.info] [A Low-Overhead Tool for Running Microbenchmarks](https://arxiv.org/abs/1911.03282)
-<!-- .element: style="text-align:left" -->
-
-```
-perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
-  perf::unroll<M*2>(fn) -
-  perf::unroll<M*1>(fn)
-}
-```
-
-----
-
-#### Latency / CPU ➔ FPGA ➔ Application-Specific Integrated Circuit (ASIC)
-<!-- .element: style="text-align:left" -->
-
-<img src="images/fpga.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
-
-----
-
-#### Throughput - total number of operations completed in a given amount of time (op/s)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
-  perf::compiler::prevent_elision(fn(ts...));
-}
-```
-
-```cpp
-perf::bench::policy::seq;
-perf::bench::policy::unseq;
-perf::bench::policy::unroll;
-perf::bench::policy::par;
-perf::bench::policy::omp;
-perf::bench::policy::cuda;
-...
-```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
-
-----
-
-#### Throughput / CPU ➔ GPU/TPU
-<!-- .element: style="text-align:left" -->
-
-<img src="images/cpu-gpu.png" style="width: 95%; height=600px; background:none; border:none; box-shadow:none;" />
-
-##### https://docs.nvidia.com/cuda/cuda-c-programming-guide
-
-----
-
-```cpp
-int main() {
-  perf::runner bench{perf::bench::latency{}};
-
-  bench(fizz_buzz, 3);
-  bench(fizz_buzz, 5);
-  bench(fizz_buzz, 15);
-
-  perf::report(bench[perf::stat::tsc]);
-}
-```
-
-```
-/// all runs
-```
 
 ----
 
@@ -1189,6 +1133,9 @@ perf::verify(as.minstruciton.count == c++optimization)
 
 ----
 
+#### Testing
+<!-- .element: style="text-align:left" -->
+
 ```cpp
 //mca
 perf::verify(entry[0].cycle_dispatched);
@@ -1210,11 +1157,6 @@ auto ub(int x) { return x + 1 > x; }
 ### [3] Not having reproducible results
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
-
-```
-pyperf system tune # pip install pyperf
-```
-<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -1274,7 +1216,9 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::self::test({.verbose = true});
+int main() {
+  perf::self::test({.verbose = true});
+}
 ```
 
 ```cpp
@@ -1295,7 +1239,27 @@ log
 
 ----
 
-#### linux / kernel mode task-isolation - https://lwn.net/articles/816298
+#### Reducing Noise
+<!-- .element: style="text-align:left" -->
+
+```cpp
+disable hyperhtread
+///
+set.affinity
+set.priority
+```
+<!-- .element: style="text-align:left" -->
+
+---
+
+```
+pyperf system tune # pip install pyperf
+```
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Kernel Mode Task-Isolation - https://lwn.net/articles/816298
 <!-- .element: style="text-align:left" -->
 
 ```sh
