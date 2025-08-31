@@ -177,18 +177,25 @@ perf stat --topdown --td-level 1 \
 ```
 
 ```cpp
-Category          Desktop   Server    HPC
----------------   -------   ------    ------
-Retiring           20–50%   10–30%    30–70%
-Back-End Bound     20–40%   20–60%    20–40%
-Front-End Bound     5–10%   10–25%     5–10%
-Bad Speculation     5–10%    5–10%      1–5%
+Category/Level                Desktop   Server    HPC
+-----------------------       -------   ------    ------
+- [1] Retiring                 20–50%   10–30%    30–70%
+  - [2] Heavy Operations
+  - [2] Light Operations
+
+- [1] Back-End Bound           20–40%   20–60%    20–40%
+  - [2] Memory Bound
+  - [2] Core Bound
+
+- [1] Front-End Bound          05–10%   10–25%    05–10%
+  - [2] Fetch Latency
+  - [2] Fetch Bandwidth
+
+- [1] Bad Speculation          05–10%   05–10%    01–05%
+  - [2] Branch Mispredict
+  - [2] Machine Clears
 ```
 <!-- .element: style="text-align:left" -->
-
-##### https://github.com/andikleen/pmu-tools
-<!-- .element: style="text-align:left" -->
-
 ----
 
 #### Always Measure! - [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
@@ -290,10 +297,10 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 <table>
 <tr>
 <td>
-  <h5>Hot-spot</h5>
+  <h4>Hot-spot</h4>
 </td>
 <td>
-  <h5>IPC</h5>
+  <h4>IPC</h4>
 </td>
 </tr>
 <tr>
