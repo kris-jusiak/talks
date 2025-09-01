@@ -257,21 +257,17 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 </tr>
 <tr>
 <td>
-<img src="images/profile.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
-<pre>
-I/O, heap, ...
-</pre>
+<img src="images/profile.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
 </td>
 <td>
 <pre>Modern processors execute nearly as
 many instructions per cycle as you
 can supply (I/O, branch, memory)
-
-- Top down Microarchitecture Analysis Method
+<h4>
+- Apply Top down Microarchitecture Analysis Method
 - Reduce overall instruction count
 - Increase instruction per cycle (IPC)
-<br/>
-<br/>
+</h4>
 </pre>
 </td>
 </tr>
@@ -423,7 +419,7 @@ perf::stat::steady_time   monotonic clock       steady_clock
 
 ```cpp
 // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtsc
-static constexpr auto rdtsc() {
+auto rdtsc() {
   std::uint64_t t;
   asm volatile(
     "lfence\n"
@@ -437,12 +433,12 @@ static constexpr auto rdtsc() {
 }
 
 // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtscp
-static constexpr auto rdtscp() {
+auto rdtscp() {
   std::uint64_t t;
   asm volatile(
-    "rdtscp\n\t"
-    "shl $32, %%rdx\n\t"
-    "or %%rdx, %0\n\t"
+    "rdtscp\n"
+    "shl $32, %%rdx\n"
+    "or %%rdx, %0\n"
     "lfence"
     : "=a"(t) :: "rcx", "rdx", "memory", "cc"
   );
@@ -492,7 +488,7 @@ template<std::align_val_t Alignment>
 auto latency(auto fn, auto... ts) {
   perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
     checksum ^= fn(checksum ^ ts...);       // data dependency
-    std::atomic_thread_fence(memory_order); // wait for memory writes
+    std::atomic_thread_fence(memory_order); // sync
   }
 }
 ```
@@ -541,7 +537,7 @@ auto throughput::seq(auto fn, auto... ts) {
   perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
     fn(ts...);
   }
-};
+}
 ```
 
 ```cpp
@@ -586,7 +582,8 @@ bench(fizz_buzz/latency, std::integral_constant<int, 15>{});
 ```
 
 ```cpp
-// fixed
+// value
+bench(fizz_buzz/latency, 0);
 bench(fizz_buzz/latency, 3);
 bench(fizz_buzz/latency, 5);
 bench(fizz_buzz/latency, 15);
@@ -610,17 +607,10 @@ bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
 // unpredictable
 bench(fizz_buzz/latency, unpredictable<int>);
 bench(fizz_buzz/latency, uniform<int>{.min = 0, .max = 15});
-bench(fizz_buzz/latency, normal<int>{});
-bench(fizz_buzz/latency, choice<int>{});
-```
-
----
-
-```cpp
-// pollute_heap - prevents continuous allocation
-bench(sort/throughput, 
-  unpredictable<int> | to<std::map>(1'000, pollute_heap)
-);
+bench(fizz_buzz/latency, choice<int>{
+  .probabilities = {.25, .50, .25}, .values = {3, 5, 15}
+});
+...
 ```
 
 ----
@@ -660,6 +650,7 @@ auto latency{.setup = [] { fn(ts...); } ; // warmup
 auto latency{.teardown = [] { flush::cache::; } //
 ```
 
+// pollute_heap - prevents continuous allocation
 ----
 
 ```cpp
@@ -684,37 +675,20 @@ auto bench(auto fn, auto... ts) -> measurements {
 ----
 
 ```cpp
-// metric::stat
-
-using perf::metric::min;
-using perf::metric::max;
-using perf::metric::mean;
-using perf::metric::geomean;     // geometric mean
-using perf::metric::median;
-
-using perf::metric::percentile;
-using perf::metric::p10;
-using perf::metric::p50;
-using perf::metric::p75;
-using perf::metric::p90;
-using perf::metric::p99;
-
-using perf::metric::stddev;      // degrees_of_freedom = 1
-using perf::metric::variance;
-using perf::metric::sem;         // standard error
-using perf::metric::mae;         // median absolute errror
-using perf::metric::mad;         // median absolute deviation
-using perf::metric::cv;          // coefficient of variation
-```
-
-----
-
-```cpp
 perf::report(bench[perf::stat::tsc], min, median, p90, p99);
 ```
 
 ```cpp
 // min, median, percentiles instead of mean
+```
+
+----
+
+```cpp
+using perf::metric::mae;         // median absolute errror
+using perf::metric::mad;         // median absolute deviation
+using perf::metric::cv;          // coefficient of variation
+perf::report(bench[perf::stat::tsc], stddev, mae, cv);
 ```
 
 ----
@@ -1108,7 +1082,7 @@ concept Analyzer =
     TAnalyzer{ts...};
 
     // LLVM 
-    analyzer << span<instructions>;
+    analyzer << span(instructions);
 
     { analyzer[ts...] } -> tuple;
   };
@@ -1165,7 +1139,7 @@ perf::log(analyzer[]);
 
 ```cpp
 perf::profiler profiler{
-  perf::trace::instructions, // (Intel, Apple M4)
+  perf::trace::instructions, // Intel, Apple M4
 };
 
 const auto invoke = [&](auto fn, auto... ts) {
@@ -1316,7 +1290,7 @@ auto sort = []<bool debug>(std::vector<int>& v) {
 
 ```cpp
 for (auto i = 0; i < 1024; ++i) {
-  bench(sort_v0/throughput, unpredictable<int> | to<std::vector>(i));
+  bench(sort/throughput, unpredictable<int> | to<std::vector>(i));
 }
 ```
 ----
