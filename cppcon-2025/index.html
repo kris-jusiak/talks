@@ -678,15 +678,19 @@ auto latency{.teardown = [] { flush::cache::; } //
 ----
 
 ```cpp
-for () {
-  const auto& time = *bench(*operations.min, time::timer{time::steady_clock}, fn, ts...)[] / *operations.min;
-  const auto n = (std::chrono::duration_cast<std::chrono::nanoseconds>(*operations.time_budget) / time).count();
-  return std::max(*operations.min, std::size_t(n));
-  const auto& time = *data[time::steady_clock];
-  const auto degrees_of_freedom = *samples.min - 1u;
-  const auto t_score = metric::stat::t_score(*samples.confidence_level, degrees_of_freedom);
-  const auto margin_of_error = (1. - *samples.confidence_level) * metric::stat::mean(time);
-  return std::min(std::max(std::size_t(std::ceil(std::pow((t_score * metric::stat::stddev(time)) / margin_of_error, 2.)) - *samples.min), *samples.min), *samples.max);
+// simplified
+
+auto bench(auto fn, auto... ts) -> measurements {
+  for (auto i = 0; i < samples; ++i) {
+    for (auto i = 0; i < iterations; ++i) {
+      runner(fn[ts]...);
+    }
+
+    const auto degrees_of_freedom = *samples.min - 1u;
+    const auto t_score = metric::stat::t_score(*samples.confidence_level, degrees_of_freedom);
+    const auto margin_of_error = (1. - *samples.confidence_level) * metric::stat::mean(time);
+    return std::min(std::max(std::size_t(std::ceil(std::pow((t_score * metric::stat::stddev(time)) / margin_of_error, 2.)) - *samples.min), *samples.min), *samples.max);
+  }
 };
 ```
 
