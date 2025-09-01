@@ -766,15 +766,11 @@ bench(fizz_buzz_lut/latency, unpredictable<int>);
   PERF_IO_PLOT_TERM='sixel'                 # terminal
   PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
   PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
-  PERF_IO_PLOT_TERM='wxt'                   # popup windows
+  PERF_IO_PLOT_TERM='wxt'                   # window
   PERF_IO_PLOT_TERM='canvas'                # html
   PERF_IO_PLOT_TERM='png'                   # png
-
-  // https://arewesixelyet.com              # xterm -ti 340, ...
   ```
 <!-- .element: style="text-align:left" -->
-#### ...
-<!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
@@ -795,6 +791,10 @@ int main() {
 }
 ```
 
+```cpp
+$xterm -ti 340 # https://arewesixelyet.com
+```
+
 ----
 
 #### Bar
@@ -805,17 +805,20 @@ perf::plot::bar(bench[perf::time::tsc / perf::bench::operations]);
 ```
 
 <p align="left">
-<img src="images/bar1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/bar1.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ----
 
+#### Bar
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-auto latency = perf::bench::latency{.iterations = 10, .samples = 1};
+perf::bench::latency latency{.iterations = 1, .samples = 1}; // unstable
 ```
 
 <p align="left">
-<img src="images/bar3.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/bar3.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ----
@@ -828,12 +831,12 @@ perf::plot::hist(bench[perf::time::tsc / perf::bench::operations]);
 ```
 
 <p align="left">
-<img src="images/hist1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/hist1.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ----
 
-#### Box / ErrorBar
+#### Box / Errorbar
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -841,13 +844,15 @@ perf::plot::box(bench[perf::time::tsc / perf::bench::operations]);
 ```
 
 <p align="left">
-<img src="images/box1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/box1.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ----
 
 ```cpp
-perf::plot::box(bench[perf::time::tsc / perf::bench::operations], perf::plot::n^2); // big0
+perf::plot::box(bench[perf::time::tsc / perf::bench::operations], 
+  perf::plot::n^2
+); // big0
 ```
 
 ----
@@ -869,21 +874,16 @@ perf::plot::ecdf(bench[perf::time::tsc / perf::bench::operations]);
 PERF_IO_PLOT_TERM="dumb ansi size 150,25"
 ```
 
-<p align="left">
-<img src="images/bar2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-<p align="left">
-<img src="images/hist2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-<p align="left">
-<img src="images/box2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-<p align="left">
-<img src="images/ecdf2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
+<table>
+<tr>
+  <td>
+    <img src="images/bar2.png" style="width: 100%; height: 300px; background:none; border:none; box-shadow:none;" />
+  </td>
+  <td>
+    <img src="images/ecdf2.png" style="width: 100%; height: 300px; background:none; border:none; box-shadow:none;" />
+  </td>
+</tr>
+</table>
 
 ----
 
