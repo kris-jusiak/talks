@@ -736,10 +736,10 @@ report
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
-#### - gnuplot / sixel - http://www.gnuplot.info
+##### - gnuplot / sixel - http://www.gnuplot.info / https://arewesixelyet.com
 <!-- .element: style="text-align:left; margin: 0 0;" -->
   ```cpp
-  PERF_IO_PLOT_TERM='sixel'                 # terminal
+  PERF_IO_PLOT_TERM='sixel'                 # terminal sixel
   PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
   PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
   PERF_IO_PLOT_TERM='wxt'                   # window
@@ -748,7 +748,7 @@ report
   ```
 <!-- .element: style="text-align:left" -->
 
-#### - jupyter notebook / matplotlib - https://jupyter.org
+##### - jupyter notebook / matplotlib - https://jupyter.org
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
@@ -770,7 +770,7 @@ int main() {
 ```
 
 ```cpp
-$xterm -ti 340 # https://arewesixelyet.com
+# xterm -ti 340
 ```
 
 ----
@@ -788,11 +788,11 @@ perf::plot::bar(bench[perf::time::tsc / perf::bench::operations]);
 
 ----
 
-#### Bar
+#### Bar / unstable
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::bench::latency latency{.iterations = 1, .samples = 1}; // unstable
+perf::bench::latency{.iterations = 1, .samples = 1};
 ```
 
 <p align="left">
@@ -944,82 +944,51 @@ PERF_IO_PLOT_TERM="dumb ansi size 150,25" $server ./fizz_buzz
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// Speed vs. Control vs. Understanding
+ ├─ [1] Retiring                            │ 
+ │   ├─ [2] Base                            │ 
+ │   └─ [2] Complex µops                    │ 
+ │                                          │ 
+ ├─ [1] Bad Speculation                     │ 
+ │   ├─ [2] Branch Mispredictions           │ 
+ │   └─ [2] Machine Clears                  │
+ │                                          │ PMC - Performance-Monitoring Counter 
+ ├─ [1] Front-End Bound                     │ LBR - Last Branch Record                         
+ │   ├─ [2] Front-End Latency               │ IPT - Intel Processor Trace
+ │   │   ├─ [3] iL1 Misses                  │ PEBS - Precise Event-Based Sampling
+ │   │   ├─ [3] iTLB Misses                 │ 
+ │   │   └─ [3] Branch Resteers             │ MCA - Machine Code Analyzer
+ │   └─ [2] Front-End Bandwidth             │
+ │                                          │
+ └─ [1] Back-End Bound                      │
+     ├─ [2] Core Bound                      │ 
+     │   └─ [3] Execution ports utilization │
+     │   └─ [3] Divider                     │
+     └─ [2] Memory Bound                    │ 
+         ├─ [3] dL1 Bound                   │ 
+         ├─ [3] dL2 Bound                   │
+         ├─ [3] dL3 Bound                   │
+         └─ [3] DRAM Bound                  │
 ```
-
-```
-PMC   - Performance-Monitoring Counter
-RDPMC - Read Performance-Monitoring Counters
-PEBS  - Precise Event-Based Sampling
-LBR   - Last Branch Record
-IPT   - Intel Processor Trace (Intel, Apple M4)
-```
+<!-- .element: style="font-size:19px;" -->
 
 ----
-
-Examples
-
-- Front-end bound
-- Bad-speculation
-
-
-----
-
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// perf stat --topdown --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-// perf_event_open # kernel API for linux perf
-
-perf::report(bench[
-  perf::stat::top_down::retiring,
-  perf::stat::top_down::bad_speculation,
-  perf::stat::top_down::frontend_bound,
-  perf::stat::top_down::backend_bound
-]);
-```
-
------
 
 ```cpp
 template<class TProfiler, class... TEvents>
-concept Profiler = requires (TProfiler profiler, TEvents... events) {
-  TProfiler{events...};
+concept Profiler =
+  requires (TProfiler profiler, TEvents... events) {
+    // perf_event_open # kernel API for linux perf
+    TProfiler{events...};
 
-  bool(TProfiler::is_syscall_free);
-  bool(TProfiler::is_mulitplexing_free);
+    bool(TProfiler::is_syscall_free);
+    bool(TProfiler::is_multiplexing_free); // PMU limits
 
-  profiler.reset();
-  profiler.start();
-  profiler.stop();
+    // RDPMC - Read Performance-Monitoring Counters
+    profiler.start();
+    profiler.stop();
 
-  { profiler[events...] } -> tuple<std::ranges::range<TEvents>...>;
-};
-```
-
-----
-
-```cpp
-// Counting events
-using perf::stat::cycles;
-using perf::stat::instructions;
-using perf::stat::branch_misses;
-using perf::stat::branches;
-using perf::stat::l1_misses;
-using perf::stat::itlb_loads;
-using perf::stat::itlb_load_misses;
-// ...
-
-// Sampling events
-using perf::record::cycles;
-using perf::record::instructions;
-...
-using perf::record::mem_loads;
-using perf::record::mem_stores;
-
-// Tracing events
-using perf::trace::instructions;
-using perf::trace::cycles;
+    { profiler[events...] } -> tuple;
+  };
 ```
 
 ----
@@ -1030,12 +999,14 @@ perf::profiler stat{            // perf stat -e
   perf::stat::tsc,
   perf::stat::cycles,
   perf::stat::instructions,
+  ...
 };
 
 // Sampling
 perf::profiler record{          // perf record -b -e
   perf::record::cache_misses,
   perf::record::branch_misses,
+  ...
 };
 perf::profiler mem{             // perf mem record
   perf::record::mem_loads,
@@ -1048,13 +1019,13 @@ perf::profiler trace{           // perf record -e intel_pt/
   perf::trace::cycles,
 };
 ```
-<!-- .element: style="font-size:20px" -->
+<!-- .element: style="font-size:19px" -->
 
 ----
 
 ```cpp
 perf::profiler profiler{
-  perf::stat::tsc,                                   // RDTSC
+  perf::stat::tsc,                                   // TSC
   perf::stat:cycles, perf::stat::instructions,       // RDPMC
   perf::trace::instructions, perf::trace::cycles,    // IPT
   perf::record::mem_loads, perf::record::mem_stores  // PEBS, LBR
@@ -1062,21 +1033,19 @@ perf::profiler profiler{
 ```
 
 ```cpp
-const auto invoke = [&](auto fn, auto... ts) {
-  profiler.start();
-  perf::compiler::prevent_elision(fn(ts...));
-  profiler.stop();
-};
+profiler.start();
+// ...
+profiler.stop();
 ```
 
-```cpp
-invoke(fizz_buzz, std::rand());
+----
 
-perf::verify(profiler[perf::stat::tsc] > 0ns);
-perf::verify(profiler[perf::stat::cycles] > 0);
-perf::verify(profiler[perf::record::mem_loads] > 0);
-perf::verify(profiler[perf::trace::instructions] > 0);
-...
+```cpp
+perf::log(profiler[]);
+```
+
+```sh
+// Example output
 ```
 
 ----
@@ -1090,12 +1059,10 @@ auto upc = uops / cycles;
 auto cache_miss_rate = cache_misses / cache_references;
 auto branch_miss_rate = branch_misses / branches;
 ...
-
-using perf::stat::top_down::retiring;
-using perf::stat::top_down::bad_speculation;
-using perf::stat::top_down::frontend_bound;
-using perf::stat::top_down::backend_bound;
-...
+auto retiring = top_down::retiring / slots;
+auto bad_speculation = top_down::bad_speculation / slots;
+auto frontend_bound = top_down::frontend_bound / slots;
+auto backend_bound = top_down::backend_bound / slots;
 ```
 
 ----
@@ -1110,10 +1077,10 @@ int main() {
   bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
 
   perf::report(bench[
-    perf::stat::top_down::retiring,
-    perf::stat::top_down::bad_speculation,
-    perf::stat::top_down::frontend_bound,
-    perf::stat::top_down::backend_bound
+    perf::stat::retiring,
+    perf::stat::bad_speculation,
+    perf::stat::frontend_bound,
+    perf::stat::backend_bound
   ]);
 }
 ```
@@ -1134,65 +1101,71 @@ int main() {
 
 ----
 
-#### Machine Code Analyzer (MCA)
-<!-- .element: style="text-align:left;" -->
+```cpp
+template<class TAnalzyer, class... Ts>
+concept Analyzer = 
+  requires (TAnalyzer analyzer, Ts... ts) {
+    TAnalyzer{ts...};
+
+    // LLVM 
+    analyzer << span<instructions>;
+
+    { analyzer[ts...] } -> tuple;
+  };
+```
+
+----
 
 ```cpp
-template<class TAnalzyer, class... TEvents>
-concept Analyzer = requires (TAnalyzer analyzer, TEvents... events) {
-  TAnalyzer{events...};
-
-  analyzer << instructions;
-
-  { analyzer[events...] } -> tuple<std::ranges::range<TEvents>...>;
+perf::analyzer analyzer{
+  perf::mca::address,
+  perf::mca::encoding, 
+  perf::mca::assembly,
+  perf::mca::size,
+  perf::mca::latency,
+  perf::mca::uops,
+  perf::mca::rthroughput,
+  perf::mca::timeline,
+  perf::mca::resource_pressure,
+  perf::mca::bottleneck,
+  perf::mca::source, // requires debug symbols (-g)
+  // ...
 };
 ```
 
 ----
 
 ```cpp
-// MCA
+auto label(std::convertible_to<std::uint64_t> auto label)
+  asm volatile goto(
+    ".pushsection labels, \"aw\" \n"
+    ".quad %c0, %l[L]\n"
+    ".popsection \n"
+    : : "i"(label) : "memory" : L
+  ); L:;
+}
+```
 
-using perf::mca::address;
-using perf::mca::encoding;
-using perf::mca::size;
-using perf::mca::assembly;
-using perf::mca::uops;
-using perf::mca::latency;
-using perf::mca::rthroughput;
-using perf::mca::may_load;
-using perf::mca::may_store;
-using perf::mca::has_side_effects;
+```cpp
+extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
+extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
 
-using perf::mca::timeline;
-using perf::mca::resource_pressure;
-using perf::mca::bottleneck;
-
-using perf::mca::source; // requires debug symbols (-g)
-...
+std::unordered_map labels{&__start_labels, &__stop_labels};
 ```
 
 ----
 
 ```cpp
-perf::analyzer analyzer{perf::mca::assembly};
-
 analyzer << profiler[perf::trace::instructions];
 // analyzer << region{perf::code::labels["a"], perf::code::labels["b"]};
+perf::log(analyzer[]);
 ```
-
-```cpp
-perf::log(analyzer[perf::mca::timeline]);
-perf::log(analyzer[perf::mca::resource_pressure]);
-```
-
-<!-- .element: style="text-align:left;" -->
 
 ----
 
 ```cpp
 perf::profiler profiler{
-  perf::trace::instructions, perf::trace::cycles,
+  perf::trace::instructions, // (Intel, Apple M4)
 };
 
 const auto invoke = [&](auto fn, auto... ts) {
@@ -1219,78 +1192,18 @@ perf::annotate(analyzer[]);
 ----
 
 ```cpp
-auto label(std::convertible_to<std::uint64_t> auto label)
-  asm volatile goto(
-    ".pushsection labels, \"aw\" \n"
-    ".quad %c0, %l[L]\n"
-    ".popsection \n"
-    : : "i"(label) : "memory" : L
-  ); L:;
-}
-```
-
-```cpp
-extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
-extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
-
-std::unordered_map labels{&__start_labels, &__stop_labels};
-```
-
-----
-
-```cpp
 int main() {
   perf::runner bench{};
 
   bench(fizz_buzz/latency, 15);
   bench(fizz_buzz/latency, 5);
   bench(fizz_buzz/latency, unpredictable<int>);
-  // ...
 
   perf::annotate<perf::vsplit>(bench[perf::mca::assembly]);
 }
 ```
 
 ----
-
-```cpp
-// disassemble(labels["fn.entry"], labels["fn.exit"])
-```
-
-```
-fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz_buzz(unpredictable)/latency:
- [0] [1]                               [0] [1]                               [0] [1]
- --- ------------------------------    --- ------------------------------    --- ------------------------------
-  1. imul eax, edi, 0xeeeeeeef          1. imul eax, edi, 0xeeeeeeef          1. imul eax, edi, 0xeeeeeeef
-  2. add eax, 0x8888888                 2. add eax, 0x8888888                 2. add eax, 0x8888888
-  3. cmp eax, 0x11111111                3. cmp eax, 0x11111111                3. cmp eax, 0x11111111
-  4. jb 0x36                            4. jb 0x36                            4. jb 0x36
-  5. imul eax, edi, 0xaaaaaaab          5. imul eax, edi, 0xaaaaaaab          5. imul eax, edi, 0xaaaaaaab
-  6. add eax, 0x2aaaaaaa                6. add eax, 0x2aaaaaaa                6. add eax, 0x2aaaaaaa
-  7. cmp eax, 0x55555555                7. cmp eax, 0x55555555                7. cmp eax, 0x55555555
-  8. jb 0x2d                            8. jb 0x2d                            8. jb 0x2d
-  9. imul eax, edi, 0xcccccccd          9. imul eax, edi, 0xcccccccd          9. imul eax, edi, 0xcccccccd
- 10. add eax, 0x19999999               10. add eax, 0x19999999               10. add eax, 0x19999999
- 11. cmp eax, 0x33333333               11. cmp eax, 0x33333333               11. cmp eax, 0x33333333
- 12. lea rcx, [rip + 0x14cb]           12. lea rcx, [rip + 0x14cb]           12. lea rcx, [rip + 0x14cb]
- 13. lea rax, [rip + 0x14ce]           13. lea rax, [rip + 0x14ce]           13. lea rax, [rip + 0x14ce]
- 14. cmovb rax, rcx                    14. cmovb rax, rcx                    14. cmovb rax, rcx
- 15. jmp 0x10                          15. jmp 0x10                          15. jmp 0x10
- 16. lea rax, [rip + 0x14b3]           16. lea rax, [rip + 0x14b3]           16. lea rax, [rip + 0x14b3]
- 17. jmp 0x7                           17. jmp 0x7                           17. jmp 0x7
- 18. lea rax, [rip + 0x14b3]           18. lea rax, [rip + 0x14b3]           18. lea rax, [rip + 0x14b3]
- 19. mov qword ptr [rsp - 0x8], rax    19. mov qword ptr [rsp - 0x8], rax    19. mov qword ptr [rsp - 0x8], rax
-
- [0] index                             [0] index                             [0] index
- [1] mca.assembly # intel              [1] mca.assembly # intel              [1] mca.assembly # intel
-```
-<!-- .element: style="font-size:13px" -->
-
-----
-
-```cpp
-// disassemble(trace::instructions)
-```
 
 ```
 fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz_buzz(unpredictable)/latency:
@@ -1389,9 +1302,9 @@ perf::annotate<perf::vsplit>(bench[mca::assembly, mca::resource_pressure, mca::b
 ```cpp
 // Verify/Debug
 
-//auto sort = [](std::vector<int>& v) {
-//  std::ranges::sort(v);
-//};
+// auto sort = [](std::vector<int>& v) {
+//   std::ranges::sort(v);
+// };
 
 auto sort = []<bool debug>(std::vector<int>& v) {
   std::ranges::sort(v);
@@ -1402,7 +1315,7 @@ auto sort = []<bool debug>(std::vector<int>& v) {
 ```
 
 ```cpp
-for (auto i = 1; i < 1024; i <<= 1) {
+for (auto i = 0; i < 1024; ++i) {
   bench(sort_v0/throughput, unpredictable<int> | to<std::vector>(i));
 }
 ```
@@ -1423,7 +1336,6 @@ if (perf::info::cpu::features().contains("avx512")) {
 ----
 
 ```cpp
-//mca
 perf::verify(entry[0].cycle_dispatched);
 perf::verify(entry[0].cycle_executed);
 ```
@@ -1431,12 +1343,6 @@ perf::verify(entry[0].cycle_executed);
 ```cpp
 perf::verify(optimized == []{}); // disassemble compare
 perf::verify(optimized < []{}); // disassemble compare
-// intel_pt
-```
-
-```cpp
-auto ok(int x) { return x + 1 > 0; }
-auto ub(int x) { return x + 1 > x; }
 ```
 
 ----
