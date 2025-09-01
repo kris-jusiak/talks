@@ -67,7 +67,8 @@
   <td>
   <pre>
 (~) Frequency
- - 1 cycle (4Ghz)       0.25ns&nbsp;<br />
+ - 1 cycle (4Ghz)       0.25ns
+ - 1 cycle (5Ghz)       0.20ns&nbsp;<br />
 (⬆️) Number of transistors
  - Cores/Scalar/Cache
    ~ dL1 cache          0.50ns
@@ -103,7 +104,6 @@ System Under Test (SUT)
  │     └─ Test
  └─ Test // End-to-End: Prod-like
 ```
-<!-- .element: style="background-color:black" -->
 
 ----
 
@@ -276,7 +276,6 @@ we know the target (uOps)
 </tr>
 </table>
 
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -361,25 +360,17 @@ bench(fizz_buzz) -> 42ns // ?
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
 
+##### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+<!-- .element: style="text-align:left" -->
+
 ##### - Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 
 ```
 C++23, linux/perf, llvm/mca, gnuplot/sixel
 ```
-<!-- .element: style="margin: 2% 1%;" -->
+<!-- .element: style="margin: 2% 2%;" -->
 
-##### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
-<!-- .element: style="text-align:left" -->
-```
-TSC   - Time-Stamp-Counter
-RDPMC - Read Performance-Monitoring Counters
-IBS   - Instruction-Based Sampling
-PEBS  - Precise Event-Based Sampling
-LBR   - Last Branch Record
-IPT   - Intel Processor Trace
-```
-<!-- .element: style="margin: 2% 1%;" -->
 
 ----
 
@@ -407,22 +398,33 @@ IPT   - Intel Processor Trace
 
 ### [0] Not measuring the right thing
 <!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
-#### Timing
+#### Timing - Accurate measurements
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::stat::tsc         // time-stamp-counter (rdtsc)
-perf::stat::cpu_time    // clock_gettime (CLOCK_PROCESS_CPUTIME_ID)
-perf::stat::real_time   // std::chrono::system_clock (wall-clock-time)
-perf::stat::thread_time // clock_gettime (CLOCK_THREAD_CPUTIME_ID)
-perf::stat::steady_time // std::chrono::steady_clock (monotonic)
+[0]                     [1]                 [2]           [3]
+----------------------  ------------------- ------------- ---
+perf::stat::tsc         Time-Stamp-Counter  rdtsc/rdtscp   20
+perf::stat::real_time   Wall clock          system_clock
+perf::stat::cpu_time    Process CPU         clock_gettime
+perf::stat::thread_time Thread CPU          clock_gettime
+perf::stat::steady_time monotonic clock     steady_clock
+```
+
+```
+[0] Name
+[1] Description
+[2] Mechanism (CPU instruction, Posix function, std::chrono)
+[3] Overhead [cycles]
 ```
 
 ----
+
+#### Timing - Accurate measurements
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 auto measurement_naive_v1 = [](auto fn) {
@@ -460,13 +462,20 @@ int main() {
 
 ----
 
-### Latency vs. Throughput
+```md
+Latency
+ ├─ Time it takes for a single 
+ │  operation to complete
+ └─ ns/op
+
+Throughput
+ ├─ Total number of operations 
+ │  completed in a given amount of time
+ └─ op/s
+```
 <!-- .element: style="text-align:left" -->
 
 ----
-
-#### Latency - time it takes for a single operation to complete (ns/op)
-<!-- .element: style="text-align:left" -->
 
 ```cpp
 auto latency = []<auto Alignment>(auto fn, auto... ts) {
@@ -504,13 +513,12 @@ int main() {
 
 ----
 
-#### Throughput - total number of operations completed in a given amount of time (op/s)
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
-  perf::compiler::prevent_elision(fn(ts...));
-}
+auto throughput = []<auto Alignment>(auto fn, auto... ts) {
+  perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
+    perf::compiler::prevent_elision(fn(ts...));
+  }
+};
 ```
 
 ```cpp
@@ -518,15 +526,14 @@ perf::bench::policy::seq;
 perf::bench::policy::unseq;
 perf::bench::policy::unroll;
 perf::bench::policy::par;
-perf::bench::policy::omp;
-perf::bench::policy::cuda;
 ...
+perf::bench::policy::cuda;
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
 ----
 
-#### Data
+#### Accurate measurements
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -540,7 +547,7 @@ auto bench(fn, ts...) -> measurement;
 
 ----
 
-#### Data
+#### Accurate measurements
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -560,7 +567,7 @@ using perf::data::choice;           // probability choice
 
 ----
 
-#### Data
+#### Accurate measurements
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -624,19 +631,14 @@ int main() {
 
 ----
 
-#### Operations vs. Samples
+#### Statistically significant measurements
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto operations = [] {
+for () {
   const auto& time = *bench(*operations.min, time::timer{time::steady_clock}, fn, ts...)[] / *operations.min;
   const auto n = (std::chrono::duration_cast<std::chrono::nanoseconds>(*operations.time_budget) / time).count();
   return std::max(*operations.min, std::size_t(n));
-};
-```
-
-```cpp
-auto samples = [] {
   const auto& time = *data[time::steady_clock];
   const auto degrees_of_freedom = *samples.min - 1u;
   const auto t_score = metric::stat::t_score(*samples.confidence_level, degrees_of_freedom);
@@ -645,9 +647,12 @@ auto samples = [] {
 };
 ```
 
+##### Measurements are: NOT independent, NOT following normal distribution
+<!-- .element: style="text-align:left" -->
+
 ----
 
-#### Reporting
+#### Statistically significant measurements
 <!-- .element: style="text-align:left" -->
 
 #### mean! >  use min, median, percentiles instead
@@ -751,19 +756,8 @@ perf::plot::ecdf;
 ```
 ----
 
-#### Assuming measurements are independent
-<!-- .element: style="text-align:left" -->
-#### Assuming measurements are following normal distribution
-<!-- .element: style="text-align:left" -->
-#### Not using ratios, baseline (speedup, relative)
-<!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
-
-----
-
 #### [1] Not following structured analysis method
 <!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -797,6 +791,25 @@ perf::plot::ecdf;
          └─ [3] DRAM Bound
 ```
 <!-- .element: style="font-size:19px;" -->
+
+----
+
+#### Performance Monitoring Unit
+<!-- .element: style="text-align:left" -->
+
+```
+PMC   - Performance-Monitoring Counter
+RDPMC - Read Performance-Monitoring Counters
+PEBS  - Precise Event-Based Sampling
+LBR   - Last Branch Record
+IPT   - Intel Processor Trace
+```
+
+---
+
+```
+MCA   - Machine Code Analyzer
+```
 
 ----
 
@@ -938,11 +951,8 @@ verify(5 == instructions);
 verify(3 == instructinos);
 ```
 
-----
-
-### Difference between fast cpu and cpu which is easy to make fast and providing tools to do so (intel)
+#### Difference between fast cpu and cpu which is easy to make fast and providing tools to do so
 <!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1166,7 +1176,6 @@ invoke(fizz_buzz, std::rand());
 
 ### [3] Not verifying/testing results
 <!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1226,7 +1235,6 @@ auto ub(int x) { return x + 1 > x; }
 
 ### [3] Not having reproducible results
 <!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1380,8 +1388,6 @@ $CXX -DPERF_UEFI \
 ##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 <!-- .element: style="text-align:left" -->
 
-<!-- .slide: data-background="black" -->
-
 ----
 
 ```cpp
@@ -1389,6 +1395,11 @@ $CXX -DPERF_UEFI \
 ```
 
 <img src="images/share.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+
+----
+
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
 
 ----
 
