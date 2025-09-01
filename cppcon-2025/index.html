@@ -749,27 +749,65 @@ bench(fizz_buzz_lut/latency, unpredictable<int>);
 #### Plotting
 <!-- .element: style="text-align:left" -->
 
-#### - jupyter notebook + matplotlib - https://jupyter.org
+#### - jupyter notebook / matplotlib - https://jupyter.org
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - gnuplot + sixel - http://www.gnuplot.info / https://arewesixelyet.com
+#### - gnuplot / sixel - http://www.gnuplot.info
 <!-- .element: style="text-align:left; margin: 0 0;" -->
+  ```cpp
+  PERF_IO_PLOT_TERM='sixel'                 # terminal
+  PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
+  PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
+  PERF_IO_PLOT_TERM='wxt'                   # popup windows
+  PERF_IO_PLOT_TERM='canvas'                # html
+  PERF_IO_PLOT_TERM='png'                   # png
+
+  // https://arewesixelyet.com              # xterm -ti 340, ...
+  ```
+<!-- .element: style="text-align:left" -->
 #### - ...
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
-#### Gnuplot
+```cpp
+int main() {
+  perf::runner bench{};
+
+  bench(fizz_buzz, 15);
+  bench(fizz_buzz, unpredictable<int>);
+  bench(fizz_buzz, sequence<int>{1, 3, 5});
+  bench(fizz_buzz, range<int>{.start = 0, .stop = 15});
+
+  perf::plot::bar (bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::box (bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
+  // ...
+}
+```
+
+----
+
+#### Bar
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-PERF_IO_PLOT_TERM='sixel'                 # terminal
-PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
-PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
-PERF_IO_PLOT_TERM='wxt'                   # popup windows
-PERF_IO_PLOT_TERM='canvas'                # html
-PERF_IO_PLOT_TERM='png'                   # png
-...
+perf::plot::bar(bench[perf::time::tsc / perf::bench::operations]);
 ```
+
+<p align="left">
+<img src="images/bar1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+```sh
+PERF_IO_PLOT_TERM="dumb ansi size 150,25"
+```
+
+<p align="left">
+<img src="images/bar2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
@@ -777,39 +815,71 @@ PERF_IO_PLOT_TERM='png'                   # png
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::plot::hist;
+perf::plot::hist(bench[perf::time::tsc / perf::bench::operations]);
 ```
+
+<p align="left">
+<img src="images/hist1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
-#### Box
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::box;
+```sh
+PERF_IO_PLOT_TERM="dumb ansi size 150,25"
 ```
+
+<p align="left">
+<img src="images/hist2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
-#### Bar / ErrorBar
+#### Box / ErrorBar
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::plot::bar; // show error bars (show where the previous one could be slower)
+// perf::plot::complexity (big0)
+// show error bars (show where the previous one could be slower)
+perf::plot::box(bench[perf::time::tsc / perf::bench::operations]);
 ```
 
-```cpp
-perf::plot::complexity (big0)
-```
+<p align="left">
+<img src="images/box1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
-#### [Empirical distribution function](https://en.wikipedia.org/wiki/Empirical_distribution_function)
+```sh
+PERF_IO_PLOT_TERM="dumb ansi size 150,25"
+```
+
+<p align="left">
+<img src="images/box2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+#### Empirical distribution function
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::plot::ecdf;
+perf::plot::ecdf(bench[perf::time::tsc / perf::bench::operations]);
 ```
+
+<p align="left">
+<img src="images/ecdf1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+```sh
+PERF_IO_PLOT_TERM="dumb ansi size 150,25"
+```
+
+<p align="left">
+<img src="images/ecdf2.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
 ----
 
 ### [1] Not following structured analysis method
