@@ -288,7 +288,7 @@ we know the target (uOps)
 * Understanding
 * Isolation
 */
-auto bench(auto code) -> measurement;
+auto bench(auto code) -> measurements;
 ```
 
 ----
@@ -297,12 +297,12 @@ auto bench(auto code) -> measurement;
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[[gnu::optimize("O3")]] auto fizz_buzz(int n) {
+auto fizz_buzz = [] [[gnu::optimize("O3")]] (int n) {
        if (n % 15 == 0) { return "FizzBuzz"; }
   else if (n % 3  == 0) { return "Fizz";     }
   else if (n % 5  == 0) { return "Buzz";     }
   return "Unknown";
-}
+};
 ```
 ```cpp
 bench(fizz_buzz) -> 42ns // ?
@@ -336,8 +336,7 @@ bench(fizz_buzz) -> 42ns // ?
 <table>
 <tr>
   <td>
- <pre><code>fizz_buzz:
- imul ...
+ <pre><code>main:
  mov  ...
  cmp  ...
  jbe  ...
@@ -357,6 +356,11 @@ bench(fizz_buzz) -> 42ns // ?
 
 ----
 
+### [0] Not having accurate measurements
+<!-- .element: style="text-align:left" -->
+
+----
+
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
 
@@ -370,7 +374,6 @@ bench(fizz_buzz) -> 42ns // ?
 C++23, linux/perf, llvm/mca, gnuplot/sixel
 ```
 <!-- .element: style="margin: 2% 2%;" -->
-
 
 ----
 
@@ -396,8 +399,15 @@ C++23, linux/perf, llvm/mca, gnuplot/sixel
 
 ----
 
-### [0] Not measuring the right thing
+#### Timing - Accurate measurements
 <!-- .element: style="text-align:left" -->
+
+```cpp
+auto bench(auto code) -> nanoseconds {
+  auto start = now(); // ?
+  // ...
+}
+```
 
 ----
 
@@ -417,14 +427,19 @@ perf::stat::steady_time monotonic clock     steady_clock
 ```
 [0] Name
 [1] Description
-[2] Mechanism (CPU instruction, Posix function, std::chrono)
+[2] Mechanism
 [3] Overhead [cycles]
 ```
-
 ----
 
 #### Timing - Accurate measurements
 <!-- .element: style="text-align:left" -->
+
+```cpp
+perf::verify(perf::compiler::is_elided(
+  [] { fizz_buzz(42); }
+);
+```
 
 ```cpp
 auto measurement_naive_v1 = [](auto fn) {
@@ -464,16 +479,36 @@ int main() {
 
 ```md
 Latency
- ├─ Time it takes for a single 
+ ├─ Time it takes for a single
  │  operation to complete
+ ├─ Acceleration from 0–60 mph
  └─ ns/op
 
 Throughput
- ├─ Total number of operations 
+ ├─ Total number of operations
  │  completed in a given amount of time
+ ├─ Total distance traveled in 1 hour
  └─ op/s
 ```
 <!-- .element: style="text-align:left" -->
+
+----
+
+```cpp
+auto what_is_that_measuring = [](auto fn, auto... ts) {
+  for (auto i = 0u; i < N; ++i) {
+    perf::compiler::prevent_elision(fn(ts...));
+  } // out of order, speculative execution, ...
+};
+```
+
+----
+
+```cpp
+auto latency    = nanoseconds(total_time) / operations;   // ns/op
+auto throughupt = operations / seconds(total_time);       // op/s
+auto throughupt = items_processed / seconds(total_time);  // Gb/s
+```
 
 ----
 
@@ -483,6 +518,11 @@ auto latency = []<auto Alignment>(auto fn, auto... ts) {
     checksum ^= fn(checksum ^ ts...); // data dependency
     std::atomic_thread_fence(memory_order);
   }
+};
+```
+```cpp
+auto latency = []<auto Alignment>(auto fn, auto... ts) {
+  unroll<2x> - unrll<1x>; // uops
 };
 ```
 
@@ -501,7 +541,7 @@ int main() {
 ```
 
 ```
-/// all runs
+// all runs
 ```
 
 ----
@@ -538,37 +578,27 @@ perf::bench::policy::cuda;
 
 ```cpp
 /**
-* branch prediction state (10'000 1/0 branches learn)
-* CPU::BTB::set(ip) = true;
-* CPU::ALU.1 = true;
+* setup() {
+*   // cpu[0].btb(ip) = true;           # can learn 10'000 1/0 branches
+*   // cpu[0].port(ALU.1) = true;       # enable/disable
+*   // cpu[0].cache<dL1>(addr) = value; # enable/disable
+*   // ...
+* }
 */
-auto bench(fn, ts...) -> measurement;
-```
-
-----
-
-#### Accurate measurements
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// fixed
-using perf::data::sequence;         // sequence
-using perf::data::range;            // range
+auto bench(auto fn, auto... ts) -> measurements {
+  // ...
+  for (auto i = 0u; i < N; ++i) {
+    fn(ts[i]...); // different inputs
+  }
+  // ...
+}
 ```
 
 ```cpp
-// random
-using perf::data::unpredictable;    // not elided and not predicted
-using perf::data::uniform;          // uniform distribution
-using perf::data::bernoulli;        // bernoulli distribution
-using perf::data::normal;           // normal distribution
-using perf::data::choice;           // probability choice
+// shuffle(measure(repeat(fn)) -> measure(repeat(shuffle(fn));
 ```
 
 ----
-
-#### Accurate measurements
-<!-- .element: style="text-align:left" -->
 
 ```cpp
 // constant
@@ -577,18 +607,18 @@ bench(fizz_buzz/latency, std::integral_constant<int, 15>{});
 
 ```cpp
 // fixed
-bench(fizz_buzz/latency, 0);
-bench(fizz_buzz/latency, 1);
 bench(fizz_buzz/latency, 3);
 bench(fizz_buzz/latency, 5);
 bench(fizz_buzz/latency, 15);
+for (auto i = 0; i < N; ++i) {
+  bench(fizz_buzz/latency, i);
+}
 ```
 
 ```cpp
-// fixed...
-bench(fizz_buzz/latency, sequence<int>{{1, 3, 5}});
-bench(fizz_buzz/latency, sequence<int>{{3, 1, 5}});
-bench(fizz_buzz/latency, sequence<int>{{0, 1, 5, 3, 15, 0}});
+bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
+bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
+bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
 bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 10, .step = 1});
 ```
 
@@ -602,37 +632,44 @@ bench(fizz_buzz/latency, choice<int>{});
 
 ----
 
-#### Warm/Cold
-<!-- .element: style="text-align:left" -->
-
-```cpp
-latency = [] {
-  fn(ts...);
-};
-```
-
-----
-
 #### Optimizations
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int main() {
-  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
-  auto target        = [] [[gnu::target("avx512f")]] { };
-  auto aligned_fn    = [] [[gnu::aligned(16)]] { };
-  auto aligned_loop  = [] {
-    perf::code::align(64) for (;;) { // clang::code_align(64)
-      // ...
-    }
-  };
-}
+auto fizz_buzz_v1 = [] [[gnu::optimize("O1")]] (int n);
+auto fizz_buzz_v2 = [] [[gnu::optimize("O2")]] (int n);
+auto fizz_buzz_v3 = [] [[gnu::optimize("O3,fast-math")]] (int n);
+auto fizz_buzz_v4 = [] [[gnu::target("avx512f")]] (int n);
+auto fizz_buzz_v5 = [] [[gnu::aligned("16")]] (int n);
+auto fizz_buzz_v6 = [] [[gnu::always_inline]] (int n) {
+  // ...
+  perf::code::align(64); // clang::code_align(64)
+  // ...
+};
+...
+```
+
+----
+
+#### Warm/Cold
+<!-- .element: style="text-align:left" -->
+
+```cpp
+auto latency{.setup = [] { fn(ts...); } ; // warmup
+auto latency{.teardown = [] { flush::cache::; } //
 ```
 
 ----
 
 #### Statistically significant measurements
 <!-- .element: style="text-align:left" -->
+
+```cpp
+// Measurements are NOT independent
+// Measurements are NOT following normal distribution
+```
+
+----
 
 ```cpp
 for () {
@@ -647,34 +684,30 @@ for () {
 };
 ```
 
-##### Measurements are: NOT independent, NOT following normal distribution
 <!-- .element: style="text-align:left" -->
 
 ----
 
-#### Statistically significant measurements
-<!-- .element: style="text-align:left" -->
-
-#### mean! >  use min, median, percentiles instead
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::metric::min;         perf::metric::percentile;
-perf::metric::max;         perf::metric::p10;
-perf::metric::mean;        perf::metric::p50;
-perf::metric::geomean;     perf::metric::p90;
-perf::metric::median;      perf::metric::p99;
-```
+using perf::metric::min;
+using perf::metric::max;
+using perf::metric::mean;
+using perf::metric::geomean;     // geometric mean
+using perf::metric::median;
 
-```cpp
-perf::metric::variance;
-perf::metric::stddev;      // degrees_of_freedom = 1
-perf::metric::sem;         // standard error
-perf::metric::mae;         // median absolute errror
-perf::metric::mad;         // median absolute deviation
-perf::metric::cv;          // coefficient of variation
-perf::metric::z_score;
-perf::metric::t_score;
+using perf::metric::percentile;
+using perf::metric::p10;
+using perf::metric::p50;
+using perf::metric::p75;
+using perf::metric::p90;
+using perf::metric::p99;
+
+using perf::metric::stddev;      // degrees_of_freedom = 1
+using perf::metric::variance;
+using perf::metric::sem;         // standard error
+using perf::metric::mae;         // median absolute errror
+using perf::metric::mad;         // median absolute deviation
+using perf::metric::cv;          // coefficient of variation
 ```
 
 ----
@@ -683,10 +716,30 @@ perf::metric::t_score;
 perf::report(bench[perf::stat::tsc], min, median, p90, p99);
 ```
 
+```cpp
+// min, median, percentiles instead of mean
+```
+
 ----
 
 #### baseline (speedup, relative)
 <!-- .element: style="text-align:left" -->
+
+```cpp
+auto fizz_buzz_lut = [] [[gnu::optimize("O3")]] (int n) {
+  static constexpr std::array lut{
+    "Unknown","Unknown","Fizz","Unknown","Buzz",
+    "Fizz","Unknown","Unknown","Fizz","Buzz",
+    "Unknown","Fizz","Unknown","Unknown","FizzBuzz"
+  };
+  return lut[(n-1) % 15];
+};
+```
+
+```cpp
+bench(baseline(fizz_buzz/latency), unpredictable<int>);
+bench(fizz_buzz_lut/latency, unpredictable<int>);
+```
 
 ----
 
@@ -756,7 +809,7 @@ perf::plot::ecdf;
 ```
 ----
 
-#### [1] Not following structured analysis method
+### [1] Not following structured analysis method
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -794,8 +847,12 @@ perf::plot::ecdf;
 
 ----
 
-#### Performance Monitoring Unit
+#### Performance Monitoring Unit (PMU)
 <!-- .element: style="text-align:left" -->
+
+```cpp
+// Speed vs. Control vs. Understanding
+```
 
 ```
 PMC   - Performance-Monitoring Counter
@@ -803,12 +860,6 @@ RDPMC - Read Performance-Monitoring Counters
 PEBS  - Precise Event-Based Sampling
 LBR   - Last Branch Record
 IPT   - Intel Processor Trace
-```
-
----
-
-```
-MCA   - Machine Code Analyzer
 ```
 
 ----
@@ -951,9 +1002,6 @@ verify(5 == instructions);
 verify(3 == instructinos);
 ```
 
-#### Difference between fast cpu and cpu which is easy to make fast and providing tools to do so
-<!-- .element: style="text-align:left" -->
-
 ----
 
 #### Stat / Metrics
@@ -1031,6 +1079,7 @@ static_assert(requires {
 #### static analysis
 <!-- .element: style="text-align:left;" -->
 
+
 ```cpp
 using perf::mca::assembly;
 using perf::mca::encoding;
@@ -1050,7 +1099,7 @@ using perf::mca::source;
 
 ----
 
-#### Static-analysis
+#### Machine Code Analyzer (MCA)
 <!-- .element: style="text-align:left;" -->
 
 #### - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
@@ -1174,7 +1223,7 @@ invoke(fizz_buzz, std::rand());
 
 ----
 
-### [3] Not verifying/testing results
+### [3] Not continuously verifying/testing 
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -1183,7 +1232,6 @@ invoke(fizz_buzz, std::rand());
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int main() {
 auto sort = []<bool debug>(std::vector<int>& v) {
   std::ranges::sort(v);
   if constexpr (debug) { // doesn't affect benchmarking
@@ -1194,7 +1242,7 @@ auto sort = []<bool debug>(std::vector<int>& v) {
 
 ```cpp
 for (auto i = 1; i < 1024; i <<= 1) {
-  bench(sort, unpredictable<int> | to<std::vector>(i));
+  bench(sort/throughupt, unpredictable<int> | to<std::vector>(i));
 }
 ```
 ----
@@ -1207,12 +1255,12 @@ perf::verify(instructions.size)
 perf::verify(asm.instruction == "mov")
 perf::verify(asm.instruction.count < non optimizaed)
 perf::verify(as.minstruciton.count == c++optimization)
+
+if (perf::info::cpu::features().contains("avx512")) {
+}
 ```
 
 ----
-
-#### Testing
-<!-- .element: style="text-align:left" -->
 
 ```cpp
 //mca
@@ -1235,6 +1283,14 @@ auto ub(int x) { return x + 1 > x; }
 
 ### [3] Not having reproducible results
 <!-- .element: style="text-align:left" -->
+
+
+```cpp
+// $CXX      // compiler
+int main() { // kernel
+  // ...     // CPU
+}
+```
 
 ----
 
@@ -1276,13 +1332,7 @@ int main() {
   perf::verify(perf::info::compiler::NDEBUG);
   perf::verify(perf::info::compiler::OPTIMIZED);
   perf::verify(not perf::info::cpu::freq_scaling);
-  perf::verify(perf::info::cpu::features().contains("avx512"));
-```
-
-```cpp
-  perf::verify(perf::compiler::is_elided(
-    [] { fizz_buzz(42); }
-  );
+  // ...
 }
 ```
 
@@ -1315,25 +1365,28 @@ log
 
 ----
 
-#### Reducing Noise
+#### Noise reduction
 <!-- .element: style="text-align:left" -->
 
-```sh
-disable hyperhtread
 ```
-
-```cpp
-perf::thread::set_affinity(2); // 0, 1 likely will have more)
-perf::thread::set_priority();
+# Disable Frequency Scaling
+# Disable Processor Boosting
+# Disable Turbo Mode
+# Disable Hyper-threading
+# ...
+perf/scripts/tune.sh # pyperf system tune
 ```
 <!-- .element: style="text-align:left" -->
 
 ---
 
+```cpp
+int main() {
+  perf::sys::thread::set_affinity(self, 2); // 0, 1 used by the kernel
+  perf::sys::thread::set_priority(self, max);
+  // ...
+}
 ```
-pyperf system tune # pip install pyperf
-```
-<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -1382,7 +1435,7 @@ $CXX -DPERF_UEFI \
 
 ----
 
-### [5] Not documenting/sharing results
+### Code can tell you what works, not what doesn't
 <!-- .element: style="text-align:left" -->
 
 ##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
@@ -1391,7 +1444,7 @@ $CXX -DPERF_UEFI \
 ----
 
 ```cpp
-./fizz_buzz.out | scripts/export.sh markdown | gh gist create --public
+./fizz_buzz | perf/scripts/export.sh markdown | gh gist create --public
 ```
 
 <img src="images/share.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
