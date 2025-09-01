@@ -401,15 +401,15 @@ C++23, linux/perf, llvm/mca, gnuplot/sixel
 
 ```cpp
 auto bench(auto code) -> nanoseconds {
-  auto start = now(); // ?
-  // ...
+  auto start = now();
+  code();
+  auto end = now();
+  return end - now;
 }
 ```
 
-----
-
 ```cpp
-Time                      Description           Mechanism
+Time                      Description           now()
 ─────────────────────────────────────────────────────────────
 perf::stat::tsc           Time-Stamp-Counter    rdtsc/rdtscp
 perf::stat::real_time     Wall clock            system_clock
@@ -422,44 +422,48 @@ perf::stat::steady_time   monotonic clock       steady_clock
 ----
 
 ```cpp
-// Timing
+// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtsc
+static constexpr auto rdtsc() {
+  std::uint64_t t;
+  asm volatile(
+    "lfence\n"
+    "rdtsc\n"
+    "shl $32, %%rdx\n"
+    "or %%rdx, %0\n"
+    "lfence\n"
+    : "=a"(t) :: "rdx", "memory", "cc"
+  );
+  return t;
+}
 
-perf::verify(perf::compiler::is_elided(
-  [] { fizz_buzz(42); }
-);
+// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtscp
+static constexpr auto rdtscp() {
+  std::uint64_t t;
+  asm volatile(
+    "rdtscp\n\t"
+    "shl $32, %%rdx\n\t"
+    "or %%rdx, %0\n\t"
+    "lfence"
+    : "=a"(t) :: "rcx", "rdx", "memory", "cc"
+  );
+  return t;
+}
 ```
-
-```cpp
-auto measurement_naive_v1 = [](auto fn) {
-  auto n = std::rand();
-  chorono::system_clock::now();
-  perf::compiler::prevent_elision(fn, n));
-  chorono::system_clock::now();
-};
-```
-
-```cpp
-auto measurement_naive_v2 [](auto fn, auto...ts) {
-  chorono::system_clock::now();
-  for (auto i = 0 ; i < N; ++i) {
-    perf::compiler::prevent_elision(fn(fizz_buzz, i));
-  }
-};
-```
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
 ```cpp
-import perf;
+auto bench(auto fn, auto...ts) -> nanoseconds {
+  auto start = now();
 
-int main() {
-  perf::runner bench{};
+  for (auto i = 0 ; i < iterations; ++i) {
+    prevent_elision(fn(ts...));
+  } // out of order, speculative execution, ...
 
-  bench(fizz_buzz/measurement_naive_v1);
-  bench(fizz_buzz/measurement_naive_v2);
-  bench(fizz_buzz/measurement_naive_v3);
+  auto end = now();
 
-  perf::report(bench[perf::stat::tsc]);
+  return (end - now) / iterations; // what is being measured here?
 }
 ```
 
@@ -476,40 +480,24 @@ Throughput
  ├─ Total number of operations
  │  completed in a given amount of time
  ├─ Total distance traveled in 1 hour
- └─ op/s
+ └─ op/s / Gb/s, ...
 ```
 <!-- .element: style="text-align:left" -->
 
 ----
 
 ```cpp
-auto what_is_that_measuring = [](auto fn, auto... ts) {
-  for (auto i = 0u; i < N; ++i) {
-    perf::compiler::prevent_elision(fn(ts...));
-  } // out of order, speculative execution, ...
-};
-```
-
-----
-
-```cpp
-auto latency    = nanoseconds(total_time) / operations;   // ns/op
-auto throughupt = operations / seconds(total_time);       // op/s
-auto throughupt = items_processed / seconds(total_time);  // Gb/s
-```
-
-----
-
-```cpp
-auto latency = []<auto Alignment>(auto fn, auto... ts) {
-  perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
-    checksum ^= fn(checksum ^ ts...); // data dependency
-    std::atomic_thread_fence(memory_order);
+template<std::align_val_t Alignment>
+[[gnu::section("latency")]] [[gnu::aligned(16u)]] 
+auto latency(auto fn, auto... ts) {
+  perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
+    checksum ^= fn(checksum ^ ts...);       // data dependency
+    std::atomic_thread_fence(memory_order); // wait for memory writes
   }
-};
+}
 ```
 ```cpp
-auto latency = []<auto Alignment>(auto fn, auto... ts) {
+auto uops_latency(auto fn, auto... ts) {
   unroll<2x> - unrll<1x>; // https://uops.info/table.html
 };
 ```
@@ -517,6 +505,8 @@ auto latency = []<auto Alignment>(auto fn, auto... ts) {
 ----
 
 ```cpp
+import perf;
+
 int main() {
   perf::runner bench{};
 
@@ -543,7 +533,7 @@ int main() {
 
 ```cpp
 auto throughput = []<auto Alignment>(auto fn, auto... ts) {
-  perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
+  perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
     perf::compiler::prevent_elision(fn(ts...));
   }
 };
@@ -557,7 +547,7 @@ perf::bench::policy::par;
 ...
 perf::bench::policy::cuda;
 ```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -566,17 +556,12 @@ perf::bench::policy::cuda;
 
 ```cpp
 /**
-* setup() {
-*   // cpu[0].btb(ip) = true;           # can learn 10'000 1/0 branches
-*   //                                  # [first-time] backwards branches are taken
-*   // cpu[0].port(ALU.1) = true;       # enable/disable
-*   // cpu[0].cache<dL1>(addr) = value; # enable/disable
-*   // ...
-* }
+* branch prediction can learn 10'000 1/0 branches
 */
-auto bench(auto fn, auto... ts) -> measurements {
+auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
-  for (auto i = 0u; i < N; ++i) {
+  for (auto i = 0u; i < iterations; ++i) {
+    // fn(ts...);
     fn(ts[i]...); // different inputs
   }
   // ...
@@ -597,7 +582,7 @@ bench(fizz_buzz/latency, std::integral_constant<int, 15>{});
 ```
 
 ```cpp
-// predictable
+// fixed
 bench(fizz_buzz/latency, 3);
 bench(fizz_buzz/latency, 5);
 bench(fizz_buzz/latency, 15);
@@ -607,14 +592,15 @@ for (auto i = 0; i < N; ++i) {
 }
 ```
 
+----
+
 ```cpp
+// predictable
 bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
 bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
 bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
-bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 10, .step = 1});
+bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
 ```
-
-----
 
 ```cpp
 // unpredictable
