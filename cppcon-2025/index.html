@@ -67,14 +67,14 @@
   <td>
   <pre>
 (~) Frequency
- - 1 cycle (4Ghz)      0.25ns&nbsp;<br />
+ - 1 cycle (4Ghz)       0.25ns&nbsp;<br />
 (⬆️) Number of transistors
- - Cores/Cache/IPC
-   ~ dL1 cache         0.50ns
-   ~ dL2 cache         3.00ns
-   ~ Branch Mispredict 3.00ns
-   ~ dL3 cache        10.00ns
-   ~ DRAM             70.00ns
+ - Cores/Scalar/Cache
+   ~ dL1 cache          0.50ns
+   ~ dL2 cache          3.00ns
+   ~ Branch Mispredict  3.00ns
+   ~ dL3 cache         10.00ns
+   ~ DRAM              70.00ns
 </pre>
   </td>
   <td>
@@ -158,7 +158,7 @@ perf stat/record ... --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 import prof; // https://github.com/qlibs/prof
 
 int main() {
-  prof::callgrind profiler{"profile"};
+  prof::callgrind profiler{"simulation"};
 
   while (true) {
     profiler.reset();
@@ -358,29 +358,6 @@ bench(fizz_buzz) -> 42ns // ?
 
 ----
 
-  perf::thread::set(thread::self, // 0, 1: used by kernel
-    {priority, max},
-    {affinity, 2},
-    {numa_node, 1}
-  );
-
-  set<cache.mesi> = 1
-  auto time(); // 0 overhead
-  fn(ts...);
-  time();
-
-  perf::sys::enable_huge_pages();
-  perf::memory::cache::disable();
-  perf::memory::pre_fault();
-  perf::memory::pollute_heap();
-  perf::cache::flush(addr);           // clflush
-  perf::cpu::branch::set(ip) = true; // NOT AVAIL!
-  perf::cpu::port(ADL1.) = true;    // NOT AVAIL!
-}
-```
-
-----
-
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
 
@@ -434,79 +411,51 @@ IPT   - Intel Processor Trace
 
 ----
 
-```cpp
-using perf::data::sequence;         // sequence
-using perf::data::range;            // range
-```
-
-```cpp
-using perf::data::unpredictable;    // not elided and not predicted
-using perf::data::uniform;          // uniform distribution
-using perf::data::bernoulli;        // bernoulli distribution
-using perf::data::normal;           // normal distribution
-using perf::data::choice;           // probability choice
-```
-
-----
-
-
-```cpp
-bench(fizz_buzz, 0); 
-bench(fizz_buzz, 1); 
-bench(fizz_buzz, 3); 
-bench(fizz_buzz, 5); 
-bench(fizz_buzz, 15); 
-bench(fizz_buzz, sequence<int>{{1, 3, 5}}); 
-bench(fizz_buzz, sequence<int>{{3, 1, 5}}); 
-bench(fizz_buzz, sequence<int>{{1, 1, 5}}); 
-bench(fizz_buzz, range<int>{.start = 0, .stop = 10, .step = 1}); 
-```
-
-```cpp
-bench(fizz_buzz, unpredictable<int>); 
-bench(fizz_buzz, uniform<int>{.min = 0, .max = 15}); 
-bench(fizz_buzz, normal<int>{}); 
-bench(fizz_buzz, choice<int>{}); 
-```
-
-----
-
-not having significnt number of samples
-
-```cpp
-// CPU::BTB::set(ip) = true;
-// CPU::ALU.1 = true;
-// ...
-```
-
-```cpp
-{1, 3, 5}
-```
-
-```cpp
-bench(to_string, perf::data::unpredictable);
-// branch prediction state (10'000 1/0 branches learn)
-// random
-for (auto i = 0; i < 10; ++i) {
-  bench(to_string, perf::data::unpredictable);
-}
-```
-
-----
-
-#### warm/cold/alignment/...
+#### Timing
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+perf::stat::tsc         // time-stamp-counter (rdtsc)
+perf::stat::cpu_time    // clock_gettime (CLOCK_PROCESS_CPUTIME_ID)
+perf::stat::real_time   // std::chrono::system_clock (wall-clock-time)
+perf::stat::thread_time // clock_gettime (CLOCK_THREAD_CPUTIME_ID)
+perf::stat::steady_time // std::chrono::steady_clock (monotonic)
+```
+
+----
+
+```cpp
+auto measurement_naive_v1 = [](auto fn) {
+  auto n = std::rand();
+  chorono::system_clock::now();
+  perf::compiler::prevent_elision(fn, n));
+  chorono::system_clock::now();
+};
+```
+
+```cpp
+auto measurement_naive_v2 [](auto fn, auto...ts) {
+  chorono::system_clock::now();
+  for (auto i = 0 ; i < N; ++i) {
+    perf::compiler::prevent_elision(fn(fizz_buzz, i));
+  }
+};
+```
+
+----
+
+```cpp
+import perf;
+
 int main() {
-  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
-  auto target        = [] [[gnu::target("avx512f")]] { };
-  auto aligned_fn    = [] [[gnu::aligned(16)]] { };
-  auto aligned_loop  = [] {
-    perf::code::align(64) for (;;) { // clang::code_align(64)
-      // ...
-    }
-  };
+  perf::runner bench{};
+
+  bench(fizz_buzz/measurement_naive_v1);
+  bench(fizz_buzz/measurement_naive_v2);
+  bench(fizz_buzz/measurement_naive_v3);
+
+  perf::report(bench[perf::stat::tsc]);
+}
 ```
 
 ----
@@ -514,30 +463,36 @@ int main() {
 ### Latency vs. Throughput
 <!-- .element: style="text-align:left" -->
 
-
-bench(fizz_buzz/latency)
 ----
 
 #### Latency - time it takes for a single operation to complete (ns/op)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
-  checksum ^= fn(checksum ^ ts...); // data dependency
-  std::atomic_thread_fence(memory_order);
-}
+auto latency = []<auto Alignment>(auto fn, auto... ts) {
+  perf::code::align(Alignment) for (auto i = 0u; i < N; ++i) {
+    checksum ^= fn(checksum ^ ts...); // data dependency
+    std::atomic_thread_fence(memory_order);
+  }
+};
 ```
 
 ----
 
-#### [uops.info] [A Low-Overhead Tool for Running Microbenchmarks](https://arxiv.org/abs/1911.03282)
-<!-- .element: style="text-align:left" -->
+```cpp
+int main() {
+  perf::runner bench{};
+
+  bench(fizz_buzz/latency);
+  bench(fizz_buzz/latency);
+  bench(fizz_buzz/latency);
+
+  perf::report(bench[perf::stat::tsc]);
+}
+```
 
 ```
-perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
-  perf::unroll<M*2>(fn) -
-  perf::unroll<M*1>(fn)
-}
+/// all runs
 ```
 
 ----
@@ -571,21 +526,238 @@ perf::bench::policy::cuda;
 
 ----
 
+#### Data
+<!-- .element: style="text-align:left" -->
+
+```cpp
+/**
+* branch prediction state (10'000 1/0 branches learn)
+* CPU::BTB::set(ip) = true;
+* CPU::ALU.1 = true;
+*/
+auto bench(fn, ts...) -> measurement;
+```
+
+----
+
+#### Data
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// fixed
+using perf::data::sequence;         // sequence
+using perf::data::range;            // range
+```
+
+```cpp
+// random
+using perf::data::unpredictable;    // not elided and not predicted
+using perf::data::uniform;          // uniform distribution
+using perf::data::bernoulli;        // bernoulli distribution
+using perf::data::normal;           // normal distribution
+using perf::data::choice;           // probability choice
+```
+
+----
+
+#### Data
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// constant
+bench(fizz_buzz/latency, std::integral_constant<int, 15>{});
+```
+
+```cpp
+// fixed
+bench(fizz_buzz/latency, 0);
+bench(fizz_buzz/latency, 1);
+bench(fizz_buzz/latency, 3);
+bench(fizz_buzz/latency, 5);
+bench(fizz_buzz/latency, 15);
+```
+
+```cpp
+// fixed...
+bench(fizz_buzz/latency, sequence<int>{{1, 3, 5}});
+bench(fizz_buzz/latency, sequence<int>{{3, 1, 5}});
+bench(fizz_buzz/latency, sequence<int>{{0, 1, 5, 3, 15, 0}});
+bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 10, .step = 1});
+```
+
+```cpp
+// random
+bench(fizz_buzz/latency, unpredictable<int>);
+bench(fizz_buzz/latency, uniform<int>{.min = 0, .max = 15});
+bench(fizz_buzz/latency, normal<int>{});
+bench(fizz_buzz/latency, choice<int>{});
+```
+
+----
+
+#### Warm/Cold
+<!-- .element: style="text-align:left" -->
+
+```cpp
+latency = [] {
+  fn(ts...);
+};
+```
+
+----
+
+#### Optimizations
+<!-- .element: style="text-align:left" -->
+
 ```cpp
 int main() {
-  perf::runner bench{perf::bench::latency{}};
-
-  bench(fizz_buzz, 3);
-  bench(fizz_buzz, 5);
-  bench(fizz_buzz, 15);
-
-  perf::report(bench[perf::stat::tsc]);
+  auto optimize      = [] [[gnu::optimize("O3,fast-math")]] { }; // gcc
+  auto target        = [] [[gnu::target("avx512f")]] { };
+  auto aligned_fn    = [] [[gnu::aligned(16)]] { };
+  auto aligned_loop  = [] {
+    perf::code::align(64) for (;;) { // clang::code_align(64)
+      // ...
+    }
+  };
 }
 ```
 
+----
+
+#### Operations vs. Samples
+<!-- .element: style="text-align:left" -->
+
+```cpp
+auto operations = [] {
+  const auto& time = *bench(*operations.min, time::timer{time::steady_clock}, fn, ts...)[] / *operations.min;
+  const auto n = (std::chrono::duration_cast<std::chrono::nanoseconds>(*operations.time_budget) / time).count();
+  return std::max(*operations.min, std::size_t(n));
+};
 ```
-/// all runs
+
+```cpp
+auto samples = [] {
+  const auto& time = *data[time::steady_clock];
+  const auto degrees_of_freedom = *samples.min - 1u;
+  const auto t_score = metric::stat::t_score(*samples.confidence_level, degrees_of_freedom);
+  const auto margin_of_error = (1. - *samples.confidence_level) * metric::stat::mean(time);
+  return std::min(std::max(std::size_t(std::ceil(std::pow((t_score * metric::stat::stddev(time)) / margin_of_error, 2.)) - *samples.min), *samples.min), *samples.max);
+};
 ```
+
+----
+
+#### Reporting
+<!-- .element: style="text-align:left" -->
+
+#### mean! >  use min, median, percentiles instead
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::metric::min;         perf::metric::percentile;
+perf::metric::max;         perf::metric::p10;
+perf::metric::mean;        perf::metric::p50;
+perf::metric::geomean;     perf::metric::p90;
+perf::metric::median;      perf::metric::p99;
+```
+
+```cpp
+perf::metric::variance;
+perf::metric::stddev;      // degrees_of_freedom = 1
+perf::metric::sem;         // standard error
+perf::metric::mae;         // median absolute errror
+perf::metric::mad;         // median absolute deviation
+perf::metric::cv;          // coefficient of variation
+perf::metric::z_score;
+perf::metric::t_score;
+```
+
+----
+
+```cpp
+perf::report(bench[perf::stat::tsc], min, median, p90, p99);
+```
+
+----
+
+#### baseline (speedup, relative)
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Plotting
+<!-- .element: style="text-align:left" -->
+
+#### - jupyter notebook + matplotlib - https://jupyter.org
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### - gnuplot + sixel - http://www.gnuplot.info / https://arewesixelyet.com
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+#### - ...
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+----
+
+#### Gnuplot
+<!-- .element: style="text-align:left" -->
+
+```cpp
+PERF_IO_PLOT_TERM='sixel'                 # terminal
+PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
+PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
+PERF_IO_PLOT_TERM='wxt'                   # popup windows
+PERF_IO_PLOT_TERM='canvas'                # html
+PERF_IO_PLOT_TERM='png'                   # png
+...
+```
+
+----
+
+#### Histogram
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::hist;
+```
+
+----
+
+#### Box
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::box;
+```
+
+----
+
+#### Bar / ErrorBar
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::bar; // show error bars (show where the previous one could be slower)
+```
+
+```cpp
+perf::plot::complexity (big0)
+```
+
+----
+
+#### [Empirical distribution function](https://en.wikipedia.org/wiki/Empirical_distribution_function)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::ecdf;
+```
+----
+
+#### Assuming measurements are independent
+<!-- .element: style="text-align:left" -->
+#### Assuming measurements are following normal distribution
+<!-- .element: style="text-align:left" -->
+#### Not using ratios, baseline (speedup, relative)
+<!-- .element: style="text-align:left" -->
+<!-- .slide: data-background="black" -->
 
 ----
 
@@ -628,17 +800,14 @@ int main() {
 
 ----
 
-profiler vs ana
-
-
-
-
+#### profiler
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::report(bench[
-  perf::stat::top_down::retiring, 
-  perf::stat::top_down::bad_speculation, 
-  perf::stat::top_down::frontend_bound, 
+  perf::stat::top_down::retiring,
+  perf::stat::top_down::bad_speculation,
+  perf::stat::top_down::frontend_bound,
   perf::stat::top_down::backend_bound
 ]);
 ```
@@ -647,8 +816,6 @@ perf::report(bench[
 
 ```cpp
 timers, counters (metrics)
-report median, mean, p90
-plotting
 profiler/analyzer
 profile vs analyze
 trace vs disassemble
@@ -679,19 +846,6 @@ static_assert(requires {
   { profiler[] } -> tuple;
   { profiler[ts...] } -> tuple;
 });
-```
-
-----
-
-#### Timing data is usually skewed, not symmetric
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::stat::tsc         // time-stamp-counter (rdtsc)
-perf::stat::cpu_time    // clock_gettime (CLOCK_PROCESS_CPUTIME_ID)
-perf::stat::real_time   // std::chrono::system_clock (wall-clock-time)
-perf::stat::tread_time  // clock_gettime (CLOCK_THREAD_CPUTIME_ID)
-perf::stat::steady_time // std::chrono::steady_clock (monotonic)
 ```
 
 ----
@@ -837,6 +991,19 @@ profiler.start();
 profiler.stop();
 ```
 
+----
+
+#### Flamegraph - https://github.com/brendangregg/FlameGraph
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::flamegraph(bench[perf::record::cycles]);
+```
+
+<p align="left">
+<img src="images/perf1.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
 -----
 
 #### static analysis
@@ -950,6 +1117,9 @@ trigger(): // $CXX -O3
 6
 ```
 
+##### https://uops.info/table.html / https://www.agner.org/optimize/instruction_tables.pdf
+<!-- .element: style="text-align:left; " -->
+
 #### https://github.com/qlibs/jmp
 <!-- .element: style="text-align:left" -->
 
@@ -977,11 +1147,6 @@ fizz_buzz(unpredictable)/latency:
 
 ----
 
-##### https://uops.info/table.html / https://www.agner.org/optimize/instruction_tables.pdf
-<!-- .element: style="text-align:left; " -->
-
-----
-
 #### trace & analyze
 <!-- .element: style="text-align:left" -->
 ```cpp
@@ -999,137 +1164,6 @@ invoke(fizz_buzz, std::rand());
 
 ----
 
-#### Reporting
-<!-- .element: style="text-align:left" -->
-
-#### mean! >  use min, median, percentiles instead
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::metric::min;         perf::metric::percentile;
-perf::metric::max;         perf::metric::p10;
-perf::metric::mean;        perf::metric::p50;
-perf::metric::geomean;     perf::metric::p90;
-perf::metric::median;      perf::metric::p99;
-```
-
-```cpp
-perf::metric::variance;
-perf::metric::stddev;      // degrees_of_freedom = 1
-perf::metric::sem;         // standard error
-perf::metric::mae;         // median absolute errror
-perf::metric::mad;         // median absolute deviation
-perf::metric::cv;          // coefficient of variation
-perf::metric::z_score;
-perf::metric::t_score;
-```
-
-----
-
-```cpp
-perf::report(bench[perf::stat::tsc], min, median, p90, p99);
-```
-
-----
-
-#### baseline (speedup, relative)
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Plotting
-<!-- .element: style="text-align:left" -->
-
-#### - jupyter notebook + matplotlib - https://jupyter.org
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - gnuplot + sixel - http://www.gnuplot.info / https://arewesixelyet.com
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
----
-
-#### - flamegraph - https://github.com/brendangregg/FlameGraph
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - perfetto - https://perfetto.dev
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - ...
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-----
-
-#### Gnuplot
-<!-- .element: style="text-align:left" -->
-
-```cpp
-PERF_IO_PLOT_TERM='sixel'                 # terminal
-PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
-PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
-PERF_IO_PLOT_TERM='wxt'                   # popup windows
-PERF_IO_PLOT_TERM='canvas'                # html
-PERF_IO_PLOT_TERM='png'                   # png
-```
-
-----
-
-#### Histogram
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::hist;
-```
-
-----
-
-#### Box
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::box;
-```
-
-----
-
-#### Bar / ErrorBar
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::bar; // show error bars (show where the previous one could be slower)
-```
-
-```cpp
-perf::plot::complexity (big0)
-```
-
-----
-
-#### [Empirical distribution function](https://en.wikipedia.org/wiki/Empirical_distribution_function)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::ecdf;
-```
-----
-
-#### Flamegraph - https://github.com/brendangregg/FlameGraph
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::flamegraph(bench[perf::record::cycles]);
-```
-
-<img src="images/perf1.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-
-----
-
-#### Assuming measurements are independent
-<!-- .element: style="text-align:left" -->
-#### Assuming measurements are following normal distribution
-<!-- .element: style="text-align:left" -->
-#### Not using ratios, baseline (speedup, relative)
-<!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
-
-----
-
 ### [3] Not verifying/testing results
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
@@ -1140,6 +1174,7 @@ perf::plot::flamegraph(bench[perf::record::cycles]);
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+int main() {
 auto sort = []<bool debug>(std::vector<int>& v) {
   std::ranges::sort(v);
   if constexpr (debug) { // doesn't affect benchmarking
@@ -1350,7 +1385,7 @@ $CXX -DPERF_UEFI \
 ----
 
 ```cpp
-./a.out | scripts/export.sh markdown | gh gist create --public
+./fizz_buzz.out | scripts/export.sh markdown | gh gist create --public
 ```
 
 <img src="images/share.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
