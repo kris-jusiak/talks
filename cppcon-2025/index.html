@@ -192,6 +192,7 @@ function:
 
 ```cpp
 int main() {
+  // ...
   auto handler = [](int func_id, XRayEntryType entry) {
     if (entry == XRayEntryType::ENTRY) {
       profiler.start();
@@ -427,23 +428,50 @@ IPT   - Intel Processor Trace
 
 ----
 
-#### [0] Not measuring the right things
+### [0] Not measuring the right thing
 <!-- .element: style="text-align:left" -->
 <!-- .slide: data-background="black" -->
 
 ----
 
-not having significnt number of samples
-
-
-
-
-#### realistic data
-<!-- .element: style="text-align:left" -->
+```cpp
+using perf::data::sequence;         // sequence
+using perf::data::range;            // range
+```
 
 ```cpp
-using perf::data::unpredictable;  // not elided and not predicted
+using perf::data::unpredictable;    // not elided and not predicted
+using perf::data::uniform;          // uniform distribution
+using perf::data::bernoulli;        // bernoulli distribution
+using perf::data::normal;           // normal distribution
+using perf::data::choice;           // probability choice
 ```
+
+----
+
+
+```cpp
+bench(fizz_buzz, 0); 
+bench(fizz_buzz, 1); 
+bench(fizz_buzz, 3); 
+bench(fizz_buzz, 5); 
+bench(fizz_buzz, 15); 
+bench(fizz_buzz, sequence<int>{{1, 3, 5}}); 
+bench(fizz_buzz, sequence<int>{{3, 1, 5}}); 
+bench(fizz_buzz, sequence<int>{{1, 1, 5}}); 
+bench(fizz_buzz, range<int>{.start = 0, .stop = 10, .step = 1}); 
+```
+
+```cpp
+bench(fizz_buzz, unpredictable<int>); 
+bench(fizz_buzz, uniform<int>{.min = 0, .max = 15}); 
+bench(fizz_buzz, normal<int>{}); 
+bench(fizz_buzz, choice<int>{}); 
+```
+
+----
+
+not having significnt number of samples
 
 ```cpp
 // CPU::BTB::set(ip) = true;
@@ -486,6 +514,8 @@ int main() {
 ### Latency vs. Throughput
 <!-- .element: style="text-align:left" -->
 
+
+bench(fizz_buzz/latency)
 ----
 
 #### Latency - time it takes for a single operation to complete (ns/op)
@@ -512,7 +542,7 @@ perf::code::align(alignment) for (auto i = 0u; i < N; ++i) {
 
 ----
 
-#### CPU vs. FPGA
+#### CPU vs. FPGA - http://www.qbaylogic.com
 <!-- .element: style="text-align:left" -->
 
 <img src="images/fpga.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
@@ -598,6 +628,12 @@ int main() {
 
 ----
 
+profiler vs ana
+
+
+
+
+
 ```cpp
 perf::report(bench[
   perf::stat::top_down::retiring, 
@@ -652,10 +688,10 @@ static_assert(requires {
 
 ```cpp
 perf::stat::tsc         // time-stamp-counter (rdtsc)
+perf::stat::cpu_time    // clock_gettime (CLOCK_PROCESS_CPUTIME_ID)
 perf::stat::real_time   // std::chrono::system_clock (wall-clock-time)
+perf::stat::tread_time  // clock_gettime (CLOCK_THREAD_CPUTIME_ID)
 perf::stat::steady_time // std::chrono::steady_clock (monotonic)
-perf::stat::cpu_time    // clock_gettime<CLOCK_PROCESS_CPUTIME_ID>
-perf::stat::tread_time  // clock_gettime<CLOCK_THREAD_CPUTIME_ID>
 ```
 
 ----
@@ -856,8 +892,8 @@ using perf::mca::source;
 
 ```cpp
 perf::analyzer analyzer{perf::mca::assembly};
-analyzer << profiler[trace::instructions];
-analyzer << region{labels["a"], labels["b"]};
+analyzer << profiler[perf::trace::instructions];
+analyzer << region{perf::code::labels["a"], perf::code::labels["b"]};
 analyzer << region{&&a, &&b}; // gnu
 ```
 
@@ -935,6 +971,12 @@ fizz_buzz(unpredictable)/latency:
 5     12
 ```
 
+----
+
+<img src="/home/kris/test.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+
+----
+
 ##### https://uops.info/table.html / https://www.agner.org/optimize/instruction_tables.pdf
 <!-- .element: style="text-align:left; " -->
 
@@ -954,14 +996,6 @@ invoke(fizz_buzz, std::rand());
 
 #### show ipc per instruction
 <!-- .element: style="text-align:left" -->
-
-----
-
-### [2.1] Not benchmarking the right thing
-<!-- .element: style="text-align:left" -->
-### [2.2] Not benchmarking realistic scenarios (alignment, cold, warm, threading, ...)
-<!-- .element: style="text-align:left" -->
-<!-- .slide: data-background="black" -->
 
 ----
 
@@ -1145,6 +1179,7 @@ perf::verify(entry[0].cycle_executed);
 ```cpp
 perf::verify(optimized == []{}); // disassemble compare
 perf::verify(optimized < []{}); // disassemble compare
+// intel_pt
 ```
 
 ```cpp
@@ -1165,9 +1200,8 @@ auto ub(int x) { return x + 1 > x; }
 
 ```cpp
 perf::log(perf::info::spec{
-  {"perf",  perf::info::version()},
   {"time",  std::chrono::system_clock::now()},
-  {"sys",   perf::info::::triple()},
+  {"sys",   perf::info::sys::triple()},
   {"cxx",   perf::info::compiler()},
   {"cpu",   perf::info::cpu()},
   {"cache", perf::info::memory::cache()},
@@ -1178,7 +1212,6 @@ perf::log(perf::info::spec{
 ```sh
 name  info
 ----- -----------------------------------------------------------------
-perf  0.0.1
 time  2025-09-15 11:30:00
 sys   x86_64-pc-linux-gnu
 cxx   gcc-15.0.0
@@ -1242,11 +1275,13 @@ log
 #### Reducing Noise
 <!-- .element: style="text-align:left" -->
 
-```cpp
+```sh
 disable hyperhtread
-///
-set.affinity
-set.priority
+```
+
+```cpp
+perf::thread::set_affinity(2); // 0, 1 likely will have more)
+perf::thread::set_priority();
 ```
 <!-- .element: style="text-align:left" -->
 
@@ -1282,16 +1317,12 @@ cat /sys/devices/system/cpu/isolated # <cpu number>,...,<cpu number>
 
 ```cpp
 int efi_main(perf::uefi::sys* sys) { // no kernel
-  perf::runner bench{perf::bench::latency{
+  perf::runner bench{
     .setup    = [] { perf::cpu::cache::disable(); },
-    .teardown = [] { perf::cpu::cache::enable(); },
-  }};
-
-  auto div = [] [[gnu::optimize("O3")]] (int a, int b) {
-    return a / b;
+    .teardown = [] { perf::cpu::cache::enable();  },
   };
 
-  bench(div, unpredictable<int>, unpredictable<int>);
+  bench(fizz_buzz/latency, unpredictable<int>);
 
   perf::report(
     sys->stdout,
