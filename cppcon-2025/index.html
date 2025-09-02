@@ -1023,45 +1023,26 @@ perf::profiler trace{           // perf record -e intel_pt/
 ----
 
 ```cpp
-perf::profiler profiler{
-  perf::stat::tsc,                                   // TSC
-  perf::stat:cycles, perf::stat::instructions,       // RDPMC
-  perf::trace::instructions, perf::trace::cycles,    // IPT
-  perf::record::mem_loads, perf::record::mem_stores  // PEBS, LBR
-};
-```
+int main() {
+  perf::profiler profiler{
+    perf::stat::tsc,                                   // TSC
+    perf::stat:cycles, perf::stat::instructions,       // RDPMC
+    perf::trace::instructions, perf::trace::cycles,    // IPT
+    perf::record::mem_loads, perf::record::mem_stores  // PEBS, LBR
+  };
 
-```cpp
-profiler.start();
-// ...
-profiler.stop();
+  profiler.start();
+  perf::compiler::prevent_elision(fizz_buzz({}));
+  profiler.stop();
+
+  perf::log(profiler[]);
+}
 ```
 
 ----
-
-```cpp
-perf::log(profiler[]);
-```
 
 ```sh
 // Example output
-```
-
-----
-
-```cpp
-// Metrics
-
-auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
-auto cpi = cycles / instructions;
-auto upc = uops / cycles;
-auto cache_miss_rate = cache_misses / cache_references;
-auto branch_miss_rate = branch_misses / branches;
-...
-auto retiring = top_down::retiring / slots;
-auto bad_speculation = top_down::bad_speculation / slots;
-auto frontend_bound = top_down::frontend_bound / slots;
-auto backend_bound = top_down::backend_bound / slots;
 ```
 
 ----
@@ -1082,21 +1063,31 @@ concept analyzer =
 ----
 
 ```cpp
-perf::analyzer analyzer{
-  perf::mca::address,
-  perf::mca::encoding, 
-  perf::mca::assembly,
-  perf::mca::size,
-  perf::mca::latency,
-  perf::mca::uops,
-  perf::mca::rthroughput,
-  perf::mca::timeline,
-  perf::mca::resource_pressure,
-  perf::mca::bottleneck,
-  perf::mca::source, // requires debug symbols (-g)
-  // ...
-};
+int main() {
+  perf::analyzer analyzer{
+    perf::mca::address,
+    perf::mca::encoding, 
+    perf::mca::assembly,
+    perf::mca::size,
+    perf::mca::cycles,
+    perf::mca::uops,
+    perf::mca::rthroughput,
+    perf::mca::timeline,
+    perf::mca::resource_pressure,
+    perf::mca::bottleneck,
+    perf::mca::source, // requires debug symbols (-g)
+  };
+
+  perf::code::label("start");
+  (void)&fizz_buzz; // no need to run
+  perf::code::label("stop");
+
+  analyzer << region{perf::code::labels["start"], perf::code::labels["stop"]};
+
+  perf::annotate(analyzer[]);
+}
 ```
+<!-- .element: style="font-size:18px" -->
 
 ----
 
@@ -1126,37 +1117,41 @@ int main() {
 ----
 
 ```cpp
-analyzer << profiler[perf::trace::instructions];
-// analyzer << region{perf::code::labels["a"], perf::code::labels["b"]};
-perf::log(analyzer[]);
-```
+int main() {
+  perf::profiler profiler{
+    perf::trace::instructions, // Intel, Apple M4
+  };
+  perf::analyzer analyzer{
+    perf::mca::assembly, perf::mca::timeline,
+  };
 
-----
-
-```cpp
-perf::profiler profiler{
-  perf::trace::instructions, // Intel, Apple M4
-};
-
-const auto invoke = [&](auto fn, auto... ts) {
   profiler.start();
-  fn(ts...);
+  fizz_buzz({});
   profiler.stop();
-};
 
-invoke(fizz_buzz, std::rand());
+  analyzer << profiler[trace::instructions];
+  perf::annotate(analyzer[]);
+}
 ```
 
 ----
 
 ```cpp
-perf::analyzer analyzer{
-  perf::mca::assembly, perf::mca::timeline,
-};
+template<auto... Events>
+auto latency(auto fn, auto... ts) {
+  profiler profiler{Events...};
+  analyzer analyzer{Events...};
 
-analyzer << profiler[trace::instructions];
+  profiler.start();
+  for (auto i = 0; i < iterations; ++i) {
+    fn(ts[i]...); // may need different runs
+  }
+  profiler.stop();
 
-perf::annotate(analyzer[]);
+  analyzer << profiler[perf::trace::instructions];
+
+  return tuple(profiler[], analyzer[]);
+}
 ```
 
 ----
@@ -1184,8 +1179,18 @@ int main() {
 }
 ```
 
+----
+
 #### Memory bound
 <!-- .element: style="text-align:left" -->
+
+```cpp
+auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
+auto cpi = cycles / instructions;
+auto upc = uops / cycles;
+auto cache_miss_rate = cache_misses / cache_references;
+auto branch_miss_rate = branch_misses / branches;
+```
 
 ```cpp
 int main() {
