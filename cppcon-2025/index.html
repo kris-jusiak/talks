@@ -246,18 +246,10 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-<table>
-<tr>
-<td>
-  <h4>Bottom-up</h4>
-</td>
-<td>
-  <h4>Top-down</h4>
-</td>
-</tr>
-<tr>
-<td>
-<pre style="font-size:9px"><code>
+##### Hot-spot
+<!-- .element: style="text-align:left;" -->
+
+```cpp
 main()                                                 47.82s (100.0%)
 ├── initialize_application()                            0.96s   (2.0%)
 ├── load_large_dataset()                                2.39s   (5.0%)
@@ -304,21 +296,15 @@ main()                                                 47.82s (100.0%)
 │       ├── verify_results_integrity()                  0.96s   (2.0%)
 │       └── cleanup_temporary_data()                    0.55s   (1.2%)
 └── shutdown_application()                              1.35s   (2.8%)
-</code></pre>
-</td>
-<td>
-<pre>Modern processors execute nearly as
-many instructions per cycle as you
-can supply (I/O, branch, memory)
-<h4>
-- Apply Top down Microarchitecture Analysis Method
-- Reduce overall instruction count
-- Increase instruction per cycle (IPC)
-</h4>
-</pre>
-</td>
-</tr>
-</table>
+```
+<!-- .element: style="font-size:8px;" -->
+
+```cpp
+Modern CPUs are primarily bottlenecked by
+- instruction supply
+- data access
+- branch prediction
+```
 
 ----
 
@@ -854,10 +840,10 @@ PERF_IO_PLOT_TERM="dumb ansi size 150,25" $server ./fizz_buzz
 <table>
 <tr>
   <td>
-    <img src="images/bar2.png" style="width: 100%; height: 275px; background:none; border:none; box-shadow:none;" />
+    <img src="images/bar2.png" style="width: 900px; height: 275px; background:none; border:none; box-shadow:none;" />
   </td>
   <td>
-    <img src="images/ecdf2.png" style="width: 100%; height: 275px; background:none; border:none; box-shadow:none;" />
+    <img src="images/ecdf2.png" style="width: 900px; height: 275px; background:none; border:none; box-shadow:none;" />
   </td>
 </tr>
 </table>
@@ -943,27 +929,27 @@ PERF_IO_PLOT_TERM="dumb ansi size 150,25" $server ./fizz_buzz
 <!-- .element: style="text-align:left" -->
 
 ```cpp
- ├─ [1] Retiring                            │ 
- │   ├─ [2] Base                            │ 
- │   └─ [2] Complex µops                    │ 
- │                                          │ 
- ├─ [1] Bad Speculation                     │ 
- │   ├─ [2] Branch Mispredictions           │ 
+ ├─ [1] Retiring                            │
+ │   ├─ [2] Base                            │
+ │   └─ [2] Complex µops                    │
+ │                                          │
+ ├─ [1] Bad Speculation                     │
+ │   ├─ [2] Branch Mispredictions           │
  │   └─ [2] Machine Clears                  │
- │                                          │ PMC - Performance-Monitoring Counter 
- ├─ [1] Front-End Bound                     │ LBR - Last Branch Record                         
+ │                                          │ PMC - Performance-Monitoring Counter
+ ├─ [1] Front-End Bound                     │ LBR - Last Branch Record
  │   ├─ [2] Front-End Latency               │ IPT - Intel Processor Trace
  │   │   ├─ [3] iL1 Misses                  │ PEBS - Precise Event-Based Sampling
- │   │   ├─ [3] iTLB Misses                 │ 
+ │   │   ├─ [3] iTLB Misses                 │
  │   │   └─ [3] Branch Resteers             │ MCA - Machine Code Analyzer
  │   └─ [2] Front-End Bandwidth             │
  │                                          │
  └─ [1] Back-End Bound                      │
-     ├─ [2] Core Bound                      │ 
+     ├─ [2] Core Bound                      │
      │   └─ [3] Execution ports utilization │
      │   └─ [3] Divider                     │
-     └─ [2] Memory Bound                    │ 
-         ├─ [3] dL1 Bound                   │ 
+     └─ [2] Memory Bound                    │
+         ├─ [3] dL1 Bound                   │
          ├─ [3] dL2 Bound                   │
          ├─ [3] dL3 Bound                   │
          └─ [3] DRAM Bound                  │
@@ -1049,7 +1035,7 @@ int main() {
 
 ```cpp
 template<class TAnalzyer, class... Ts>
-concept analyzer = 
+concept analyzer =
   requires (TAnalyzer analyzer, Ts... ts) {
     TAnalyzer{ts...};
 
@@ -1066,7 +1052,7 @@ concept analyzer =
 int main() {
   perf::analyzer analyzer{
     perf::mca::address,
-    perf::mca::encoding, 
+    perf::mca::encoding,
     perf::mca::assembly,
     perf::mca::size,
     perf::mca::cycles,
