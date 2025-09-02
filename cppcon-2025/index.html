@@ -257,7 +257,54 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 </tr>
 <tr>
 <td>
-<img src="images/profile.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+<pre style="font-size:9px"><code>
+main()                                                 47.82s (100.0%)
+├── initialize_application()                            0.96s   (2.0%)
+├── load_large_dataset()                                2.39s   (5.0%)
+├── process_data_pipeline()                            43.12s  (90.2%)
+│   ├── preprocess_data()                               4.78s  (10.0%)
+│   │   ├── validate_input_data()                       1.43s   (3.0%)
+│   │   ├── normalize_entries()                         2.39s   (5.0%)
+│   │   └── create_memory_mappings()                    0.96s   (2.0%)
+│   ├── execute_computation()                          35.87s  (75.0%)
+│   │   ├── process_large_dataset_column_wise()         4.78s  (10.0%)
+│   │   │   ├── iterate_columns()                       1.91s   (4.0%)
+│   │   │   ├── access_scattered_memory()               1.91s   (4.0%)
+│   │   │   └── update_results()                        0.96s   (2.0%)
+│   │   ├── scatter_gather_memory_operations()          4.78s  (10.0%)
+│   │   │   ├── gather_disparate_data()                 1.91s   (4.0%)
+│   │   │   ├── process_scattered_chunks()              1.91s   (4.0%)
+│   │   │   └── reassemble_results()                    0.96s   (2.0%)
+│   │   ├── random_access_hash_table_lookups()          4.78s  (10.0%)
+│   │   │   ├── hash_computation()                      1.91s   (4.0%)
+│   │   │   ├── memory_lookup_operations()              1.91s   (4.0%)
+│   │   │   └── collision_resolution()                  0.96s   (2.0%)
+│   │   ├── sparse_matrix_vector_multiply()             4.78s  (10.0%)
+│   │   │   ├── sparse_pattern_traversal()              1.91s   (4.0%)
+│   │   │   ├── irregular_memory_access()               1.91s   (4.0%)
+│   │   │   └── result_accumulation()                   0.96s   (2.0%)
+│   │   ├── graph_traversal_operations()                4.78s  (10.0%)
+│   │   │   ├── node_visits()                           1.91s   (4.0%)
+│   │   │   ├── edge_processing()                       1.91s   (4.0%)
+│   │   │   └── state_updates()                         0.96s   (2.0%)
+│   │   ├── image_processing_kernels()                  4.78s  (10.0%)
+│   │   │   ├── pixel_operations()                      1.91s   (4.0%)
+│   │   │   ├── filter_applications()                   1.91s   (4.0%)
+│   │   │   └── result_composition()                    0.96s   (2.0%)
+│   │   ├── database_query_processing()                 4.78s  (10.0%)
+│   │   │   ├── index_scans()                           1.91s   (4.0%)
+│   │   │   ├── join_operations()                       1.91s   (4.0%)
+│   │   │   └── result_aggregation()                    0.96s   (2.0%)
+│   │   └── machine_learning_inference()                4.78s  (10.0%)
+│   │       ├── layer_computations()                    1.91s   (4.0%)
+│   │       ├── activation_functions()                  1.91s   (4.0%)
+│   │       └── output_processing()                     0.96s   (2.0%)
+│   └── postprocess_results()                           2.47s   (5.2%)
+│       ├── format_output_data()                        0.96s   (2.0%)
+│       ├── verify_results_integrity()                  0.96s   (2.0%)
+│       └── cleanup_temporary_data()                    0.55s   (1.2%)
+└── shutdown_application()                              1.35s   (2.8%)
+</code></pre>
 </td>
 <td>
 <pre>Modern processors execute nearly as
@@ -368,28 +415,6 @@ C++23, linux/perf, llvm/mca, gnuplot/sixel
 
 ----
 
-#### Benchmarking
-<!-- .element: style="text-align:left" -->
-
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - google-benchmark - https://github.com/google/benchmark
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - nanobench - https://github.com/martinus/nanobench
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - celero - https://github.com/DigitalInBlue/Celero
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
----
-
-#### - nanoBench - https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - uarch-bench - https://github.com/travisdowns/uarch-bench
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-#### - llvm-exegesis - https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-----
-
 ### [0] Not having accurate measurements
 <!-- .element: style="text-align:left" -->
 
@@ -496,7 +521,7 @@ auto latency(auto fn, auto... ts) {
 ```cpp
 // https://uops.info/table.html
 template<auto N>
-auto uops::latency(auto fn) {
+auto uops::latency(auto fn) { // https://github.com/andreas-abel/nanoBench
   return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
 }
 ```
@@ -949,9 +974,9 @@ PERF_IO_PLOT_TERM="dumb ansi size 150,25" $server ./fizz_buzz
 
 ```cpp
 template<class TProfiler, class... TEvents>
-concept Profiler =
+concept profiler =
   requires (TProfiler profiler, TEvents... events) {
-    // perf_event_open # kernel API for linux perf
+    // perf_event_open - linux-perf API
     TProfiler{events...};
 
     bool(TProfiler::is_syscall_free);
@@ -1042,46 +1067,12 @@ auto backend_bound = top_down::backend_bound / slots;
 ----
 
 ```cpp
-int main() {
-  perf::runner bench{};
-
-  bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
-  bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
-  bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
-  bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
-
-  perf::report(bench[
-    perf::stat::retiring,
-    perf::stat::bad_speculation,
-    perf::stat::frontend_bound,
-    perf::stat::backend_bound
-  ]);
-}
-```
-
-----
-
-#### Machine Code Analysis
-<!-- .element: style="text-align:left;" -->
-
-#### - llvm-mca - https://llvm.org/docs/CommandGuide/llvm-mca.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-#### - uica - https://uica.uops.info
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-#### - osaca - https://github.com/RRZE-HPC/OSACA
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-----
-
-```cpp
 template<class TAnalzyer, class... Ts>
-concept Analyzer = 
+concept analyzer = 
   requires (TAnalyzer analyzer, Ts... ts) {
     TAnalyzer{ts...};
 
-    // LLVM 
+    // llvm-mca, uica, osaca
     analyzer << span(instructions);
 
     { analyzer[ts...] } -> tuple;
@@ -1110,7 +1101,7 @@ perf::analyzer analyzer{
 ----
 
 ```cpp
-auto label(std::convertible_to<std::uint64_t> auto label)
+auto label(const auto label)
   asm volatile goto(
     ".pushsection labels, \"aw\" \n"
     ".quad %c0, %l[L]\n"
@@ -1118,14 +1109,19 @@ auto label(std::convertible_to<std::uint64_t> auto label)
     : : "i"(label) : "memory" : L
   ); L:;
 }
-```
 
-```cpp
-extern "C" auto __start_labels [[gnu::section("labels")]] [[gnu::weak]];
-extern "C" auto __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
-
+extern "C" void* __start_labels [[gnu::section("labels")]] [[gnu::weak]];
+extern "C" void* __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
 std::unordered_map labels{&__start_labels, &__stop_labels};
+
+int main() {
+  perf::code::label("begin");
+  std::puts("perf");
+  perf::code::label("end");
+  perf::verify(perf::code::labels["begin"] != perf::code::labels["end"]);
+}
 ```
+<!-- .element: style="font-size:19px" -->
 
 ----
 
@@ -1164,6 +1160,32 @@ perf::annotate(analyzer[]);
 ```
 
 ----
+
+#### Examples
+<!-- .element: style="text-align:left" -->
+
+----
+
+```cpp
+int main() {
+  perf::runner bench{};
+
+  bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
+  bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
+  bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
+  bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
+
+  perf::report(bench[
+    perf::stat::retiring,
+    perf::stat::bad_speculation,
+    perf::stat::frontend_bound,
+    perf::stat::backend_bound
+  ]);
+}
+```
+
+#### Memory bound
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 int main() {
@@ -1394,6 +1416,7 @@ int main() {
 // add vs mca
 // shows cycles of add, sub,
 // shows graph of rdtsc
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 auto add  = [](int a, int b) { return a + b; };
 auto sub  = [](int a, int b) { return a - b; };
 auto mult = [](int a, int b) { return a * b; };
