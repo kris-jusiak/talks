@@ -67,15 +67,15 @@
   <td>
   <pre>
 (~) Frequency
- - 1 cycle (4Ghz)       0.25ns
- - 1 cycle (5Ghz)       0.20ns&nbsp;<br />
+ - 1 cycle (5Ghz)       0.20ns
+ - 1 cycle (4Ghz)       0.25ns&nbsp;<br />
 (⬆️) Number of transistors
- - Cores/Scalar/Cache
-   ~ dL1 cache          0.50ns
-   ~ dL2 cache          3.00ns
-   ~ Branch Mispredict  3.00ns
-   ~ dL3 cache         10.00ns
-   ~ DRAM              70.00ns
+ - Cores/Cache/Execution
+   - dL1 cache          0.50ns
+   - dL2 cache          3.00ns
+   - Branch Mispredict  3.00ns
+   - dL3 cache         10.00ns
+   - DRAM              70.00ns
 </pre>
   </td>
   <td>
@@ -246,34 +246,54 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
-##### Hot-spot
-<!-- .element: style="text-align:left;" -->
+<table>
+<tr>
+<td>
+  <h4>Bottom-up</h4>
+</td>
+<td>
+  <h4>Top-down</h4>
+</td>
+<tr>
+<td>
+<pre style="font-size:11px"><code>
+main()                                47.82s (100.0%)
+├─ initialize_application()            0.96s   (2.0%)
+├─ load_large_dataset()                2.39s   (5.0%)
+├─ process_data_pipeline()            43.12s  (90.2%)
+│  ├─ preprocess_data()                4.78s  (10.0%)
+│  │  ├─ validate_input_data()         1.43s   (3.0%)
+│  │  ├─ normalize_entries()           2.39s   (5.0%)
+│  │  └─ create_memory_mappings()      0.96s   (2.0%)
+│  ├─ execute_computation()           35.87s  (75.0%)
+│  │  ├─ process_large_dataset_wise()  4.78s  (10.0%)
+│  │  │  ├─ iterate_columns()          1.91s   (4.0%)
+│  │  │  ├─ access_scattered_memory()  1.91s   (4.0%)
+│  │  │  └─ update_results()           0.96s   (2.0%)
+│  │  └─ machine_learning_inference()  4.78s  (10.0%)
+│  │      ├─ layer_computations()      1.91s   (4.0%)
+│  │      ├─ activation_functions()    1.91s   (4.0%)
+│  │      └─ output_processing()       0.96s   (2.0%)
+│  └─ postprocess_results()            2.47s   (5.2%)
+│     ├─ format_output_data()          0.96s   (2.0%)
+│     ├─ verify_results_integrity()    0.96s   (2.0%)
+│     └─ cleanup_temporary_data()      0.55s   (1.2%)
+└── shutdown_application()             1.35s   (2.8%)
+</code></pre>
+</td>
+<td><pre style="font-size:13px"><code>
+[Level] Category     Desktop  Server   HPC
+-------------------- -------  ------   ------
+[1] Retiring          20–50%  10–30%   30–70%
+[1] Bad Speculation   05–10%  05–10%   01–05%
+[1] Front-End Bound   05–10%  10–25%   05–10%
+[1] Back-End Bound    20–40%  20–60%   20–40%
+</code></pre>
+</td>
+</tr>
+</table>
 
-```cpp
-main()                                                   47.82s (100.0%)
-  ├── initialize_application()                            0.96s   (2.0%)
-  ├── load_large_dataset()                                2.39s   (5.0%)
-  ├── process_data_pipeline()                            43.12s  (90.2%)
-  │   ├── preprocess_data()                               4.78s  (10.0%)
-  │   │   ├── validate_input_data()                       1.43s   (3.0%)
-  │   │   ├── normalize_entries()                         2.39s   (5.0%)
-  │   │   └── create_memory_mappings()                    0.96s   (2.0%)
-  │   ├── execute_computation()                          35.87s  (75.0%)
-  │   │   ├── process_large_dataset_column_wise()         4.78s  (10.0%)
-  │   │   │   ├── iterate_columns()                       1.91s   (4.0%)
-  │   │   │   ├── access_scattered_memory()               1.91s   (4.0%)
-  │   │   │   └── update_results()                        0.96s   (2.0%)
-  │   │   └── machine_learning_inference()                4.78s  (10.0%)
-  │   │       ├── layer_computations()                    1.91s   (4.0%)
-  │   │       ├── activation_functions()                  1.91s   (4.0%)
-  │   │       └── output_processing()                     0.96s   (2.0%)
-  │   └── postprocess_results()                           2.47s   (5.2%)
-  │       ├── format_output_data()                        0.96s   (2.0%)
-  │       ├── verify_results_integrity()                  0.96s   (2.0%)
-  │       └── cleanup_temporary_data()                    0.55s   (1.2%)
-  └── shutdown_application()                              1.35s   (2.8%)
-```
-<!-- .element: style="font-size:10px;" -->
+----
 
 ```cpp
 Modern CPUs are primarily bottlenecked by
@@ -377,76 +397,200 @@ C++23, linux/perf, llvm/mca, gnuplot/sixel
 
 ----
 
-### [0] Not having accurate measurements
+### [0] Not having reproducible measurements
+<!-- .element: style="text-align:left" -->
+
+
+```cpp
+// $CXX      // compiler
+int main() { // kernel
+  // ...     // CPU
+}
+
+// noise-reduction
+// cpu/info
+// sanity-checks
+// self-checks
+```
+
+----
+
+#### Noise reduction
+<!-- .element: style="text-align:left" -->
+
+```
+# Disable Frequency Scaling
+# Disable Processor Boosting
+# Disable Turbo Mode
+# ...
+perf/scripts/tune.sh # pyperf system tune
+```
+<!-- .element: style="text-align:left" -->
+
+---
+
+```cpp
+int main() {
+  perf::sys::thread::set_affinity(self, 2); // 0, 1 used by the kernel
+  perf::sys::thread::set_priority(self, max);
+  // ...
+}
+```
+
+----
+
+#### Kernel Mode Task-Isolation - https://lwn.net/articles/816298
+<!-- .element: style="text-align:left" -->
+
+```sh
+isolcpus=<cpu number>,...,<cpu number> # bootloader
+```
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/isolcpus.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
+```sh
+cat /sys/devices/system/cpu/isolated
+# <cpu number>,...,<cpu number>
+```
+
+----
+
+#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int efi_main(perf::uefi::sys* sys) { // no kernel
+  perf::runner bench{
+    .setup    = [] { perf::cpu::cache::disable(); },
+    .teardown = [] { perf::cpu::cache::enable();  },
+  };
+
+  bench(fizz_buzz/latency, unpredictable<int>);
+
+  perf::report(
+    sys->stdout,
+    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    min, median, p90, p99
+  );
+}
+```
+```cpp
+$CXX -DPERF_UEFI \
+  -target x86_64 -ffreestanding -fno-exceptions -fno-rtti \
+  ...
+```
+
+----
+
+#### cpu/info
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  perf::log(perf::info::spec{
+    {"time",  std::chrono::system_clock::now()},
+    {"sys",   perf::info::sys::triple()},
+    {"cxx",   perf::info::compiler()},
+    {"cpu",   perf::info::cpu()},
+    {"cache", perf::info::memory::cache()},
+    // ...
+  });
+}
+```
+
+----
+
+#### cpu/info
+<!-- .element: style="text-align:left" -->
+
+```cpp
+name  info
+----- -----------------------------------------------------------------
+time  2025-09-15 11:20:00
+sys   x86_64-pc-linux-gnu
+cxx   gcc-15.0.0
+cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
+cache iL1: 32Kb/64b, dL1: 48Kb/12/64b
+...
+```
+
+##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
 <!-- .element: style="text-align:left" -->
 
 ----
 
+#### sanity-checks
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-auto bench(auto code) -> nanoseconds {
-  auto start = now();
-  code();
-  auto end = now();
-  return end - now;
+int main() {
+  perf::verify(perf::info::compiler::NDEBUG);
+  perf::verify(perf::info::compiler::OPTIMIZED);
+  perf::verify(not perf::info::cpu::freq_scaling);
+  // ...
 }
 ```
 
-```cpp
-Time                      Description           now()
-─────────────────────────────────────────────────────────────
-perf::stat::tsc           Time-Stamp-Counter    rdtsc/rdtscp
-perf::stat::real_time     Wall clock            system_clock
-perf::stat::cpu_time      Process CPU           clock_gettime
-perf::stat::thread_time   Thread CPU            clock_gettime
-perf::stat::steady_time   monotonic clock       steady_clock
+----
 
+#### self-checks
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  perf::self::test({.verbose = true});
+}
+
+auto add  = [](int a, int b) { return a + b; };
+auto sub  = [](int a, int b) { return a - b; };
+auto mult = [](int a, int b) { return a * b; };
+auto div  = [](int a, int b) { return a / b; };
+
+// https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+```
+
+----
+
+
+### [1] Not having accurate/realistic results
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// Latency vs. Throughput
+// Measurements are NOT independent
+// Measurements are NOT following normal distribution
+// Statistically significant measurements
+// ...
 ```
 
 ----
 
 ```cpp
-// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtsc
-auto rdtsc() {
-  std::uint64_t t;
-  asm volatile(
-    "lfence\n"
-    "rdtsc\n"
-    "shl $32, %%rdx\n"
-    "or %%rdx, %0\n"
-    "lfence\n"
-    : "=a"(t) :: "rdx", "memory", "cc"
-  );
-  return t;
-}
+Time                     Description         now()
+------------------------ ------------------- -------------
+perf::stat::tsc          Time-Stamp-Counter  rdtsc/rdtscp
+perf::stat::real_time    Wall clock          system_clock
+perf::stat::cpu_time     Process CPU         clock_gettime
+perf::stat::thread_time  Thread CPU          clock_gettime
+perf::stat::steady_time  Monotonic clock     steady_clock
 
-// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtscp
-auto rdtscp() {
-  std::uint64_t t;
-  asm volatile(
-    "rdtscp\n"
-    "shl $32, %%rdx\n"
-    "or %%rdx, %0\n"
-    "lfence"
-    : "=a"(t) :: "rcx", "rdx", "memory", "cc"
-  );
-  return t;
-}
 ```
-<!-- .element: style="font-size:17px;" -->
-
-----
+<!-- .element: style="font-size:10px; margin:0 65%;" -->
 
 ```cpp
 auto bench(auto fn, auto...ts) -> nanoseconds {
-  auto start = now();
+  auto start = now(); // [0] ?
 
-  for (auto i = 0 ; i < iterations; ++i) {
-    prevent_elision(fn(ts...));
-  } // out of order, speculative execution, ...
+  for (auto i = 0 ; i < iterations; ++i) { // [1] ?
+    fn(ts...); // ? [2]
+  } // ? [3]
 
   auto end = now();
 
-  return (end - now) / iterations; // what is being measured?
+  return (end - now) / iterations; // ? [4]
 }
 ```
 
@@ -471,45 +615,12 @@ Throughput
 ----
 
 ```cpp
-template<align_val_t Alignment>
-[[gnu::section("latency")]] [[gnu::aligned(16u)]]
-auto latency(auto fn, auto... ts) {
-  // warm/cold
-  perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
+[[gnu::section("latency")]] auto latency(auto fn, auto... ts) {
+  perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
     checksum ^= fn(checksum ^ ts...);       // data dependency
     std::atomic_thread_fence(memory_order); // sync
   }
 }
-```
-
-----
-
-```cpp
-// https://uops.info/table.html (nanoBench)
-template<auto N>
-auto uops::latency(auto fn) {
-  return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
-}
-```
-
-----
-
-```cpp
-import perf;
-
-int main() {
-  perf::runner bench{};
-
-  bench(fizz_buzz/latency);
-  bench(fizz_buzz/latency);
-  bench(fizz_buzz/latency);
-
-  perf::report(bench[perf::stat::tsc]);
-}
-```
-
-```
-// all runs
 ```
 
 ----
@@ -522,11 +633,8 @@ int main() {
 ----
 
 ```cpp
-template<align_val_t Alignment>
-[[gnu::section("throughput")]] [[gnu::aligned(16u)]]
-auto throughput::seq(auto fn, auto... ts) {
-  // warm/cold
-  perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
+[[gnu::section("throughput")]] auto throughput(auto fn, auto... ts) {
+  perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
     fn(ts...);
   }
 }
@@ -543,12 +651,9 @@ perf::bench::throughput::par;
 
 ----
 
-#### Accurate measurements
-<!-- .element: style="text-align:left" -->
-
 ```cpp
 /**
-* branch prediction can learn 10'000 1/0 branches
+* branch predictor can learn 10'000 1/0 branches
 */
 auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
@@ -567,44 +672,30 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 ----
 
 ```cpp
-// constant
-bench(fizz_buzz/latency, std::integral_constant<int, 3>{});
-bench(fizz_buzz/latency, std::integral_constant<int, 5>{});
-bench(fizz_buzz/latency, std::integral_constant<int, 15>{});
-```
+// predictable                          // exact
 
-```cpp
-// variable
-bench(fizz_buzz/latency, 0);
-bench(fizz_buzz/latency, 3);
-bench(fizz_buzz/latency, 5);
-bench(fizz_buzz/latency, 15);
+3                                       // 3
+5                                       // 5
+std::integral_constant<int, 15>         // 15
 
-for (auto i = 0; i < N; ++i) {
-  bench(fizz_buzz/latency, i);
-}
+sequence<int>{1, 3, 5};                 // 1,3,5,1,3,5,...
+sequence<int>{3, 1, 5};                 // 3,1,5,3,1,5,...
+sequence<int>{0, 1, 5, 3, 15, 0};       // 0,1,5,3,15,0,...
+range<int>{.start = 0, .stop = 15};     // 0,1,2,3,4,5,...
 ```
 
 ----
 
 ```cpp
-// predictable
-bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
-bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
-bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
-bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
-```
+// unpredictable                        // example
 
-```cpp
-// unpredictable
-bench(fizz_buzz/latency, unpredictable<int>);
-bench(fizz_buzz/latency, uniform<int>{.min = 0, .max = 15});
-bench(fizz_buzz/latency, choice<int>{
-  .probabilities = {.25, .50, .25}, .values = {3, 5, 15}
-});
+unpredictable<int>;                     // <-min<int>, max<int>>, ..
+uniform<int>{.min = 0, .max = 15};      // <0, 15>, <0, 15>, ...
+choice<int>{                            // 15,5,5,5,3,3,5,5,...
+  .probabilities = {.25, .50, .25},
+  .values = {3, 5, 15}
+};
 ...
-
-// pollute_heap - prevents continuous allocation
 ```
 
 ----
@@ -628,77 +719,46 @@ latency{.teardown = [] { perf::cpu::cache::flush(); }};
 
 ----
 
-#### Statistically significant measurements
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-// Measurements are NOT independent
-// Measurements are NOT following normal distribution
+bench(fizz_buzz/latency, 0);
+bench(fizz_buzz/latency, 15);
+bench(fizz_buzz/latency, 3);
+bench(fizz_buzz/latency, 5);
+bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
+bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
+bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
+bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15);
+bench(fizz_buzz/latency, unpredictable<int>);
 ```
 
 ----
 
 ```cpp
-// simplified
-
-auto bench(auto fn, auto... ts) -> measurements {
-  for (auto i = 0; i < samples; ++i) {
-    for (auto i = 0; i < iterations; ++i) {
-      runner(fn[ts]...);
-    }
-
-    const auto degrees_of_freedom = *samples.min - 1u;
-    const auto t_score = metric::stat::t_score(*samples.confidence_level, degrees_of_freedom);
-    const auto margin_of_error = (1. - *samples.confidence_level) * metric::stat::mean(time);
-    return std::min(std::max(std::size_t(std::ceil(std::pow((t_score * metric::stat::stddev(time)) / margin_of_error, 2.)) - *samples.min), *samples.min), *samples.max);
-  }
-};
-```
-
-<!-- .element: style="text-align:left" -->
-
-----
-
-```cpp
-int main() {
-  perf::runner bench{};
-
-  bench(fizz_buzz/latency, 0);
-  bench(fizz_buzz/latency, 15);
-  bench(fizz_buzz/latency, 3);
-  bench(fizz_buzz/latency, 5);
-  bench(fizz_buzz/latency, sequence<int>{{1, 3, 5}});
-  bench(fizz_buzz/latency, sequence<int>{{3, 1, 5}});
-  bench(fizz_buzz/latency, sequence<int>{{0, 1, 5, 3, 15, 0}});
-  bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
-  bench(fizz_buzz/latency, unpredictable<int>{});
-
-  perf::report(bench[perf::stat::tsc / perf::bench::operations], 
-    min, median, p90, p99
-  );
-}
+perf::report(bench[perf::stat::tsc / perf::bench::operations],
+  min, median, p90, p99
+);
 ```
 
 ----
 
 ```cpp
 benchmark                                           [1]           [2]           [3]           [4]
------------------------------------------  ------------  ------------  ------------  ------------  
-fizz_buzz(0)/latency                       (1.23x) 0.20   (infx) 0.00   (infx) 0.00  (1.00x) 0.80  
-fizz_buzz(15)/latency                      (1.23x) 0.20   (infx) 0.00   (infx) 0.00  (1.00x) 0.80  
-fizz_buzz(3)/latency                       (1.11x) 0.22   (infx) 0.00   (infx) 0.00  (1.03x) 0.78  
-fizz_buzz(5)/latency                       (1.01x) 0.25   (infx) 0.00   (infx) 0.00  (1.06x) 0.75  
-fizz_buzz(sequence{1,3,5})/latency         (1.03x) 0.24   (infx) 0.00   (infx) 0.00  (1.05x) 0.76  
-fizz_buzz(sequence{3,1,5})/latency         (1.02x) 0.24   (infx) 0.00   (infx) 0.00  (1.05x) 0.76  
-fizz_buzz(sequence{0,1,5,3,15,0})/latency  (1.00x) 0.25   (infx) 0.00   (infx) 0.00  (1.06x) 0.75  
-fizz_buzz(range{0,15,1})/latency           (1.03x) 0.24   (infx) 0.00   (infx) 0.00  (1.05x) 0.76  
-fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0.16  (1.42x) 0.56  
+-----------------------------------------  ------------  ------------  ------------  ------------
+fizz_buzz(0)/latency                       (5.92x) 0.83  (4.27x) 1.31  (4.28x) 1.38  (4.11x) 1.57
+fizz_buzz(15)/latency                      (4.09x) 1.20  (4.27x) 1.31  (4.33x) 1.37  (4.18x) 1.55
+fizz_buzz(3)/latency                       (3.72x) 1.32  (3.21x) 1.74  (3.26x) 1.82  (3.51x) 1.84
+fizz_buzz(5)/latency                       (1.69x) 2.91  (1.71x) 3.27  (1.76x) 3.37  (1.75x) 3.69
+fizz_buzz(sequence{1,3,5})/latency         (1.96x) 2.51  (2.01x) 2.78  (2.08x) 2.85  (2.24x) 2.88
+fizz_buzz(sequence{3,1,5})/latency         (1.97x) 2.49  (2.07x) 2.70  (2.08x) 2.85  (2.13x) 3.04
+fizz_buzz(sequence{0,1,5,3,15,0})/latency  (3.63x) 1.35  (2.63x) 2.13  (2.62x) 2.26  (2.86x) 2.26
+fizz_buzz(range{0,15,1})/latency           (1.91x) 2.58  (2.06x) 2.72  (2.14x) 2.77  (2.27x) 2.85
+fizz_buzz(unpredictable)/latency           (1.00x) 4.91  (1.00x) 5.59  (1.00x) 5.93  (1.00x) 6.46
 
 (0) speedup(slowest:1.00x)
-[1] min((stat.tsc[ns]/bench.operations)) 
-[2] median((stat.tsc[ns]/bench.operations)) 
-[3] p90((stat.tsc[ns]/bench.operations)) 
-[4] p99((stat.tsc[ns]/bench.operations)) 
+[1] min((stat.tsc[ns]/bench.operations))
+[2] median((stat.tsc[ns]/bench.operations))
+[3] p90((stat.tsc[ns]/bench.operations))
+[4] p99((stat.tsc[ns]/bench.operations))
 ```
 <!-- .element: style="font-size:14px;" -->
 
@@ -715,6 +775,31 @@ perf::report(bench[perf::stat::cpu_time, perf::stat::real_time],
 ----
 
 ```cpp
+benchmark                                              [1]           [2]           [3]              [4]           [5]           [6]
+-----------------------------------------  ---------------  ------------  ------------  ---------------  ------------  ------------
+fizz_buzz(0)/latency                       (1.00x) 6452.13  (1.13x) 0.04  (1.00x) 0.12  (1.00x) 6453.85  (1.11x) 0.04  (1.00x) 0.12
+fizz_buzz(15)/latency                      (1.81x) 3569.78  (1.44x) 0.03  (1.74x) 0.07  (1.81x) 3570.36  (1.44x) 0.03  (1.74x) 0.07
+fizz_buzz(3)/latency                       (1.43x) 4523.46  (1.00x) 0.04  (1.73x) 0.07  (1.36x) 4730.67  (1.00x) 0.05  (1.66x) 0.07
+fizz_buzz(5)/latency                       (1.97x) 3274.60  (2.33x) 0.02  (4.30x) 0.03  (1.97x) 3276.43  (2.33x) 0.02  (4.30x) 0.03
+fizz_buzz(sequence{1,3,5})/latency         (1.38x) 4674.35  (1.61x) 0.03  (2.58x) 0.04  (1.38x) 4681.59  (1.62x) 0.03  (2.58x) 0.05
+fizz_buzz(sequence{3,1,5})/latency         (2.12x) 3047.81  (2.20x) 0.02  (3.91x) 0.03  (1.92x) 3356.43  (2.21x) 0.02  (3.55x) 0.03
+fizz_buzz(sequence{0,1,5,3,15,0})/latency  (1.52x) 4233.76  (1.33x) 0.03  (2.24x) 0.05  (1.52x) 4239.11  (1.34x) 0.03  (2.23x) 0.05
+fizz_buzz(range{0,15,1})/latency           (1.66x) 3896.57  (2.20x) 0.02  (3.06x) 0.04  (1.61x) 4020.39  (2.21x) 0.02  (2.97x) 0.04
+fizz_buzz(unpredictable)/latency           (1.04x) 6231.11  (3.55x) 0.01  (3.49x) 0.03  (1.01x) 6395.67  (3.59x) 0.01  (3.40x) 0.03
+
+(0) speedup(slowest:1.00x)
+[1] stddev(stat.cpu_time[ns])
+[2] stddev(stat.real_time[ns])
+[3] mae(stat.cpu_time[ns])
+[4] mae(stat.real_time[ns])
+[5] cv(stat.cpu_time[ns])
+[6] cv(stat.real_time[ns])
+```
+<!-- .element: style="font-size:12px;" -->
+
+----
+
+```cpp
 // baseline
 
 int main() {
@@ -727,8 +812,11 @@ int main() {
 
 ----
 
+### [2] Not having clear representation of results
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-// speedup, relative
+// Plotting
 ```
 
 ----
@@ -762,8 +850,8 @@ int main() {
   bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
   bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
 
-  perf::plot::bar (bench[perf::stat::tsc / perf::bench::operations]);
   perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::bar (bench[perf::stat::tsc / perf::bench::operations]);
   perf::plot::box (bench[perf::stat::tsc / perf::bench::operations]);
   perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 }
@@ -772,6 +860,19 @@ int main() {
 ```cpp
 # xterm -ti 340
 ```
+
+----
+
+#### Histogram
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::hist(bench[perf::time::tsc / perf::bench::operations]);
+```
+
+<p align="left">
+<img src="images/hist1.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
@@ -801,18 +902,6 @@ perf::bench::latency{.iterations = 1, .samples = 1};
 
 ----
 
-#### Histogram
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::hist(bench[perf::time::tsc / perf::bench::operations]);
-```
-
-<p align="left">
-<img src="images/hist1.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-</p>
-
-----
 
 #### Box / Errorbar
 <!-- .element: style="text-align:left" -->
@@ -865,111 +954,13 @@ PERF_IO_PLOT_TERM="dumb ansi size 150,25" $server ./fizz_buzz
 
 ----
 
-### [1] Not following structured analysis method
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+### [2] Trusting results without understanding
 <!-- .element: style="text-align:left" -->
 
 ```cpp
- ├─ [1] Retiring
- ├─ [1] Bad Speculation
- ├─ [1] Front-End Bound
- └─ [1] Back-End Bound
+// Profiling/Tracing/Analyzing
+// ...
 ```
-<!-- .element: style="font-size:19px;" -->
-
-----
-
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
-<!-- .element: style="text-align:left" -->
-
-```cpp
- ├─ [1] Retiring
- │   ├─ [2] Base
- │   └─ [2] Complex µops
- │
- ├─ [1] Bad Speculation
- │   ├─ [2] Branch Mispredictions
- │   └─ [2] Machine Clears
- │
- ├─ [1] Front-End Bound
- │   ├─ [2] Front-End Latency
- │   └─ [2] Front-End Bandwidth
- │
- └─ [1] Back-End Bound
-     ├─ [2] Core Bound
-     └─ [2] Memory Bound
-```
-<!-- .element: style="font-size:19px;" -->
-
-----
-
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
-<!-- .element: style="text-align:left" -->
-
-```cpp
- ├─ [1] Retiring
- │   ├─ [2] Base
- │   └─ [2] Complex µops
- │
- ├─ [1] Bad Speculation
- │   ├─ [2] Branch Mispredictions
- │   └─ [2] Machine Clears
- │
- ├─ [1] Front-End Bound
- │   ├─ [2] Front-End Latency
- │   │   ├─ [3] iL1 Misses
- │   │   ├─ [3] iTLB Misses
- │   │   └─ [3] Branch Resteers
- │   └─ [2] Front-End Bandwidth
- │
- └─ [1] Back-End Bound
-     ├─ [2] Core Bound
-     │   └─ [3] Execution ports utilization
-     │   └─ [3] Divider
-     └─ [2] Memory Bound
-         ├─ [3] dL1 Bound
-         ├─ [3] dL2 Bound
-         ├─ [3] dL3 Bound
-         └─ [3] DRAM Bound
-```
-<!-- .element: style="font-size:19px;" -->
-
-----
-
-#### Performance Monitoring Unit (PMU)
-<!-- .element: style="text-align:left" -->
-
-```cpp
- ├─ [1] Retiring                            │
- │   ├─ [2] Base                            │
- │   └─ [2] Complex µops                    │
- │                                          │
- ├─ [1] Bad Speculation                     │
- │   ├─ [2] Branch Mispredictions           │
- │   └─ [2] Machine Clears                  │
- │                                          │ PMC - Performance-Monitoring Counter
- ├─ [1] Front-End Bound                     │ LBR - Last Branch Record
- │   ├─ [2] Front-End Latency               │ IPT - Intel Processor Trace
- │   │   ├─ [3] iL1 Misses                  │ PEBS - Precise Event-Based Sampling
- │   │   ├─ [3] iTLB Misses                 │
- │   │   └─ [3] Branch Resteers             │ MCA - Machine Code Analyzer
- │   └─ [2] Front-End Bandwidth             │
- │                                          │
- └─ [1] Back-End Bound                      │
-     ├─ [2] Core Bound                      │
-     │   └─ [3] Execution ports utilization │
-     │   └─ [3] Divider                     │
-     └─ [2] Memory Bound                    │
-         ├─ [3] dL1 Bound                   │
-         ├─ [3] dL2 Bound                   │
-         ├─ [3] dL3 Bound                   │
-         └─ [3] DRAM Bound                  │
-```
-<!-- .element: style="font-size:19px;" -->
 
 ----
 
@@ -999,27 +990,34 @@ perf::profiler stat{            // perf stat -e
   perf::stat::tsc,
   perf::stat::cycles,
   perf::stat::instructions,
-  ...
+  // ...
 };
 
+----
+
+```cpp
 // Sampling
 perf::profiler record{          // perf record -b -e
   perf::record::cache_misses,
   perf::record::branch_misses,
-  ...
-};
-perf::profiler mem{             // perf mem record
-  perf::record::mem_loads,
-  perf::record::mem_stores,
+  // ...
 };
 
+perf::profiler mem{             // perf mem record
+  perf::record::mem_loads,
+  perf::record::mem_stores
+};
+```
+
+----
+
+```cpp
 // Tracing
 perf::profiler trace{           // perf record -e intel_pt/
   perf::trace::instructions,
   perf::trace::cycles,
 };
 ```
-<!-- .element: style="font-size:19px" -->
 
 ----
 
@@ -1038,12 +1036,6 @@ int main() {
 
   perf::log(profiler[]);
 }
-```
-
-----
-
-```sh
-// Example output
 ```
 
 ----
@@ -1129,38 +1121,17 @@ int main() {
 
 ----
 
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-int main() {
-  perf::runner bench{};
-
-  bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
-  bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
-  bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
-  bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
-
-  perf::report(bench[
-    perf::stat::retiring,
-    perf::stat::bad_speculation,
-    perf::stat::frontend_bound,
-    perf::stat::backend_bound
-  ]);
-}
+// Memory Bound
+auto cache_miss_rate = cache_misses / cache_references;
+auto branch_miss_rate = branch_misses / branches;
 ```
 
-----
-
-#### Memory bound
-<!-- .element: style="text-align:left" -->
-
 ```cpp
+// Core Bound
 auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
 auto cpi = cycles / instructions;
 auto upc = uops / cycles;
-auto cache_miss_rate = cache_misses / cache_references;
-auto branch_miss_rate = branch_misses / branches;
 ```
 
 ----
@@ -1310,13 +1281,178 @@ perf::annotate<perf::vsplit>(bench[
 
 ----
 
-### [3] Not continuously verifying/testing
+### [3] Not following a methodical approach when optimizing
+
+```cpp
+// Top down Microarchitecture Analysis Method
+```
+
+----
+
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
 <!-- .element: style="text-align:left" -->
+
+```cpp
+ ├─ [1] Retiring
+ ├─ [1] Bad Speculation
+ ├─ [1] Front-End Bound
+ └─ [1] Back-End Bound
+```
+<!-- .element: style="font-size:19px;" -->
+
+----
+
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ ├─ [1] Retiring
+ │   ├─ [2] Base
+ │   └─ [2] Complex µops
+ │
+ ├─ [1] Bad Speculation
+ │   ├─ [2] Branch Mispredictions
+ │   └─ [2] Machine Clears
+ │
+ ├─ [1] Front-End Bound
+ │   ├─ [2] Front-End Latency
+ │   └─ [2] Front-End Bandwidth
+ │
+ └─ [1] Back-End Bound
+     ├─ [2] Core Bound
+     └─ [2] Memory Bound
+```
+<!-- .element: style="font-size:19px;" -->
+
+----
+
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ ├─ [1] Retiring
+ │   ├─ [2] Base
+ │   └─ [2] Complex µops
+ │
+ ├─ [1] Bad Speculation
+ │   ├─ [2] Branch Mispredictions
+ │   └─ [2] Machine Clears
+ │
+ ├─ [1] Front-End Bound
+ │   ├─ [2] Front-End Latency
+ │   │   ├─ [3] iL1 Misses
+ │   │   ├─ [3] iTLB Misses
+ │   │   └─ [3] Branch Resteers
+ │   └─ [2] Front-End Bandwidth
+ │
+ └─ [1] Back-End Bound
+     ├─ [2] Core Bound
+     │   └─ [3] Execution ports utilization
+     │   └─ [3] Divider
+     └─ [2] Memory Bound
+         ├─ [3] dL1 Bound
+         ├─ [3] dL2 Bound
+         ├─ [3] dL3 Bound
+         └─ [3] DRAM Bound
+```
+<!-- .element: style="font-size:19px;" -->
+
+----
+
+#### Performance Monitoring Unit (PMU)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ ├─ [1] Retiring                            │
+ │   ├─ [2] Base                            │
+ │   └─ [2] Complex µops                    │
+ │                                          │
+ ├─ [1] Bad Speculation                     │
+ │   ├─ [2] Branch Mispredictions           │
+ │   └─ [2] Machine Clears                  │
+ │                                          │ PMC - Performance-Monitoring Counter
+ ├─ [1] Front-End Bound                     │ LBR - Last Branch Record
+ │   ├─ [2] Front-End Latency               │ IPT - Intel Processor Trace
+ │   │   ├─ [3] iL1 Misses                  │ PEBS - Precise Event-Based Sampling
+ │   │   ├─ [3] iTLB Misses                 │
+ │   │   └─ [3] Branch Resteers             │ MCA - Machine Code Analyzer
+ │   └─ [2] Front-End Bandwidth             │
+ │                                          │
+ └─ [1] Back-End Bound                      │
+     ├─ [2] Core Bound                      │
+     │   └─ [3] Execution ports utilization │
+     │   └─ [3] Divider                     │
+     └─ [2] Memory Bound                    │
+         ├─ [3] dL1 Bound                   │
+         ├─ [3] dL2 Bound                   │
+         ├─ [3] dL3 Bound                   │
+         └─ [3] DRAM Bound                  │
+```
+<!-- .element: style="font-size:19px;" -->
+
+----
+
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  perf::runner bench{};
+
+  bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
+  bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
+  bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
+  bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
+
+  perf::report(bench[
+    perf::stat::retiring,
+    perf::stat::bad_speculation,
+    perf::stat::frontend_bound,
+    perf::stat::backend_bound
+  ]);
+}
+```
+
+----
+
+```
+benchmark                                           [1]           [2]           [3]           [4]
+-----------------------------------------  ------------  ------------  ------------  ------------
+fizz_buzz(0)/latency                       (1.22x) 0.20    (n/a) 0.00    (n/a) 0.00  (1.00x) 0.80
+fizz_buzz(15)/latency                      (1.23x) 0.20    (n/a) 0.00    (n/a) 0.00  (1.00x) 0.80
+fizz_buzz(3)/latency                       (1.08x) 0.23    (n/a) 0.00    (n/a) 0.00  (1.04x) 0.77
+fizz_buzz(5)/latency                       (1.00x) 0.25    (n/a) 0.00    (n/a) 0.00  (1.06x) 0.75
+fizz_buzz(sequence{1,3,5})/latency         (1.02x) 0.24    (n/a) 0.00    (n/a) 0.00  (1.05x) 0.76
+fizz_buzz(sequence{3,1,5})/latency         (1.02x) 0.24    (n/a) 0.00    (n/a) 0.00  (1.05x) 0.76
+fizz_buzz(sequence{0,1,5,3,15,0})/latency  (1.00x) 0.25    (n/a) 0.00    (n/a) 0.00  (1.06x) 0.75
+fizz_buzz(range{0,15,1})/latency           (1.02x) 0.24    (n/a) 0.00    (n/a) 0.00  (1.05x) 0.76
+fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0.14  (1.43x) 0.56
+
+(0) speedup(slowest:1.00x)
+[1] median((stat.top_down.retiring/stat.slots))
+[2] median((stat.top_down.bad_speculation/stat.slots))
+[3] median((stat.top_down.fronted_bound/stat.slots))
+[4] median((stat.top_down.backend_bound/stat.slots))
+```
+<!-- .element: style="font-size:16px" -->
+
+----
+
+### [4] Not having pragmatic/systematic validation
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// bench-testing
+// asm-testing
+// opt-testing
+// mca-testing
+// ...
+```
 
 ----
 
 ```cpp
-// Verify/Debug
+// testing
 
 int main() {
   // auto fizz_buzz = [](std::vector<int>& v) {
@@ -1335,10 +1471,11 @@ int main() {
   }
 }
 ```
+
 ----
 
 ```cpp
-// Testing
+// testing
 
 int main() {
   perf::verify(instructions.size)
@@ -1353,153 +1490,6 @@ int main() {
   perf::verify(optimized == []{}); // disassemble compare
   perf::verify(optimized < []{}); // disassemble compare
 }
-```
-
-----
-
-### [3] Not having reproducible results
-<!-- .element: style="text-align:left" -->
-
-
-```cpp
-// $CXX      // compiler
-int main() { // kernel
-  // ...     // CPU
-}
-```
-
-----
-
-#### cpu/info
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::log(perf::info::spec{
-    {"time",  std::chrono::system_clock::now()},
-    {"sys",   perf::info::sys::triple()},
-    {"cxx",   perf::info::compiler()},
-    {"cpu",   perf::info::cpu()},
-    {"cache", perf::info::memory::cache()},
-    // ...
-  });
-}
-```
-
-```sh
-name  info
------ -----------------------------------------------------------------
-time  2025-09-15 11:50:00
-sys   x86_64-pc-linux-gnu
-cxx   gcc-15.0.0
-cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
-cache iL1: 32Kb/64b, dL1: 48Kb/12/64b
-...
-```
-
-##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### sanity-checks
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::verify(perf::info::compiler::NDEBUG);
-  perf::verify(perf::info::compiler::OPTIMIZED);
-  perf::verify(not perf::info::cpu::freq_scaling);
-  // ...
-}
-```
-
-----
-
-#### self-testing
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::self::test({.verbose = true});
-}
-
-auto add  = [](int a, int b) { return a + b; };
-auto sub  = [](int a, int b) { return a - b; };
-auto mult = [](int a, int b) { return a * b; };
-auto div  = [](int a, int b) { return a / b; };
-
-// https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-```
-
-----
-
-#### Noise reduction
-<!-- .element: style="text-align:left" -->
-
-```
-# Disable Frequency Scaling
-# Disable Processor Boosting
-# Disable Turbo Mode
-# ...
-perf/scripts/tune.sh # pyperf system tune
-```
-<!-- .element: style="text-align:left" -->
-
----
-
-```cpp
-int main() {
-  perf::sys::thread::set_affinity(self, 2); // 0, 1 used by the kernel
-  perf::sys::thread::set_priority(self, max);
-  // ...
-}
-```
-
-----
-
-#### Kernel Mode Task-Isolation - https://lwn.net/articles/816298
-<!-- .element: style="text-align:left" -->
-
-```sh
-isolcpus=<cpu number>,...,<cpu number> # bootloader
-```
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/isolcpus.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-```sh
-cat /sys/devices/system/cpu/isolated
-# <cpu number>,...,<cpu number>
-```
-
-----
-
-#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int efi_main(perf::uefi::sys* sys) { // no kernel
-  perf::runner bench{
-    .setup    = [] { perf::cpu::cache::disable(); },
-    .teardown = [] { perf::cpu::cache::enable();  },
-  };
-
-  bench(fizz_buzz/latency, unpredictable<int>);
-
-  perf::report(
-    sys->stdout,
-    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
-    min, median, p90, p99
-  );
-}
-```
-```cpp
-$CXX -DPERF_UEFI \
-  -target x86_64 -ffreestanding -fno-exceptions -fno-rtti \
-  ...
 ```
 
 ----
