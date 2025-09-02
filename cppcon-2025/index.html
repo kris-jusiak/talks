@@ -483,6 +483,7 @@ Latency
  ├─ Acceleration from 0–60 mph
  └─ ns/op
 
+
 Throughput
  ├─ Total number of operations
  │  completed in a given amount of time
@@ -497,6 +498,7 @@ Throughput
 template<std::align_val_t Alignment>
 [[gnu::section("latency")]] [[gnu::aligned(16u)]]
 auto latency(auto fn, auto... ts) {
+  // warm/cold
   perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
     checksum ^= fn(checksum ^ ts...);       // data dependency
     std::atomic_thread_fence(memory_order); // sync
@@ -504,10 +506,12 @@ auto latency(auto fn, auto... ts) {
 }
 ```
 
+----
+
 ```cpp
-// https://uops.info/table.html
+// https://uops.info/table.html (nanoBench)
 template<auto N>
-auto uops::latency(auto fn) { // https://github.com/andreas-abel/nanoBench
+auto uops::latency(auto fn) {
   return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
 }
 ```
@@ -545,6 +549,7 @@ int main() {
 template<std::align_val_t Alignment>
 [[gnu::section("throughput")]] [[gnu::aligned(16u)]]
 auto throughput::seq(auto fn, auto... ts) {
+  // warm/cold
   perf::code::align(Alignment) for (auto i = 0u; i < iterations; ++i) {
     fn(ts...);
   }
@@ -593,7 +598,7 @@ bench(fizz_buzz/latency, std::integral_constant<int, 15>{});
 ```
 
 ```cpp
-// value
+// variable
 bench(fizz_buzz/latency, 0);
 bench(fizz_buzz/latency, 3);
 bench(fizz_buzz/latency, 5);
@@ -622,14 +627,15 @@ bench(fizz_buzz/latency, choice<int>{
   .probabilities = {.25, .50, .25}, .values = {3, 5, 15}
 });
 ...
+
+// pollute_heap - prevents continuous allocation
 ```
 
 ----
 
-#### Optimizations
-<!-- .element: style="text-align:left" -->
-
 ```cpp
+// ...
+
 auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
 auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
 auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
@@ -640,7 +646,8 @@ auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
   perf::code::align(64); // clang::code_align(64)
   // ...
 };
-...
+
+latency{.teardown = [] { perf::cpu::cache::flush(); }};
 ```
 
 ----
@@ -653,15 +660,6 @@ auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
 // Measurements are NOT following normal distribution
 ```
 
-#### Warm/Cold
-<!-- .element: style="text-align:left" -->
-
-```cpp
-auto latency{.setup = [] { fn(ts...); } ; // warmup
-auto latency{.teardown = [] { flush::cache::; } //
-```
-
-// pollute_heap - prevents continuous allocation
 ----
 
 ```cpp
@@ -689,31 +687,33 @@ auto bench(auto fn, auto... ts) -> measurements {
 perf::report(bench[perf::stat::tsc], min, median, p90, p99);
 ```
 
+----
+
 ```cpp
-// min, median, percentiles instead of mean
+perf::report(bench[perf::stat::cpu_time, perf::stat::real_time],
+  stddev, // standard deviation (variability), degrees_of_freedom = 1
+  mae,    // median absolute error
+  cv      // coefficient of variation
+);
 ```
 
 ----
 
 ```cpp
-using perf::metric::mae;         // median absolute errror
-using perf::metric::mad;         // median absolute deviation
-using perf::metric::cv;          // coefficient of variation
-perf::report(bench[perf::stat::tsc], stddev, mae, cv);
+// baseline
+
+int main() {
+  bench(baseline(fizz_buzz/latency), unpredictable<int>);
+  bench(fizz_buzz/latency,           unpredictable<int>);
+
+  perf::report(bench[perf::stat::tsc]);
+}
 ```
 
 ----
 
-#### baseline (speedup, relative)
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-bench(baseline(fizz_buzz/latency), unpredictable<int>);
-bench(fizz_buzz/latency, unpredictable<int>);
-```
-
-```cpp
-report
+// speedup, relative
 ```
 
 ----
@@ -773,7 +773,7 @@ perf::plot::bar(bench[perf::time::tsc / perf::bench::operations]);
 
 ----
 
-#### Bar / unstable
+#### Bar / issue
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -814,8 +814,8 @@ perf::plot::box(bench[perf::time::tsc / perf::bench::operations]);
 
 ```cpp
 perf::plot::box(bench[perf::time::tsc / perf::bench::operations],
-  perf::plot::n^2
-); // big0
+  perf::plot::complexity::n2
+);
 ```
 
 ----
@@ -966,7 +966,7 @@ concept profiler =
     TProfiler{events...};
 
     bool(TProfiler::is_syscall_free);
-    bool(TProfiler::is_multiplexing_free); // PMU limits
+    bool(TProfiler::is_multiplexing_free);
 
     // RDPMC - Read Performance-Monitoring Counters
     profiler.start();
@@ -1050,14 +1050,14 @@ concept analyzer =
 
 ```cpp
 int main() {
-  perf::analyzer analyzer{
-    perf::mca::address,
-    perf::mca::encoding,
-    perf::mca::assembly,
-    perf::mca::size,
-    perf::mca::cycles,
-    perf::mca::uops,
-    perf::mca::rthroughput,
+  perf::analyzer analyzer{                    // auto label(const auto label)
+    perf::mca::address,                       //   asm volatile goto(
+    perf::mca::encoding,                      //     ".pushsection labels, \"aw\" \n"
+    perf::mca::assembly,                      //     ".quad %c0, %l[L]\n"
+    perf::mca::size,                          //     ".popsection \n"
+    perf::mca::cycles,                        //     : : "i"(label) : "memory" : L
+    perf::mca::uops,                          //   ); L:;
+    perf::mca::rthroughput,                   // }
     perf::mca::timeline,
     perf::mca::resource_pressure,
     perf::mca::bottleneck,
@@ -1065,10 +1065,11 @@ int main() {
   };
 
   perf::code::label("start");
-  (void)&fizz_buzz; // no need to run
+  (void)&fizz_buzz; // not executing
   perf::code::label("stop");
 
-  analyzer << region{perf::code::labels["start"], perf::code::labels["stop"]};
+  analyzer << {perf::code::labels["start"],
+               perf::code::labels["stop"]};
 
   perf::annotate(analyzer[]);
 }
@@ -1077,28 +1078,9 @@ int main() {
 
 ----
 
-```cpp
-auto label(const auto label)
-  asm volatile goto(
-    ".pushsection labels, \"aw\" \n"
-    ".quad %c0, %l[L]\n"
-    ".popsection \n"
-    : : "i"(label) : "memory" : L
-  ); L:;
-}
-
-extern "C" void* __start_labels [[gnu::section("labels")]] [[gnu::weak]];
-extern "C" void* __stop_labels  [[gnu::section("labels")]] [[gnu::weak]];
-std::unordered_map labels{&__start_labels, &__stop_labels};
-
-int main() {
-  perf::code::label("begin");
-  std::puts("perf");
-  perf::code::label("end");
-  perf::verify(perf::code::labels["begin"] != perf::code::labels["end"]);
-}
+```sh
+// Example output
 ```
-<!-- .element: style="font-size:19px" -->
 
 ----
 
@@ -1122,30 +1104,18 @@ int main() {
 
 ----
 
+```sh
+// Example output
+```
+
 ```cpp
-template<auto... Events>
-auto latency(auto fn, auto... ts) {
-  profiler profiler{Events...};
-  analyzer analyzer{Events...};
-
-  profiler.start();
-  for (auto i = 0; i < iterations; ++i) {
-    fn(ts[i]...); // may need different runs
-  }
-  profiler.stop();
-
-  analyzer << profiler[perf::trace::instructions];
-
-  return tuple(profiler[], analyzer[]);
-}
+// similarly in latency, throughput (events deduced based on bench[...])
 ```
 
 ----
 
-#### Examples
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
 <!-- .element: style="text-align:left" -->
-
-----
 
 ```cpp
 int main() {
@@ -1178,6 +1148,8 @@ auto cache_miss_rate = cache_misses / cache_references;
 auto branch_miss_rate = branch_misses / branches;
 ```
 
+----
+
 ```cpp
 int main() {
   perf::runner bench{};
@@ -1187,10 +1159,15 @@ int main() {
   bench(fizz_buzz/latency, unpredictable<int>);
 
   perf::annotate<perf::vsplit>(bench[perf::mca::assembly]);
+  // ...
 }
 ```
 
 ----
+
+```cpp
+perf::annotate<perf::vsplit>(bench[perf::mca::assembly]);
+```
 
 ```
 fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz_buzz(unpredictable)/latency:
@@ -1225,13 +1202,11 @@ fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz
 
 ```cpp
 perf::annotate(bench[
-  mca::address,  mca::encoding, mca::size,
-  mca::assembly, mca::latency,  mca::uops,
-  record::cycles, record::branch_misses
+  perf::mca::address, perf::mca::encoding, perf::mca::size, perf::mca::assembly, perf::mca::latency, perf::mca::uops,
+  perf::record::cycles, perf::record::branch_misses
 ]);
 ```
-
-----
+<!-- .element: style="font-size:13px" -->
 
 ```
 fizz_buzz(unpredictable)/latency:
@@ -1276,7 +1251,11 @@ perf::annotate<perf::vsplit>(bench[mca::timeline]);
 ----
 
 ```cpp
-perf::annotate<perf::vsplit>(bench[mca::assembly, mca::resource_pressure, mca::bottleneck]);
+perf::annotate<perf::vsplit>(bench[
+  perf::mca::assembly,
+  perf::mca::resource_pressure,
+  perf::mca::bottleneck
+]);
 ```
 
 ----
@@ -1289,21 +1268,21 @@ perf::annotate<perf::vsplit>(bench[mca::assembly, mca::resource_pressure, mca::b
 ```cpp
 // Verify/Debug
 
-// auto sort = [](std::vector<int>& v) {
-//   std::ranges::sort(v);
-// };
+int main() {
+  // auto fizz_buzz = [](std::vector<int>& v) {
+  //   std::ranges::sort(v);
+  // };
 
-auto sort = []<bool debug>(std::vector<int>& v) {
-  std::ranges::sort(v);
-  if constexpr (debug) { // doesn't affect benchmarking
-    perf::verify(is_sorted(v));
+  auto sort = []<bool debug>(std::vector<int>& v) {
+    std::ranges::sort(v);
+    if constexpr (debug) { // doesn't affect benchmarking
+      perf::verify(is_sorted(v));
+    }
+  };
+
+  for (auto i = 0; i < 1024; ++i) {
+    bench(sort/throughput, unpredictable<int> | to<std::vector>(i));
   }
-};
-```
-
-```cpp
-for (auto i = 0; i < 1024; ++i) {
-  bench(sort/throughput, unpredictable<int> | to<std::vector>(i));
 }
 ```
 ----
@@ -1311,25 +1290,19 @@ for (auto i = 0; i < 1024; ++i) {
 ```cpp
 // Testing
 
-perf::verify(instructions.size)
-perf::verify(asm.instruction == "mov")
-perf::verify(asm.instruction.count < non optimizaed)
-perf::verify(as.minstruciton.count == c++optimization)
+int main() {
+  perf::verify(instructions.size)
+  perf::verify(asm.instruction == "mov")
+  perf::verify(asm.instruction.count < non optimizaed)
+  perf::verify(as.minstruciton.count == c++optimization)
 
-if (perf::info::cpu::features().contains("avx512")) {
+  if (perf::info::cpu::features().contains("avx512")) { }
+
+  perf::verify(entry[0].cycle_dispatched);
+  perf::verify(entry[0].cycle_executed);
+  perf::verify(optimized == []{}); // disassemble compare
+  perf::verify(optimized < []{}); // disassemble compare
 }
-```
-
-----
-
-```cpp
-perf::verify(entry[0].cycle_dispatched);
-perf::verify(entry[0].cycle_executed);
-```
-
-```cpp
-perf::verify(optimized == []{}); // disassemble compare
-perf::verify(optimized < []{}); // disassemble compare
 ```
 
 ----
