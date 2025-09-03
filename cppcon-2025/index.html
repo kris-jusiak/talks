@@ -410,13 +410,9 @@ C++23, linux/perf, llvm/mca, gnuplot/sixel
 ```cpp
 // $CXX      // compiler
 int main() { // kernel
-  // ...     // CPU
+  ...        // cpu
+  ret
 }
-
-// noise-reduction
-// cpu/info
-// sanity-checks
-// self-checks
 ```
 
 ----
@@ -1076,7 +1072,7 @@ static_assert(not mem.is_syscall_free);
 ----
 
 ```cpp
-// Tracing (IPT: Intel, Apple M4)
+// Tracing (IPT)
 
 perf::profiler trace{           // perf record -e intel_pt/
   perf::trace::instructions,
