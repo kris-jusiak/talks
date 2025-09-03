@@ -382,13 +382,18 @@ bench(fizz_buzz) -> 10ns // ?
 
 ----
 
-#### Disclaimer
+##### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
 <!-- .element: style="text-align:left" -->
 
-##### - Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
-<!-- .element: style="text-align:left" -->
+```
+RDPMC - Read Performance-Monitoring Counters
+PEBS  - Precise Event-Based Sampling
+LBR   - Last Branch Record
+IPT   - Intel Processor Trace # Intel, Apple M4
+```
+<!-- .element: style="margin: 2% 2%;" -->
 
-##### - Powered by https://github.com/qlibs/perf
+##### Powered by https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -1158,14 +1163,10 @@ accuracy
 understanding
 methodology
 validation
-```
-
-annottate // vsplit
-  - timeline
-
- resource pressure
-
+annottate // vsplit - timeline
+resource pressure
 dissasmble vs trace
+```
 
 ----
 
@@ -1476,10 +1477,10 @@ perf::annotate<perf::vsplit>(bench[
  │   └─ [2] Machine Clears                  │
  │                                          │ PMC - Performance-Monitoring Counter
  ├─ [1] Front-End Bound                     │ LBR - Last Branch Record
- │   ├─ [2] Front-End Latency               │ IPT - Intel Processor Trace
- │   │   ├─ [3] iL1 Misses                  │ PEBS - Precise Event-Based Sampling
- │   │   ├─ [3] iTLB Misses                 │
- │   │   └─ [3] Branch Resteers             │ MCA - Machine Code Analyzer
+ │   ├─ [2] Front-End Latency               │ PEBS - Precise Event-Based Sampling
+ │   │   ├─ [3] iL1 Misses                  │ IPT - Intel Processor Trace
+ │   │   ├─ [3] iTLB Misses                 │ MCA - Machine Code Analyzer
+ │   │   └─ [3] Branch Resteers             │ 
  │   └─ [2] Front-End Bandwidth             │
  │                                          │
  └─ [1] Back-End Bound                      │
