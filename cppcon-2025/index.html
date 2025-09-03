@@ -101,8 +101,8 @@ System Under Test (SUT)
  │     ├─ Profile
  │     ├─ Analyze
  │     ├─ Optimize // Low-Level: SIMD, SWAR, DOD, CTE, Par, ...
- │     └─ Test
- └─ Test // End-to-End: Prod-like
+ │     └─ Validate
+ └─ Validate // End-to-End: Prod-like
 ```
 
 ----
@@ -310,8 +310,9 @@ Modern CPUs are primarily bottlenecked by
 ```cpp
 /**
 * Iteration speed
-* Understanding
 * Isolation
+* Edge cases
+* Understanding
 */
 auto bench(auto code) -> measurements;
 ```
@@ -418,24 +419,20 @@ int main() { // kernel
 #### Noise reduction
 <!-- .element: style="text-align:left" -->
 
+----
+
 ```
-# Disable Frequency Scaling
-# Disable Processor Boosting
-# Disable Turbo Mode
-# ...
-perf/scripts/tune.sh # pyperf system tune
+pyperf system tune # pip install pyperf
 ```
 <!-- .element: style="text-align:left" -->
 
----
+----
 
-```cpp
-int main() {
-  perf::sys::thread::set_affinity(self, 2); // 0, 1 used by the kernel
-  perf::sys::thread::set_priority(self, max);
-  // ...
-}
 ```
+nice -n -20 taskset -c 2 ./a.out
+chrt -f  99 taskset -c 2 ./a.out
+```
+<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -463,12 +460,12 @@ cat /sys/devices/system/cpu/isolated
 
 ```cpp
 int efi_main(perf::uefi::sys* sys) { // no kernel
-  perf::runner bench{
+  perf::runner bench{perf::bench::latency{
     .setup    = [] { perf::cpu::cache::disable(); },
     .teardown = [] { perf::cpu::cache::enable();  },
-  };
+  }};
 
-  bench(fizz_buzz/latency, unpredictable<int>);
+  bench(fizz_buzz, unpredictable<int>);
 
   perf::report(
     sys->stdout,
@@ -538,6 +535,12 @@ int main() {
 
 #### self-checks
 <!-- .element: style="text-align:left" -->
+
+```cpp
+import perf; // -DNTEST
+```
+
+----
 
 ```cpp
 int main() {
@@ -800,6 +803,51 @@ fizz_buzz(unpredictable)/latency           (1.04x) 6231.11  (3.55x) 0.01  (3.49x
 ----
 
 ```cpp
+for (int a = 0; a < 10; ++a) {
+  for (int b = 0; b < 10; ++b) {
+    bench(add, a, b);
+  }
+}
+
+bench(add, unpredictable<int>, unpredictable<int>);
+bench(add, unpredictable<int>, 10);
+bench(add, 10, unpredictable<int>);
+```
+
+----
+
+```cpp
+benchmark                                          [1]
+----------------------------------------  ------------  
+add(0,0)/latency                          (1.00x) 1.00  
+add(0,1)/latency                          (1.00x) 1.00  
+add(0,2)/latency                          (1.00x) 1.00  
+add(0,3)/latency                          (1.00x) 1.00  
+add(1,0)/latency                          (1.00x) 1.00  
+add(1,1)/latency                          (1.00x) 1.00  
+add(1,2)/latency                          (1.00x) 1.00  
+add(1,3)/latency                          (1.00x) 1.00  
+add(2,0)/latency                          (1.00x) 1.00  
+add(2,1)/latency                          (1.00x) 1.00  
+add(2,2)/latency                          (1.00x) 1.00  
+add(2,3)/latency                          (1.00x) 1.00  
+add(3,0)/latency                          (1.00x) 1.00  
+add(3,1)/latency                          (1.00x) 1.00  
+add(3,2)/latency                          (1.00x) 1.00  
+add(3,3)/latency                          (1.00x) 1.00  
+...
+add(unpredictable,unpredictable)/latency  (1.00x) 1.00  
+add(unpredictable,10)/latency             (1.00x) 1.00  
+add(10,unpredictable)/latency             (1.00x) 1.00  
+
+(0) speedup(slowest:1.00x)
+[1] median((stat.cycles/bench.operations)) 
+```
+<!-- .element: style="font-size:17px;" -->
+
+----
+
+```cpp
 // baseline
 
 int main() {
@@ -965,27 +1013,8 @@ PERF_IO_PLOT_TERM="dumb ansi size 150,25" $server ./fizz_buzz
 ----
 
 ```cpp
-template<class TProfiler, class... TEvents>
-concept profiler =
-  requires (TProfiler profiler, TEvents... events) {
-    // perf_event_open - linux-perf API
-    TProfiler{events...};
-
-    bool(TProfiler::is_syscall_free);
-    bool(TProfiler::is_multiplexing_free);
-
-    // RDPMC - Read Performance-Monitoring Counters
-    profiler.start();
-    profiler.stop();
-
-    { profiler[events...] } -> tuple;
-  };
-```
-
-----
-
-```cpp
 // Counting
+
 perf::profiler stat{            // perf stat -e
   perf::stat::tsc,
   perf::stat::cycles,
@@ -993,10 +1022,19 @@ perf::profiler stat{            // perf stat -e
   // ...
 };
 
+static_assert(stat.is_syscall_free);
+
+start():
+  rdtsc
+  rdpmc
+  rdpmc
+```
+
 ----
 
 ```cpp
-// Sampling
+// Sampling (PEBS, LBR)
+
 perf::profiler record{          // perf record -b -e
   perf::record::cache_misses,
   perf::record::branch_misses,
@@ -1005,81 +1043,91 @@ perf::profiler record{          // perf record -b -e
 
 perf::profiler mem{             // perf mem record
   perf::record::mem_loads,
-  perf::record::mem_stores
+  perf::record::mem_stores,
 };
+
+static_assert(not record.is_syscall_free);
+static_assert(not mem.is_syscall_free);
 ```
 
 ----
 
 ```cpp
-// Tracing
+// Tracing (IPT: Intel, Apple M4)
+
 perf::profiler trace{           // perf record -e intel_pt/
   perf::trace::instructions,
   perf::trace::cycles,
 };
+
+// size!
+static_assert(not trace.is_syscall_free);
 ```
 
 ----
 
 ```cpp
-int main() {
-  perf::profiler profiler{
-    perf::stat::tsc,                                   // TSC
-    perf::stat:cycles, perf::stat::instructions,       // RDPMC
-    perf::trace::instructions, perf::trace::cycles,    // IPT
-    perf::record::mem_loads, perf::record::mem_stores  // PEBS, LBR
-  };
-
-  profiler.start();
-  perf::compiler::prevent_elision(fizz_buzz({}));
-  profiler.stop();
-
-  perf::log(profiler[]);
-}
+perf::profiler profiler{
+  perf::stat::tsc,
+  perf::stat:cycles, perf::stat::instructions,
+  perf::trace::instructions, perf::trace::cycles,
+  perf::record::mem_loads, perf::record::mem_stores
+};
 ```
 
 ----
 
 ```cpp
-template<class TAnalzyer, class... Ts>
-concept analyzer =
-  requires (TAnalyzer analyzer, Ts... ts) {
-    TAnalyzer{ts...};
+profiler.start();
+perf::compiler::prevent_elision(fizz_buzz({}));
+profiler.stop();
 
-    // llvm-mca, uica, osaca
-    analyzer << span(instructions);
-
-    { analyzer[ts...] } -> tuple;
-  };
+perf::log(profiler[]);
 ```
 
 ----
 
 ```cpp
-int main() {
-  perf::analyzer analyzer{                    // auto label(const auto label)
-    perf::mca::address,                       //   asm volatile goto(
-    perf::mca::encoding,                      //     ".pushsection labels, \"aw\" \n"
-    perf::mca::assembly,                      //     ".quad %c0, %l[L]\n"
-    perf::mca::size,                          //     ".popsection \n"
-    perf::mca::cycles,                        //     : : "i"(label) : "memory" : L
-    perf::mca::uops,                          //   ); L:;
-    perf::mca::rthroughput,                   // }
-    perf::mca::timeline,
-    perf::mca::resource_pressure,
-    perf::mca::bottleneck,
-    perf::mca::source, // requires debug symbols (-g)
-  };
+// Machine Code Analyzer (MCA)
 
-  perf::code::label("start");
-  (void)&fizz_buzz; // not executing
-  perf::code::label("stop");
+perf::analyzer analyzer{
+  perf::mca::address,
+  perf::mca::encoding,
+  perf::mca::assembly,
+  perf::mca::size,
+  perf::mca::cycles,
+  perf::mca::uops,
+  perf::mca::rthroughput,
+  perf::mca::timeline,
+  perf::mca::resource_pressure,
+  perf::mca::bottleneck,
+  perf::mca::source,                  // requires debug symbols (-g)
+  // ...
+};
+```
+<!-- .element: style="font-size:18px" -->
 
-  analyzer << {perf::code::labels["start"],
-               perf::code::labels["stop"]};
+----
 
-  perf::annotate(analyzer[]);
-}
+```cpp
+// auto label(const auto label)
+//   asm volatile goto(
+//     ".pushsection labels, \"aw\" \n"
+//     ".quad %c0, %l[L]\n"
+//     ".popsection \n"
+//     : : "i"(label) : "memory" : L
+//   ); L:;
+// }
+```
+<!-- .element: style="font-size:13px; margin:0 65%;" -->
+
+```cpp
+perf::code::label("start")
++fizz_buzz;
+perf::code::label("stop");
+
+analyzer << {perf::code::labels["start"], perf::code::labels["stop"]};
+perf::annotate(analyzer[]);
 ```
 <!-- .element: style="font-size:18px" -->
 
@@ -1087,26 +1135,63 @@ int main() {
 
 ```sh
 // Example output
+trust
+accuracy
+understanding
+methodology
+validation
+```
+
+annottate // vsplit
+  - timeline
+
+ resource pressure
+
+dissasmble vs trace
+
+----
+
+```cpp
+perf::profiler profiler{perf::trace::instructions};
+
+auto invoke = [] (auto fn, auto... ts) {
+  profiler.start();
+  fn(ts...);
+  profiler.stop();
+};
 ```
 
 ----
 
 ```cpp
-int main() {
-  perf::profiler profiler{
-    perf::trace::instructions, // Intel, Apple M4
-  };
-  perf::analyzer analyzer{
-    perf::mca::assembly, perf::mca::timeline,
-  };
+perf::analyzer analyzer{perf::mca::assembly,
+                        perf::mca::timeline};
 
-  profiler.start();
-  fizz_buzz({});
-  profiler.stop();
+invoke(fn(1));
+analyzer << profiler[trace::instructions];
 
-  analyzer << profiler[trace::instructions];
-  perf::annotate(analyzer[]);
-}
+perf::log(analyzer[]);
+```
+
+----
+
+```cpp
+perf::analyzer analyzer{perf::mca::assembly,
+                        perf::mca::timeline};
+
+invoke(fn(1));
+analyzer << profiler[trace::instructions];
+
+perf::log(analyzer[]);
+```
+
+----
+
+```cpp
+// duplicate
+analyzer << profiler[trace::instructions];
+analyzer << profiler[trace::instructions];
+analyzer << profiler[trace::instructions];
 ```
 
 ----
@@ -1282,6 +1367,7 @@ perf::annotate<perf::vsplit>(bench[
 ----
 
 ### [3] Not following a methodical approach when optimizing
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 // Top down Microarchitecture Analysis Method
@@ -1397,12 +1483,12 @@ perf::annotate<perf::vsplit>(bench[
 
 ```cpp
 int main() {
-  perf::runner bench{};
+  perf::runner bench{perf::bench::latency{}};
 
-  bench(fizz_buzz/latency, sequence<int>{1, 3, 5});
-  bench(fizz_buzz/latency, sequence<int>{3, 1, 5});
-  bench(fizz_buzz/latency, sequence<int>{0, 1, 5, 3, 15, 0});
-  bench(fizz_buzz/latency, range<int>{.start = 0, .stop = 15});
+  bench(fizz_buzz, sequence<int>{1, 3, 5});
+  bench(fizz_buzz, sequence<int>{3, 1, 5});
+  bench(fizz_buzz, sequence<int>{0, 1, 5, 3, 15, 0});
+  bench(fizz_buzz, range<int>{.start = 0, .stop = 15});
 
   perf::report(bench[
     perf::stat::retiring,
@@ -1467,7 +1553,7 @@ int main() {
   };
 
   for (auto i = 0; i < 1024; ++i) {
-    bench(sort/throughput, unpredictable<int> | to<std::vector>(i));
+    bench(sort, unpredictable<int> | to<std::vector>(i));
   }
 }
 ```
