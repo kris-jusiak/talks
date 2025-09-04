@@ -211,11 +211,13 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
+```cpp
 consider jmp
 
 if (true) {
   jmp
 }
+```
 
 ----
 
@@ -312,16 +314,18 @@ Modern CPUs are primarily bottlenecked by
 
 ----
 
+```cpp
 Measuerments DONT' follow normal distribution
   Normal benchmarks → non-normal distributions → bad statistics.
   STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
 
 can't do statistics and collusion of that
+```
 
 ----
 
-Goal - make normal distrubution
-
+#### Goal - make normal distribution
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 void setup() {
@@ -333,23 +337,39 @@ void setup() {
 
 ----
 
-https://emeryberger.com/research/stabilizer
+#### https://emeryberger.com/research/stabilizer
+<!-- .element: style="text-align:left" -->
 
+```cpp
 level 0
 level 1
 
 jit
+```
 
 ----
 
-
+```cpp
 void foo1() {
     volatile char pad[ rand() % 128 ]; // stack
     /* function logic */
 }
 
+```cpp
+# 1) Put each function in its own .text.<func> section
+clang -O2 -ffunction-sections -fdata-sections -c *.c
+
+# 2) Link with lld (or mold) and shuffle input sections
+#    seed=0 → random each link; seed=N → reproducible layout
+clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
+# mold alternative:
+mold -run clang *.o -Wl,--shuffle-sections=0 -o app
+```
+
+```cpp
 Address Space Layout Randomization
 /proc/sys/kernel/randomize_va_space
+```
 
 ----
 
@@ -437,9 +457,9 @@ bench(fizz_buzz) -> 10ns // ?
 ```
 RDPMC - Read Performance-Monitoring Counters (Intel, AMD)
 PEBS  - Precise Event-Based Sampling (Intel)
-IBS   - Instruction Based Sampling (Amd)
-LBR   - Last Branch Record (Intel, Amd)
-IPT   - Intel Processor Trace # (Intel) / Embedded Trace Macrocell (Apple M4)
+IBS   - Instruction Based Sampling (AMD)
+LBR   - Last Branch Record (Intel, AMD)
+IPT   - Intel Processor Trace # (Intel)
 ```
 <!-- .element: style="margin: 2% 2%;" -->
 
@@ -510,7 +530,7 @@ cat /sys/devices/system/cpu/isolated
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int efi_main(perf::uefi::sys* sys) { // no kernel
+int efi_main(perf::uefi::sys* sys) { // no kernel (ring 0)
   // ... we will get back
 }
 ```
@@ -920,10 +940,8 @@ void* operator new(size_t size) {
 
 ----
 
-// show examples
 ```
-
-https://emeryberger.com/research/stabilizer
+// show examples
 
 ----
 
@@ -1134,7 +1152,7 @@ static_assert(not mem.is_syscall_free);
 ----
 
 ```cpp
-// Tracing (IPT)
+// Tracing (IPT) / ETM - Embedded Trace Macrocell (Apple M4)
 
 perf::profiler trace{           // perf record -e intel_pt/
   perf::trace::instructions,
@@ -1446,11 +1464,24 @@ perf::annotate<perf::vsplit>(bench[
 ### [3] Not following a methodical approach when optimizing
 <!-- .element: style="text-align:left" -->
 
+----
+
+#### Establish a baseline
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::baseline()
+```
+
+----
+
 ```cpp
 // Top down Microarchitecture Analysis Method
 ```
 
-<img src="images/td.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
+<p align="left">
+<img src="images/td.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
@@ -1472,7 +1503,7 @@ perf::annotate<perf::vsplit>(bench[
 
 ```cpp
  ├─ [1] Retiring
- │   ├─ [2] Base
+ │   ├─ [2] Light µops
  │   └─ [2] Complex µops
  │
  ├─ [1] Bad Speculation
@@ -1496,7 +1527,7 @@ perf::annotate<perf::vsplit>(bench[
 
 ```cpp
  ├─ [1] Retiring
- │   ├─ [2] Base
+ │   ├─ [2] Light µops
  │   └─ [2] Complex µops
  │
  ├─ [1] Bad Speculation
@@ -1529,7 +1560,7 @@ perf::annotate<perf::vsplit>(bench[
 
 ```cpp
  ├─ [1] Retiring                            │
- │   ├─ [2] Base                            │
+ │   ├─ [2] Light µops                      │
  │   └─ [2] Complex µops                    │
  │                                          │
  ├─ [1] Bad Speculation                     │
@@ -1663,10 +1694,10 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int efi_main(perf::uefi::sys* sys) { // no kernel
+int efi_main(perf::uefi::sys* sys) { // no kernel (ring 0)
   perf::runner bench{perf::bench::latency{
-    .setup    = [] { perf::cpu::cache::disable(); },
-    .teardown = [] { perf::cpu::cache::enable();  },
+    .setup    = [] { perf::cpu::btb::disable(); perf::cpu::cache::disable(); },
+    .teardown = [] { perf::cpu::btb::enable(); perf::cpu::cache::enable();  },
   }};
 
   bench(fizz_buzz, unpredictable<int>);
