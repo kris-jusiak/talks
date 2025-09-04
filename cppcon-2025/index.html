@@ -86,28 +86,19 @@
 
 ----
 
-#### Always Measure! - "If you can’t measure it, you can’t improve it"
+#### Performance
 <!-- .element: style="text-align:left" -->
 
-```c
-System Under Test (SUT)
-
- ├─ Measure
- ├─ Profile
- ├─ Analyze
- ├─ Optimize // High-Level: Design, Algorithms, ...
- │  └─ Microbenchmarks
- │     ├─ Measure
- │     ├─ Profile
- │     ├─ Analyze
- │     ├─ Optimize // Low-Level: SIMD, SWAR, DOD, CTE, Par, ...
- │     └─ Validate
- └─ Validate // End-to-End: Prod-like
+```cpp
+ └─ System (I/O, Network, ...)
+    └── Application (Design, Algorithms, Parallelization, ...)
+      └── µArch (Reduce cache misses, branch misses, ...)
 ```
 
+<!--// Low-Level: SIMD, SWAR, DOD, CTE, Par, ...-->
 ----
 
-#### Always Measure! - https://www.brendangregg.com
+#### https://www.brendangregg.com
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -118,12 +109,14 @@ System Under Test (SUT)
 </table>
 
 ```sh
-perf stat -e cycles,instructions,cache-misses ./a.out
-perf probe -x /usr/lib/libc.so malloc
-perf record -g probe_libc:malloc ./a.out
-bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
-bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
-...
+System
+  bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
+  bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
+Application
+  perf probe -x /usr/lib/libc.so malloc
+  perf record -g probe_libc:malloc ./a.out
+µArch
+  perf stat -e cycles,instructions,cache-misses ./a.out
 ```
 <!-- .element: style="text-align:left" -->
 
@@ -310,6 +303,13 @@ Modern CPUs are primarily bottlenecked by
 - instruction supply
 - data access
 - branch prediction
+```
+
+```cpp
+cpu 2025 4gh >>>> fater than cpu 2005 4gz
+
+more instructions per cycle
+
 ```
 
 ----
