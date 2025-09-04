@@ -86,13 +86,13 @@
 
 ----
 
-#### Performance
+#### Performance Analysis
 <!-- .element: style="text-align:left" -->
 
 ```cpp
- └─ System (I/O, Network, ...)
-    └── Application (Design, Algorithms, Parallelization, ...)
-      └── µArch (Reduce cache misses, branch misses, ...)
+ └─ System (OS, memory, I/O, ...)
+    └── Application (Algorithm, data structures, parallelization, software architecture, ...)
+      └── µArch (CPU pipeline, caches, branch prediction, ...)
 ```
 
 <!--// Low-Level: SIMD, SWAR, DOD, CTE, Par, ...-->
@@ -116,13 +116,13 @@ Application
   perf probe -x /usr/lib/libc.so malloc
   perf record -g probe_libc:malloc ./a.out
 µArch
-  perf stat -e cycles,instructions,cache-misses ./a.out
+  perf stat -e cycles,instructions,cache-misses,branch-misses ./a.out
 ```
 <!-- .element: style="text-align:left" -->
 
 ----
 
-#### Always Measure! - [linux-perf](https://perf.wiki.kernel.org)
+#### Hot path - [linux-perf](https://perf.wiki.kernel.org)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -614,7 +614,7 @@ latency{.teardown = [] { perf::cpu::cache::flush(); }};
 
 ```cpp
 layout biases measurement
-link order 
+link order
 ENV variable size - move program stack size
 
 -Rcode -Rheap -Rstack
