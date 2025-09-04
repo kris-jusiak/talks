@@ -312,12 +312,44 @@ Modern CPUs are primarily bottlenecked by
 
 ----
 
-Dosn't
+Measuerments DONT' follow normal distribution
+  Normal benchmarks → non-normal distributions → bad statistics.
+  STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
 
-Normal benchmarks → non-normal distributions → bad statistics.
-STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
+can't do statistics and collusion of that
+
+----
+
+Goal - make normal distrubution
+
+
+```cpp
+void setup() {
+  cpu();
+  os();
+  memory();
+}
+```
+
+----
 
 https://emeryberger.com/research/stabilizer
+
+level 0
+level 1
+
+jit
+
+----
+
+
+void foo1() {
+    volatile char pad[ rand() % 128 ]; // stack
+    /* function logic */
+}
+
+Address Space Layout Randomization
+/proc/sys/kernel/randomize_va_space
 
 ----
 
@@ -558,6 +590,14 @@ auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
 };
 
 latency{.teardown = [] { perf::cpu::cache::flush(); }};
+```
+
+```cpp
+layout biases measurement
+link order 
+ENV variable size - move program stack size
+
+-Rcode -Rheap -Rstack
 ```
 
 ----
@@ -872,6 +912,11 @@ add(10,unpredictable)/latency             (1.00x) 1.00
 
 // pollute_heap - prevents continuous allocation
 // clflush - for date
+
+void* operator new(size_t size) {
+    size_t pad = rand() % 64;
+    return malloc(size + pad);
+}
 
 ----
 
@@ -1404,6 +1449,8 @@ perf::annotate<perf::vsplit>(bench[
 ```cpp
 // Top down Microarchitecture Analysis Method
 ```
+
+<img src="images/td.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
 
 ----
 
