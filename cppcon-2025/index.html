@@ -211,6 +211,14 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
+consider jmp
+
+if (true) {
+  jmp
+}
+
+----
+
 #### Always Measure!
 <!-- .element: style="text-align:left;" -->
 
@@ -304,6 +312,15 @@ Modern CPUs are primarily bottlenecked by
 
 ----
 
+Dosn't
+
+Normal benchmarks → non-normal distributions → bad statistics.
+STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
+
+https://emeryberger.com/research/stabilizer
+
+----
+
 #### Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
@@ -386,10 +403,11 @@ bench(fizz_buzz) -> 10ns // ?
 <!-- .element: style="text-align:left" -->
 
 ```
-RDPMC - Read Performance-Monitoring Counters
-PEBS  - Precise Event-Based Sampling
-LBR   - Last Branch Record
-IPT   - Intel Processor Trace # Intel, Apple M4
+RDPMC - Read Performance-Monitoring Counters (Intel, AMD)
+PEBS  - Precise Event-Based Sampling (Intel)
+IBS   - Instruction Based Sampling (Amd)
+LBR   - Last Branch Record (Intel, Amd)
+IPT   - Intel Processor Trace # (Intel) / Embedded Trace Macrocell (Apple M4)
 ```
 <!-- .element: style="margin: 2% 2%;" -->
 
@@ -408,7 +426,7 @@ C++23, linux/perf, llvm/mca, gnuplot/sixel
 
 
 ```cpp
-// $CXX      // compiler
+// $CXX      // compiler/linker
 int main() { // kernel
   ...        // cpu
   ret
@@ -461,18 +479,7 @@ cat /sys/devices/system/cpu/isolated
 
 ```cpp
 int efi_main(perf::uefi::sys* sys) { // no kernel
-  perf::runner bench{perf::bench::latency{
-    .setup    = [] { perf::cpu::cache::disable(); },
-    .teardown = [] { perf::cpu::cache::enable();  },
-  }};
-
-  bench(fizz_buzz, unpredictable<int>);
-
-  perf::report(
-    sys->stdout,
-    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
-    min, median, p90, p99
-  );
+  // ... we will get back
 }
 ```
 ```cpp
@@ -534,6 +541,27 @@ int main() {
 
 ----
 
+```cpp
+// compiler/linker
+
+// alignment (recompilation will change alignment)
+
+auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
+auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
+auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
+auto fizz_buzz_avx512       = [] [[gnu::target("avx512f")]] (int n);
+auto fizz_buzz_align16      = [] [[gnu::aligned("16")]] (int n);
+auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
+  // ...
+  perf::code::align(64); // clang::code_align(64)
+  // ...
+};
+
+latency{.teardown = [] { perf::cpu::cache::flush(); }};
+```
+
+----
+
 #### self-checks
 <!-- .element: style="text-align:left" -->
 
@@ -557,7 +585,6 @@ auto div  = [](int a, int b) { return a / b; };
 ```
 
 ----
-
 
 ### [1] Not having accurate/realistic results
 <!-- .element: style="text-align:left" -->
@@ -679,6 +706,13 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 
 ----
 
+#### CPU vs. GPU
+<!-- .element: style="text-align:left" -->
+
+<img src="images/gpu.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
+
+----
+
 ```cpp
 // predictable                          // exact
 
@@ -704,25 +738,6 @@ choice<int>{                            // 15,5,5,5,3,3,5,5,...
   .values = {3, 5, 15}
 };
 ...
-```
-
-----
-
-```cpp
-// ...
-
-auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
-auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
-auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
-auto fizz_buzz_avx512       = [] [[gnu::target("avx512f")]] (int n);
-auto fizz_buzz_align16      = [] [[gnu::aligned("16")]] (int n);
-auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
-  // ...
-  perf::code::align(64); // clang::code_align(64)
-  // ...
-};
-
-latency{.teardown = [] { perf::cpu::cache::flush(); }};
 ```
 
 ----
@@ -823,45 +838,47 @@ bench(add, 10, unpredictable<int>);
 
 ```cpp
 benchmark                                          [1]
-----------------------------------------  ------------  
-add(0,0)/latency                          (1.00x) 1.00  
-add(0,1)/latency                          (1.00x) 1.00  
-add(0,2)/latency                          (1.00x) 1.00  
-add(0,3)/latency                          (1.00x) 1.00  
-add(1,0)/latency                          (1.00x) 1.00  
-add(1,1)/latency                          (1.00x) 1.00  
-add(1,2)/latency                          (1.00x) 1.00  
-add(1,3)/latency                          (1.00x) 1.00  
-add(2,0)/latency                          (1.00x) 1.00  
-add(2,1)/latency                          (1.00x) 1.00  
-add(2,2)/latency                          (1.00x) 1.00  
-add(2,3)/latency                          (1.00x) 1.00  
-add(3,0)/latency                          (1.00x) 1.00  
-add(3,1)/latency                          (1.00x) 1.00  
-add(3,2)/latency                          (1.00x) 1.00  
-add(3,3)/latency                          (1.00x) 1.00  
+----------------------------------------  ------------
+add(0,0)/latency                          (1.00x) 1.00
+add(0,1)/latency                          (1.00x) 1.00
+add(0,2)/latency                          (1.00x) 1.00
+add(0,3)/latency                          (1.00x) 1.00
+add(1,0)/latency                          (1.00x) 1.00
+add(1,1)/latency                          (1.00x) 1.00
+add(1,2)/latency                          (1.00x) 1.00
+add(1,3)/latency                          (1.00x) 1.00
+add(2,0)/latency                          (1.00x) 1.00
+add(2,1)/latency                          (1.00x) 1.00
+add(2,2)/latency                          (1.00x) 1.00
+add(2,3)/latency                          (1.00x) 1.00
+add(3,0)/latency                          (1.00x) 1.00
+add(3,1)/latency                          (1.00x) 1.00
+add(3,2)/latency                          (1.00x) 1.00
+add(3,3)/latency                          (1.00x) 1.00
 ...
-add(unpredictable,unpredictable)/latency  (1.00x) 1.00  
-add(unpredictable,10)/latency             (1.00x) 1.00  
-add(10,unpredictable)/latency             (1.00x) 1.00  
+add(unpredictable,unpredictable)/latency  (1.00x) 1.00
+add(unpredictable,10)/latency             (1.00x) 1.00
+add(10,unpredictable)/latency             (1.00x) 1.00
 
 (0) speedup(slowest:1.00x)
-[1] median((stat.cycles/bench.operations)) 
+[1] median((stat.cycles/bench.operations))
 ```
 <!-- .element: style="font-size:17px;" -->
 
 ----
 
 ```cpp
-// baseline
+// memory
 
-int main() {
-  bench(baseline(fizz_buzz/latency), unpredictable<int>);
-  bench(fizz_buzz/latency,           unpredictable<int>);
+// pollute_heap - prevents continuous allocation
+// clflush - for date
 
-  perf::report(bench[perf::stat::tsc]);
-}
+----
+
+// show examples
 ```
+
+https://emeryberger.com/research/stabilizer
 
 ----
 
@@ -1476,7 +1493,7 @@ perf::annotate<perf::vsplit>(bench[
  │   ├─ [2] Front-End Latency               │ PEBS - Precise Event-Based Sampling
  │   │   ├─ [3] iL1 Misses                  │ IPT - Intel Processor Trace
  │   │   ├─ [3] iTLB Misses                 │ MCA - Machine Code Analyzer
- │   │   └─ [3] Branch Resteers             │ 
+ │   │   └─ [3] Branch Resteers             │
  │   └─ [2] Front-End Bandwidth             │
  │                                          │
  └─ [1] Back-End Bound                      │
@@ -1590,6 +1607,28 @@ int main() {
   perf::verify(entry[0].cycle_executed);
   perf::verify(optimized == []{}); // disassemble compare
   perf::verify(optimized < []{}); // disassemble compare
+}
+```
+
+----
+
+#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int efi_main(perf::uefi::sys* sys) { // no kernel
+  perf::runner bench{perf::bench::latency{
+    .setup    = [] { perf::cpu::cache::disable(); },
+    .teardown = [] { perf::cpu::cache::enable();  },
+  }};
+
+  bench(fizz_buzz, unpredictable<int>);
+
+  perf::report(
+    sys->stdout,
+    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    min, median, p90, p99
+  );
 }
 ```
 
