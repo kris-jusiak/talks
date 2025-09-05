@@ -148,8 +148,6 @@ perf stat/record ... --control=fifo:/dev/shm/perf --delay=-1 ./a.out
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-import prof; // https://github.com/qlibs/prof
-
 int main() {
   prof::callgrind profiler{"simulation"};
 
@@ -205,10 +203,18 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 ----
 
 ```cpp
-consider jmp
+import jmp; // https://github.com/qlibs/jmp
 
-if (true) {
-  jmp
+template<fixed_string Name>
+constexpr jmp::static_branch<bool> branch = false;
+
+template<fixed_string Name>
+constexpr auto marker(auto& profiler) {
+  if (branch<Name>) { profiler.start(); }
+};
+
+int main() {
+  marker<"start">(profiler); // nop
 }
 ```
 
