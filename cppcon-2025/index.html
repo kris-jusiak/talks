@@ -90,9 +90,9 @@
 <!-- .element: style="text-align:left" -->
 
 ```cpp
- └─ System (OS, memory, I/O, ...)
-    └── Application (Algorithm, data structures, parallelization, software architecture, ...)
-      └── µArch (CPU pipeline, caches, branch prediction, ...)
+ └─ System          // OS, I/O, memory, ...
+    └── Application // design, algorithm, data structures, ...
+      └── µArch     // CPU pipeline, caches, branch prediction, ...
 ```
 
 <!--// Low-Level: SIMD, SWAR, DOD, CTE, Par, ...-->
@@ -108,14 +108,14 @@
 </tr>
 </table>
 
-```sh
-System
+```cpp
+// System
   bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
   bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
-Application
+// Application
   perf probe -x /usr/lib/libc.so malloc
   perf record -g probe_libc:malloc ./a.out
-µArch
+// µArch
   perf stat -e cycles,instructions,cache-misses,branch-misses ./a.out
 ```
 <!-- .element: style="text-align:left" -->
@@ -246,6 +246,44 @@ if (true) {
 
 ##### ...
 <!-- .element: style="text-align:left; margin: 0 0;" -->
+
+----
+
+```cpp
+measurment bias - producing wrong data wothout doing anything abvouslu wrong
+
+if you have a branch
+if you have a loop
+if you are a function
+if you are inlined
+if you inline a function
+if you access memory
+  if you access caxhe
+  if you memory heap - pollute heap
+do you have stack
+if you call a functuon
+  layout bias
+  xompiler upgrade
+
+latency:
+  - data dependency - overhad
+  - unroll
+
+  int maib() {
+    env... // working direcotyr
+    40%
+  }
+
+  BENCHMARK=foo ./a.out # yeah will change the stack layout
+
+
+normal distribution
+- central limit theorem
+- t.test null hypothesis
+- analysy of variance
+note cause profile for multithreadinf
+hot spoting doesnt give you the overall speedup
+```
 
 ----
 
@@ -760,6 +798,10 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 }
 ```
 
+```
+you have a sirvey of 1000 people and ask just one 1000 times
+```
+
 ```cpp
 // shuffle(measure(repeat(fn)) -> measure(repeat(shuffle(fn));
 ```
@@ -1152,7 +1194,7 @@ static_assert(not mem.is_syscall_free);
 ----
 
 ```cpp
-// Tracing (IPT) / ETM - Embedded Trace Macrocell (Apple M4)
+// Tracing (IPT)
 
 perf::profiler trace{           // perf record -e intel_pt/
   perf::trace::instructions,
@@ -1318,11 +1360,11 @@ auto upc = uops / cycles;
 
 ```cpp
 int main() {
-  perf::runner bench{};
+  perf::runner bench{perf::bench::latency{}};
 
-  bench(fizz_buzz/latency, 15);
-  bench(fizz_buzz/latency, 5);
-  bench(fizz_buzz/latency, unpredictable<int>);
+  bench(fizz_buzz, 15);
+  bench(fizz_buzz, 5);
+  bench(fizz_buzz, unpredictable<int>);
 
   perf::annotate<perf::vsplit>(bench[perf::mca::assembly]);
   // ...
