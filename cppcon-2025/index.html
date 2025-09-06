@@ -52,10 +52,15 @@
 <br />&nbsp;
 <br />&nbsp;
 
-#### Nanosecond count!
-<!-- .element: style="text-align:left; margin: 0 4%;" -->
-
 <img src="images/qr.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
+
+----
+
+### Nanosecond count!
+<!-- .element: style="text-align:left;" -->
+
+<img src="images/citsec.png" style="background:none; border:none; box-shadow:none;" />
+<!-- .element: style="display:flex; width: 10%; " -->
 
 ----
 
@@ -86,6 +91,22 @@
 
 ----
 
+```cpp
+Modern CPUs are primarily bottlenecked by
+- instruction supply
+- data access
+- branch prediction
+```
+
+```cpp
+cpu 2025 4gh >>>> fater than cpu 2005 4gz
+
+more instructions per cycle
+
+```
+
+----
+
 #### Performance Analysis
 <!-- .element: style="text-align:left" -->
 
@@ -109,13 +130,10 @@
 </table>
 
 ```cpp
-// System
   bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
   bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
-// Application
   perf probe -x /usr/lib/libc.so malloc
   perf record -g probe_libc:malloc ./a.out
-// µArch
   perf stat -e cycles,instructions,cache-misses,branch-misses ./a.out
 ```
 <!-- .element: style="text-align:left" -->
@@ -255,9 +273,15 @@ int main() {
 
 ----
 
-```cpp
-measurment bias - producing wrong data wothout doing anything abvouslu wrong
+### Measurements Bias
+<!-- .element: style="text-align:left" -->
 
+##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left" -->
+
+----
+
+```cpp
 if you have a branch
 if you have a loop
 if you are a function
@@ -339,22 +363,6 @@ main()                                47.82s (100.0%)
 </td>
 </tr>
 </table>
-
-----
-
-```cpp
-Modern CPUs are primarily bottlenecked by
-- instruction supply
-- data access
-- branch prediction
-```
-
-```cpp
-cpu 2025 4gh >>>> fater than cpu 2005 4gz
-
-more instructions per cycle
-
-```
 
 ----
 
