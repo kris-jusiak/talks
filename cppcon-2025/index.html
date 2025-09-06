@@ -59,11 +59,6 @@
 
 ----
 
-### Nanosecond count!
-<!-- .element: style="text-align:left;" -->
-
-----
-
 #### Performance - [https://www.intel.com/.../articles/moores-law.html](https://www.intel.com/content/www/us/en/history/virtual-vault/articles/moores-law.html)
 <!-- .element: style="text-align:left" -->
 
@@ -81,13 +76,14 @@
 </pre>
 <hr />
 
-<pre style="font-size:10px"><code>
-1 cycle (5Ghz) 0.20ns // cycles
-dL1            0.50ns //    2.5
-Br Mispredict  3.00ns //     15
-dL2            3.00ns //     15
-dL3           10.00ns //     50
-DRAM          70.00ns //    350
+<pre style="font-size:13px"><code>
+// 5Ghz     time cycles
+1 cycle   0.20ns      -
+dL1       0.50ns    2.5
+Br Misp.  3.00ns     15
+dL2       3.00ns     15
+dL3      10.00ns     50
+DRAM     70.00ns    350
 </code></pre>
   </td>
   <td>
@@ -95,6 +91,11 @@ DRAM          70.00ns //    350
   </td>
 </tr>
 </table>
+
+----
+
+### Nanosecond count!
+<!-- .element: style="text-align:left;" -->
 
 ----
 
@@ -153,18 +154,176 @@ bench(fizz_buzz) -> 10ns // ?
 ----
 
 ```cpp
-if you have a branch
-if you have a loop
-if you are a function
-if you are inlined
-if you inline a function
-if you access memory
+void fn():  // compiler/linker
+ // ...
+ ret
+
+int main(): // kernel
+  call fn   // CPU
+  ret
+```
+
+----
+
+```cpp
+0x0000        void fn(param): // alignment
+                // stack
+                for (...) {
+0x0101            if (lookup_table[value]) // memory (cache)
+                    je          // branch predictor
+
+lookup_table:                 // alignmetn
+  ...
+
+int main(): // kernel
+  // stack env variables
+  call fn
+  ret
+```
+
+----
+
+Hardware effects?
+
+bench(...) 
+
+setup() {
+  cpu::enable(branch_prediction, ...);
+  set<
+}
+
+----
+
+avoid microbnehcmaking pitfallas?
+
+
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+<table>
+<tr>
+<td><img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+</table>
+
+----
+
+```cpp
+Hardware effects
+├─ Do you have modern CPU?
+  ├─ Do you have branches?
+  ├─ Do you have loops?
+  ├─ Do you access memory?
+├─ Do you use OS?
+  └─ Do you use threads/processes?
+├─ Do you use optimizing-compiler/linker?
+  ├─ Do you have functions?
+```
+
+----
+
+#### Do you have modern cpu? - https://chipsandcheese.com
+<!-- .element: style="text-align:left" -->
+
+<img src="images/cpu.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<!-- .element: class="fragment" data-fragment-index="1" -->
+
+----
+
+#### Do you have OS? - https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left" -->
+
+<img src="images/linux.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+
+----
+
+#### Do you use optimizing compiler/linker?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
+auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
+auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
+auto fizz_buzz_avx512       = [] [[gnu::target("avx512f")]] (int n);
+auto fizz_buzz_align16      = [] [[gnu::aligned("16")]] (int n);
+auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
+  // ...
+  perf::code::align(64); // clang::code_align(64)
+  // ...
+};
+```
+
+----
+
+#### Do you have functions?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+memory layout
+stack frame
+```
+
+----
+
+#### Do you have branches?
+<!-- .element: style="text-align:left" -->
+
+<p align="right">
+<img src="images/btb.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+/**
+* branch predictor can learn 10'000 1/0 branches
+*/
+```
+
+// branch aliasing
+
+----
+
+#### Do you have loops?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+code::align(1) for (auto i = 0; i < 64; ++i) {
+  // memory boundry
+}
+```
+
+----
+
+#### Do you use memory?
+<!-- .element: style="text-align:left" -->
+
+```cpp
   if you access caxhe
   if you memory heap - pollute heap
-do you have stack
-if you call a functuon
-  layout bias
-  xompiler upgrade
+```
+
+----
+
+#### Do you use multiple cores/threads?
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Do you know what and you measure?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+    - latency
+    - throughput
+- how
+    - rdtsc?
+    - rdpmc
+```
+
+----
 
 latency:
   - data dependency - overhad
@@ -269,7 +428,6 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./a.out
 ```cpp
 function:
   // nop ...    // -fxray-instrument
-  xor eax, eax
   ret
   // nop ...    // -fxray-instrument
 ```
@@ -295,19 +453,25 @@ clang++ -fxray-instrument -fxray-function-list=function.txt
 
 ----
 
+#### Always Measure! - https://docs.kernel.org/staging/static-keys.html
+<!-- .element: style="text-align:left;" -->
+
 ```cpp
 import jmp; // https://github.com/qlibs/jmp
 
-template<fixed_string Name>
-constexpr jmp::static_branch<bool> branch = false;
+constexpr jmp::boolean profile = false;
+auto start(auto& profiler) { if (profile) { profiler.start(); } };
+auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
 
-template<fixed_string Name>
-constexpr auto marker(auto& profiler) {
-  if (branch<Name>) { profiler.start(); }
-};
+void fn() {
+  start(profiler); // nop [1]
+  // ...
+  stop(profiler);  // nop [2]
+}
 
 int main() {
-  marker<"start">(profiler); // nop
+  profile = true; // [1] nop -> profiler.start()
+                  // [2] nop -> profiler.stop()
 }
 ```
 
@@ -471,46 +635,6 @@ auto bench(auto code) -> measurements;
 
 ----
 
-#### Performance Is Not a Number! - https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left" -->
-
-<table>
-<tr>
-  <td>
- <pre><code>int main() {
-  bench(fizz_buzz);
-  // ...
-}</code></pre>
-  </td>
-  <td>
-  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-  </td>
-  </tr>
-</table>
-
-----
-
-#### Performance Is Not a Number! - https://chipsandcheese.com
-<!-- .element: style="text-align:left" -->
-
-<table>
-<tr>
-  <td>
- <pre><code>main:
-  mov  ...
-  cmp  ...
-  jbe  ...
-  ...
-  ret</code></pre>
-  </td>
-  <td>
-  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-  </td>
-  </tr>
-</table>
-
-----
-
 ### Avoiding Microbenchmarking Pitfalls
 <!-- .element: style="text-align:left" -->
 
@@ -663,16 +787,6 @@ int main() {
 
 // alignment (recompilation will change alignment)
 
-auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
-auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
-auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
-auto fizz_buzz_avx512       = [] [[gnu::target("avx512f")]] (int n);
-auto fizz_buzz_align16      = [] [[gnu::aligned("16")]] (int n);
-auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
-  // ...
-  perf::code::align(64); // clang::code_align(64)
-  // ...
-};
 
 latency{.teardown = [] { perf::cpu::cache::flush(); }};
 ```
@@ -807,14 +921,6 @@ perf::bench::throughput::par;
 
 ----
 
-<p align="right">
-<img src="images/btb.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-/**
-* branch predictor can learn 10'000 1/0 branches
-*/
 auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
   for (auto i = 0u; i < iterations; ++i) {
@@ -1409,8 +1515,8 @@ int main() {
   bench(fizz_buzz, 5);
   bench(fizz_buzz, unpredictable<int>);
 
-  perf::annotate<vsplit>(bench[perf::mca::assembly] / perf::disasm::instructions);
-  perf::annotate<vsplit>(bench[perf::mca::assembly] / perf::trace::instructions);
+  perf::annotate<vsplit>(bench[perf::mca::assembly / perf::disasm::instructions]);
+  perf::annotate<vsplit>(bench[perf::mca::assembly / perf::trace::instructions]);
 }
 ```
 <!-- .element: style="font-size:18px" -->
@@ -1418,7 +1524,7 @@ int main() {
 ----
 
 ```cpp
-perf::annotate<vsplit>(bench[perf::mca::assembly] / perf::mca::instructions);
+perf::annotate<vsplit>(bench[perf::mca::assembly / perf::mca::instructions]);
 ```
 <!-- .element: style="font-size:15px" -->
 
@@ -1454,7 +1560,7 @@ fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz
 ----
 
 ```cpp
-perf::annotate<vsplit>(bench[perf::mca::assembly] / perf::trace::instructions);
+perf::annotate<vsplit>(bench[perf::mca::assembly / perf::trace::instructions]);
 ```
 <!-- .element: style="font-size:15px" -->
 
@@ -1571,6 +1677,7 @@ perf::baseline()
 <img src="images/td.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
 </p>
 
+<!-- .element: background-color="white" -->
 ----
 
 #### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
