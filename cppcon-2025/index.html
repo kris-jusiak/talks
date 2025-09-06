@@ -76,14 +76,14 @@
 </pre>
 <hr />
 
-<pre style="font-size:13px"><code>
-// 5Ghz     time cycles
-1 cycle   0.20ns      -
-dL1       0.50ns    2.5
-Br Misp.  3.00ns     15
-dL2       3.00ns     15
-dL3      10.00ns     50
-DRAM     70.00ns    350
+<pre style="font-size:15px"><code>
+//    cycles    5Ghz
+           1  0.25ns
+dL1        3  0.50ns
+Br Misp.  15  3.00ns
+dL2       15  3.00ns
+dL3       50 10.00ns
+DRAM     350 70.00ns
 </code></pre>
   </td>
   <td>
@@ -94,22 +94,16 @@ DRAM     70.00ns    350
 
 ----
 
-### Nanosecond count!
+#### Nanosecond count
 <!-- .element: style="text-align:left;" -->
 
-----
-
 ```cpp
-Modern CPUs are primarily bottlenecked by
-- instruction supply
-- data access
-- branch prediction
-```
-
-```cpp
-cpu 2025 4gh >>>> fater than cpu 2005 4gz
-
-more instructions per cycle
+// Modern CPUs are primarily bottlenecked by
+// - instruction supply
+// - data access
+// - branch prediction
+// cpu 2025 4gh >>>> fater than cpu 2005 4gz
+// more instructions per cycle
 ```
 
 ----
@@ -118,12 +112,206 @@ more instructions per cycle
 <!-- .element: style="text-align:left" -->
 
 ```cpp
- └─ System          // OS, I/O, memory, ...
-    └── Application // design, algorithm, data structures, ...
-      └── µArch     // CPU pipeline, caches, branch prediction, ...
+ └─ System          // OS, I/O, ...
+    └── Application // design, algorithms, data structures, ...
+      └── µArch     // Hardware effects
 ```
 
 <!--// Low-Level: SIMD, SWAR, DOD, CTE, Par, ...-->
+
+----
+
+### [0] Always measure
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### https://www.brendangregg.com
+<!-- .element: style="text-align:left" -->
+
+<table>
+<tr>
+<td><img src="images/perf_map.png" style="width: 700px; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/bpf.png" style="width: 820px; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+</table>
+
+----
+
+#### Always measure
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ └─ System
+      bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
+      bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
+    └── Application
+        perf probe -x /usr/lib/libc.so malloc
+        perf record -g probe_libc:malloc ./a.out
+        perf record -F 99 -g -p <PID> -- sleep 10 && perf script | ./Flamegraph/stackcollapse-perf.pl | ./Flamegraph/flamegraph.pl
+      └── µArch
+        perf stat -e cycles,instructions,cache-misses,branch-misses ./a.out
+        perf stat --topdown ./a.out
+
+// gdb
+// active benchmarking
+```
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Always measure - [linux-perf](https://perf.wiki.kernel.org)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+import prof; // https://github.com/qlibs/prof
+
+int main() {
+  prof::linux_perf profiler{"/dev/shm/perf"};
+
+  profiler.start();
+  // ...
+  profiler.stop();
+}
+```
+<!-- .element: style="text-align:left" -->
+
+```sh
+perf stat/record ... --control=fifo:/dev/shm/perf --delay=-1 ./a.out
+```
+
+----
+
+#### Always measure - [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  prof::callgrind profiler{"simulation"};
+
+  while (true) {
+    profiler.reset();
+    profiler.start();
+
+    if (action) {
+      // ...
+      profiler.stop();
+      profiler.flush();
+    }
+  }
+}
+```
+
+```sh
+valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./a.out
+```
+
+----
+
+#### Always measure - [llvm-xray](https://llvm.org/docs/XRay.html)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+function:
+  // nop ...    // -fxray-instrument
+  ret
+  // nop ...    // -fxray-instrument
+```
+
+```cpp
+int main() {
+  // ...
+  auto handler = [](int func_id, XRayEntryType entry) {
+    if (entry == XRayEntryType::ENTRY) {
+      profiler.start();
+    } else {
+      profiler.stop();
+    }
+  };
+  __xray_set_handler(+handler);
+  __xray_patch(); // [code patching] nop -> jmp &handler
+}
+```
+
+```sh
+clang++ -fxray-instrument -fxray-function-list=function.txt
+```
+
+----
+
+#### Always measure - https://docs.kernel.org/staging/static-keys.html
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+import jmp; // https://github.com/qlibs/jmp
+
+constexpr jmp::boolean profile = false;
+auto start(auto& profiler) { if (profile) { profiler.start(); } };
+auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
+
+void fn() {
+  start(profiler); // nop [1]
+  // ...
+  stop(profiler);  // nop [2]
+}
+
+int main() {
+  profile = true; // [1] nop -> profiler.start()
+                  // [2] nop -> profiler.stop()
+}
+```
+
+----
+
+#### Always measure
+<!-- .element: style="text-align:left;" -->
+
+##### - linux-perf - https://perf.wiki.kernel.org
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - dtrace - https://github.com/opendtrace
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - amd-uprof - https://www.amd.com/en/developer/uprof.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - toplev - https://github.com/andikleen/pmu-tools
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - bcc - https://github.com/iovisor/bcc
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - bpftrace - https://github.com/bpftrace/bpftrace
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - callgrind - https://valgrind.org/docs/manual/cl-manual.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - coz - https://github.com/plasma-umass/coz
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - gperftools - https://github.com/gperftools/gperftools
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - likwid - https://github.com/RRZE-HPC/likwid
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - tracy - https://github.com/wolfpld/tracy
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - magic-trace - https://github.com/janestreet/magic-trace
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+##### ...
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+----
+
+
+#### Microbenchmarking
+<!-- .element: style="text-align:left" -->
+
+```cpp
+/**
+* Iteration speed
+* Isolation
+* Edge cases
+* Understanding
+*/
+auto bench(auto code) -> measurements;
+```
+
 ----
 
 #### Performance Is Not a Number!
@@ -141,6 +329,77 @@ more instructions per cycle
 bench(fizz_buzz) -> 10ns // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
+
+----
+
+### Avoiding Microbenchmarking Pitfalls
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Disclaimer
+<!-- .element: style="text-align:left" -->
+
+```cpp
+Focused on x86-64-linux-gnu
+ ├─ RDTSC - Read Time-Stamp Counter               // Intel, AMD
+ ├─ RDPMC - Read Performance-Monitoring Counters  // Intel, AMD
+ ├─ PEBS  - Precise Event-Based Sampling          // Intel
+ ├─ IBS   - Instruction Based Sampling            // AMD
+ ├─ LBR   - Last Branch Record                    // Intel, AMD
+ └─ IPT   - Intel Processor Trace                 // Intel
+
+Powered by https://github.com/qlibs/perf
+ ├─ c++2x                                         // modules, ...
+ ├─ linux/perf                                    // perf_event_open/libipt
+ ├─ llvm/mca                                      // llvm-dev
+ └─ gnuplot/sixel                                 // terminal
+```
+<!-- .element: style="margin: 2% 2%; font-size:21px;" -->
+
+----
+
+### [1] Ensure results are reproducible
+<!-- .element: style="text-align:left" -->
+
+  ### Measurements Bias
+    -Rcode -Rheap -Rstack
+    STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
+    Address Space Layout Randomization
+    /proc/sys/kernel/randomize_va_space
+    clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
+    # mold alternative:
+    mold -run clang *.o -Wl,--shuffle-sections=0 -o app
+    pyperf system tune # pip install pyperf
+    kernal isolation
+    uefi
+    sanity-checks
+    self-checks
+
+### [2] Ensure results are realistic
+<!-- .element: style="text-align:left" -->
+
+  timing
+  latency vs. throuhgput
+  branching (data distrubution)
+  memory (pollute heap, mph)
+
+### [3] Understand the results
+<!-- .element: style="text-align:left" -->
+
+  Analyzing
+  disassemble vs analyze
+
+### [4] Validate the results
+<!-- .element: style="text-align:left" -->
+
+### [5] Apply a systematic analysis method
+<!-- .element: style="text-align:left" -->
+
+
+
+
+
 
 ----
 
@@ -185,7 +444,7 @@ int main(): // kernel
 
 Hardware effects?
 
-bench(...) 
+bench(...)
 
 setup() {
   cpu::enable(branch_prediction, ...);
@@ -353,165 +612,6 @@ hot spoting doesnt give you the overall speedup
 
 ----
 
-#### https://www.brendangregg.com
-<!-- .element: style="text-align:left" -->
-
-<table>
-<tr>
-<td><img src="images/perf_map.png" style="width: 500px; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/bpf.png" style="width: 583px; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-</table>
-
-```cpp
-  bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
-  bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
-  perf probe -x /usr/lib/libc.so malloc
-  perf record -g probe_libc:malloc ./a.out
-  perf stat -e cycles,instructions,cache-misses,branch-misses ./a.out
-```
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Hot path - [linux-perf](https://perf.wiki.kernel.org)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-import prof; // https://github.com/qlibs/prof
-
-int main() {
-  prof::linux_perf profiler{"/dev/shm/perf"};
-
-  profiler.start();
-  // ...
-  profiler.stop();
-}
-```
-<!-- .element: style="text-align:left" -->
-
-```sh
-perf stat/record ... --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-```
-
-----
-
-#### Always Measure! - [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  prof::callgrind profiler{"simulation"};
-
-  while (true) {
-    profiler.reset();
-    profiler.start();
-
-    if (action) {
-      // ...
-      profiler.stop();
-      profiler.flush();
-    }
-  }
-}
-```
-
-```sh
-valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./a.out
-```
-
-----
-
-#### Always Measure! - [llvm-xray](https://llvm.org/docs/XRay.html)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-function:
-  // nop ...    // -fxray-instrument
-  ret
-  // nop ...    // -fxray-instrument
-```
-
-```cpp
-int main() {
-  // ...
-  auto handler = [](int func_id, XRayEntryType entry) {
-    if (entry == XRayEntryType::ENTRY) {
-      profiler.start();
-    } else {
-      profiler.stop();
-    }
-  };
-  __xray_set_handler(+handler);
-  __xray_patch(); // [code patching] nop -> jmp &handler
-}
-```
-
-```sh
-clang++ -fxray-instrument -fxray-function-list=function.txt
-```
-
-----
-
-#### Always Measure! - https://docs.kernel.org/staging/static-keys.html
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-import jmp; // https://github.com/qlibs/jmp
-
-constexpr jmp::boolean profile = false;
-auto start(auto& profiler) { if (profile) { profiler.start(); } };
-auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
-
-void fn() {
-  start(profiler); // nop [1]
-  // ...
-  stop(profiler);  // nop [2]
-}
-
-int main() {
-  profile = true; // [1] nop -> profiler.start()
-                  // [2] nop -> profiler.stop()
-}
-```
-
-----
-
-#### Always Measure!
-<!-- .element: style="text-align:left;" -->
-
-##### - linux-perf - https://perf.wiki.kernel.org
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - dtrace - https://github.com/opendtrace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - amd-uprof - https://www.amd.com/en/developer/uprof.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - toplev - https://github.com/andikleen/pmu-tools
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - bcc - https://github.com/iovisor/bcc
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - bpftrace - https://github.com/bpftrace/bpftrace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - callgrind - https://valgrind.org/docs/manual/cl-manual.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - coz - https://github.com/plasma-umass/coz
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - gperftools - https://github.com/gperftools/gperftools
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - likwid - https://github.com/RRZE-HPC/likwid
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - tracy - https://github.com/wolfpld/tracy
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - magic-trace - https://github.com/janestreet/magic-trace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-##### ...
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-----
-
 <table>
 <tr>
 <td>
@@ -617,48 +717,6 @@ mold -run clang *.o -Wl,--shuffle-sections=0 -o app
 Address Space Layout Randomization
 /proc/sys/kernel/randomize_va_space
 ```
-
-----
-
-#### Microbenchmarking
-<!-- .element: style="text-align:left" -->
-
-```cpp
-/**
-* Iteration speed
-* Isolation
-* Edge cases
-* Understanding
-*/
-auto bench(auto code) -> measurements;
-```
-
-----
-
-### Avoiding Microbenchmarking Pitfalls
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Disclaimer
-<!-- .element: style="text-align:left" -->
-
-```cpp
-Focused on x86-64-linux-gnu
- ├─ RDTSC - Read Time-Stamp Counter               // Intel, AMD
- ├─ RDPMC - Read Performance-Monitoring Counters  // Intel, AMD
- ├─ PEBS  - Precise Event-Based Sampling          // Intel
- ├─ IBS   - Instruction Based Sampling            // AMD
- ├─ LBR   - Last Branch Record                    // Intel, AMD
- └─ IPT   - Intel Processor Trace                 // Intel
-
-Powered by https://github.com/qlibs/perf
- ├─ c++2x                                         // modules, ...
- ├─ linux/perf                                    // perf_event_open/libipt
- ├─ llvm/mca                                      // llvm-dev
- └─ gnuplot/sixel                                 // terminal
-```
-<!-- .element: style="margin: 2% 2%; font-size:21px;" -->
 
 ----
 
@@ -1669,13 +1727,31 @@ perf::baseline()
 
 ----
 
-```cpp
-// Top down Microarchitecture Analysis Method
-```
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
+<!-- .element: style="text-align:left" -->
 
+<table>
+<tr>
+<td>
 <p align="left">
-<img src="images/td.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
+<td>
+<pre style="font-size:15px"><code>
+[Level] Category     Desktop  Server      HPC
+-------------------- -------  ------   ------
+[1] Retiring          20–50%  10–30%   30–70%
+[1] Bad Speculation   05–10%  05–10%   01–05%
+[1] Front-End Bound   05–10%  10–25%   05–10%
+[1] Back-End Bound    20–40%  20–60%   20–40%
+</code></pre>
+</td>
+</tr>
+</table>
+
+```
+```
+<!-- .element: style="font-size:14px;" -->
 
 <!-- .element: background-color="white" -->
 ----
@@ -1942,6 +2018,16 @@ user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, 
 
 ### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
+
+```cpp
+└─ [0] Always measure
+        ├─ [1] Ensure results are reproducible
+        ├─ [2] Ensure results are realistic
+        ├─ [3] Understand the results
+        ├─ [4] Validate the results
+        ├─ [5] Apply a systematic analysis method
+        └─ ...
+```
 
 ----
 
