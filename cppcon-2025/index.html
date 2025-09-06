@@ -126,8 +126,15 @@ DRAM     350 70.00ns
 
 ----
 
-#### https://www.brendangregg.com
+#### Always measure - https://www.brendangregg.com
 <!-- .element: style="text-align:left" -->
+
+```sh
+ └─ System
+      bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
+      bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
+```
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 <table>
 <tr>
@@ -141,175 +148,164 @@ DRAM     350 70.00ns
 #### Always measure
 <!-- .element: style="text-align:left" -->
 
-```cpp
+```sh
  └─ System
-      bpftrace -e 'tracepoint:syscalls:sys_enter_* { @[probe] = count(); }'
-      bpftrace -e 'tracepoint:tcp:tcp_connect { printf("%d", args->dport); }'
     └── Application
         perf probe -x /usr/lib/libc.so malloc
-        perf record -g probe_libc:malloc ./a.out
-        perf record -F 99 -g -p <PID> -- sleep 10 && perf script | ./Flamegraph/stackcollapse-perf.pl | ./Flamegraph/flamegraph.pl
-      └── µArch
-        perf stat -e cycles,instructions,cache-misses,branch-misses ./a.out
-        perf stat --topdown ./a.out
+        perf record -g probe_libc:malloc
+        perf record intel_pt
+        perf script | flamegraph
+        // vtune
+        // amd
 
-// gdb
-// active benchmarking
+        // gdb
 ```
-<!-- .element: style="text-align:left" -->
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
 
-#### Always measure - [linux-perf](https://perf.wiki.kernel.org)
+#### Always measure - https://perf.wiki.kernel.org
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-import prof; // https://github.com/qlibs/prof
+ └─ System
+    └── Application
 
-int main() {
-  prof::linux_perf profiler{"/dev/shm/perf"};
+        import prof; // https://github.com/qlibs/prof
 
-  profiler.start();
-  // ...
-  profiler.stop();
-}
-```
-<!-- .element: style="text-align:left" -->
+        int main() {
+          prof::linux_perf profiler{"/dev/shm/perf"};
 
-```sh
-perf stat/record ... --control=fifo:/dev/shm/perf --delay=-1 ./a.out
-```
-
-----
-
-#### Always measure - [callgrind](https://valgrind.org/docs/manual/cl-manual.html)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  prof::callgrind profiler{"simulation"};
-
-  while (true) {
-    profiler.reset();
-    profiler.start();
-
-    if (action) {
-      // ...
-      profiler.stop();
-      profiler.flush();
-    }
-  }
-}
+          profiler.start();
+          // ...
+          profiler.stop();
+        }
 ```
 
 ```sh
-valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ./a.out
+        perf stat   --control=fifo:/dev/shm/perf --delay=-1 ...
+        perf record --control=fifo:/dev/shm/perf --delay=-1 ...
 ```
 
 ----
 
-#### Always measure - [llvm-xray](https://llvm.org/docs/XRay.html)
+#### Always measure - https://llvm.org/docs/XRay.html
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-function:
-  // nop ...    // -fxray-instrument
-  ret
-  // nop ...    // -fxray-instrument
-```
+ └─ System
+    └── Application
 
-```cpp
-int main() {
-  // ...
-  auto handler = [](int func_id, XRayEntryType entry) {
-    if (entry == XRayEntryType::ENTRY) {
-      profiler.start();
-    } else {
-      profiler.stop();
-    }
-  };
-  __xray_set_handler(+handler);
-  __xray_patch(); // [code patching] nop -> jmp &handler
-}
+        function:
+          // nop ... # -fxray-instrument
+          ret
+          // nop ... # -fxray-instrument
+
+        int main() {
+          // ...
+          auto handler = [](int func_id, XRayEntryType entry) {
+            if (entry == XRayEntryType::ENTRY) {
+              profiler.start();
+            } else {
+              profiler.stop();
+            }
+          };
+          __xray_set_handler(+handler);
+          __xray_patch(); // nop -> jmp &handler
+        }
 ```
+<!-- .element: style="font-size:21px;" -->
 
 ```sh
-clang++ -fxray-instrument -fxray-function-list=function.txt
+        clang++ -fxray-instrument -fxray-function-list=function.txt ...
 ```
+<!-- .element: style="font-size:18px;" -->
+
 
 ----
 
 #### Always measure - https://docs.kernel.org/staging/static-keys.html
-<!-- .element: style="text-align:left;" -->
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-import jmp; // https://github.com/qlibs/jmp
+ └─ System
+    └── Application
 
-constexpr jmp::boolean profile = false;
-auto start(auto& profiler) { if (profile) { profiler.start(); } };
-auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
+        import jmp; // https://github.com/qlibs/jmp
 
-void fn() {
-  start(profiler); // nop [1]
-  // ...
-  stop(profiler);  // nop [2]
-}
+        constexpr jmp::boolean profile = false;
+        auto start(auto& profiler) { if (profile) { profiler.start(); } };
+        auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
 
-int main() {
-  profile = true; // [1] nop -> profiler.start()
-                  // [2] nop -> profiler.stop()
-}
+        void function() {
+          start(profiler); // nop [1]
+          // ...
+          stop(profiler);  // nop [2]
+        }
+
+        int main() {
+          profile = true; // [1] nop -> profiler.start()
+                          // [2] nop -> profiler.stop()
+        }
 ```
+<!-- .element: style="font-size:20px;" -->
 
 ----
 
 #### Always measure
 <!-- .element: style="text-align:left;" -->
 
-##### - linux-perf - https://perf.wiki.kernel.org
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - dtrace - https://github.com/opendtrace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - amd-uprof - https://www.amd.com/en/developer/uprof.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - toplev - https://github.com/andikleen/pmu-tools
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - bcc - https://github.com/iovisor/bcc
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - bpftrace - https://github.com/bpftrace/bpftrace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - callgrind - https://valgrind.org/docs/manual/cl-manual.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - coz - https://github.com/plasma-umass/coz
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - gperftools - https://github.com/gperftools/gperftools
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - likwid - https://github.com/RRZE-HPC/likwid
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - tracy - https://github.com/wolfpld/tracy
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-##### - magic-trace - https://github.com/janestreet/magic-trace
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+```sh
+ └─ System
+    └── Application
 
-##### ...
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+        linux-perf  - https://perf.wiki.kernel.org
+        dtrace      - https://github.com/opendtrace
+        intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+        amd-uprof   - https://www.amd.com/en/developer/uprof.html
+        toplev      - https://github.com/andikleen/pmu-tools
+        bcc         - https://github.com/iovisor/bcc
+        bpftrace    - https://github.com/bpftrace/bpftrace
+        coz         - https://github.com/plasma-umass/coz
+        gperftools  - https://github.com/gperftools/gperftools
+        likwid      - https://github.com/RRZE-HPC/likwid
+        tracy       - https://github.com/wolfpld/tracy
+        magic-trace - https://github.com/janestreet/magic-trace
+        callgrind   - https://valgrind.org/docs/manual/cl-manual.html
+        ...
+```
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
+#### Always measure
+<!-- .element: style="text-align:left;" -->
 
-#### Microbenchmarking
+```cpp
+ └─ System
+    └── Application
+      └── µArch
+          perf stat -e cycles,instructions,cache-misses,branch-misses
+          perf stat --topdown
+```
+
+----
+
+#### Always measure - microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-/**
-* Iteration speed
-* Isolation
-* Edge cases
-* Understanding
-*/
-auto bench(auto code) -> measurements;
+ └─ System
+    └── Application
+      └── µArch
+
+          /**
+          * Iteration speed
+          * Isolation
+          * Edge cases
+          * Understanding
+          */
+          auto bench(auto code) -> measurements;
 ```
 
 ----
@@ -318,15 +314,20 @@ auto bench(auto code) -> measurements;
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
-       if (n % 15 == 0) { return "FizzBuzz"; }
-  else if (n % 3  == 0) { return "Fizz";     }
-  else if (n % 5  == 0) { return "Buzz";     }
-  return "Unknown";
-}
+ └─ System
+    └── Application
+      └── µArch
+
+          [[optimize("O3")]] constexpr auto fizz_buzz(int n) {
+                 if (n % 15 == 0) { return "FizzBuzz"; }
+            else if (n % 3  == 0) { return "Fizz";     }
+            else if (n % 5  == 0) { return "Buzz";     }
+            return "Unknown";
+          }
 ```
+
 ```cpp
-bench(fizz_buzz) -> 10ns // ?
+          bench(fizz_buzz) -> ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
@@ -362,6 +363,47 @@ Powered by https://github.com/qlibs/perf
 ### [1] Ensure results are reproducible
 <!-- .element: style="text-align:left" -->
 
+```cpp
+void function():  // toolchain
+ // ...
+ ret
+
+int main():       // OS
+  call fn         // CPU
+  ret
+```
+
+----
+
+### Measurements Bias
+<!-- .element: style="text-align:left" -->
+
+##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left" -->
+
+----
+
+
+----
+
+```cpp
+0x0000        void function(param): // alignment
+                // stack
+                for (...) {
+0x0101            if (lookup_table[value]) // memory (cache)
+                    je          // branch predictor
+
+lookup_table:                 // alignmetn
+  ...
+
+int main(): // kernel
+  // stack env variables
+  call fn
+  ret
+```
+
+----
+
   ### Measurements Bias
     -Rcode -Rheap -Rstack
     STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
@@ -390,6 +432,37 @@ Powered by https://github.com/qlibs/perf
   Analyzing
   disassemble vs analyze
 
+
+#### Always measure - https://valgrind.org/docs/manual/cl-manual.html
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ └─ System
+    └── Application
+
+        import prof;
+
+        int main() {
+          prof::callgrind profiler{"simulation"};
+
+          while (true) {
+            profiler.reset();
+            profiler.start();
+
+            if (action) {
+              // ...
+              profiler.stop();
+              profiler.flush();
+            }
+          }
+        }
+```
+
+```sh
+        valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ...
+```
+<!-- .element: style="font-size:18px;" -->
+
 ### [4] Validate the results
 <!-- .element: style="text-align:left" -->
 
@@ -404,41 +477,6 @@ Powered by https://github.com/qlibs/perf
 ----
 
 
-### Measurements Bias
-<!-- .element: style="text-align:left" -->
-
-##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left" -->
-
-----
-
-```cpp
-void fn():  // compiler/linker
- // ...
- ret
-
-int main(): // kernel
-  call fn   // CPU
-  ret
-```
-
-----
-
-```cpp
-0x0000        void fn(param): // alignment
-                // stack
-                for (...) {
-0x0101            if (lookup_table[value]) // memory (cache)
-                    je          // branch predictor
-
-lookup_table:                 // alignmetn
-  ...
-
-int main(): // kernel
-  // stack env variables
-  call fn
-  ret
-```
 
 ----
 
