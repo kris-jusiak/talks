@@ -48,11 +48,19 @@
                    data-separator-vertical="^----+$">
           <script type="text/template">
 <!-- .element: data-background-image="images/title.png" data-background-size="100%" -->
-<br />&nbsp;
-<br />&nbsp;
-<br />&nbsp;
 
-<img src="images/qr.png" style="width: 20%; background:none; border:none; box-shadow:none;" />
+<br />
+<br />
+<br />
+
+<p align="left">
+<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none; margin: 0 50px;" />
+</p>
+
+----
+
+### Nanosecond count!
+<!-- .element: style="text-align:left;" -->
 
 ----
 
@@ -76,21 +84,19 @@
 ----
 
 ```cpp
-(~) Frequency
-  - Heat
-    1 cycle (5Ghz)     0.20ns
-    1 cycle (4Ghz)     0.25ns
+(~) Frequency   // Heat
+(⬆️) Transistors // Cores / Cache / Execution
+```
 
-(⬆️) Number of transistors
-  - Cores
-  - Cache
-    dL1                0.50ns
-    dL2                3.00ns
-    dL3               10.00ns
-    DRAM              70.00ns // 100 cycles
+---
 
-  - Execution
-    Branch Mispredict  3.00ns // 15 cycles
+```cpp
+1 cycle (5Ghz)     0.20ns
+dL1                0.50ns // 2.5 cycles
+Branch Mispredict  3.00ns //  15 cycles
+dL2                3.00ns //  15 cycles
+dL3               10.00ns //  50 cycles
+DRAM              70.00ns // 350 cycles
 ```
 
 ----
@@ -107,11 +113,6 @@ cpu 2025 4gh >>>> fater than cpu 2005 4gz
 
 more instructions per cycle
 ```
-
-----
-
-### Nanosecond count!
-<!-- .element: style="text-align:left;" -->
 
 ----
 
@@ -518,25 +519,25 @@ auto bench(auto code) -> measurements;
 
 ----
 
-##### Focused on [x86-64-linux-gnu](https://en.wikipedia.org/wiki/X86-64)
+#### Disclaimer
 <!-- .element: style="text-align:left" -->
 
-```
-RDPMC - Read Performance-Monitoring Counters (Intel, AMD)
-PEBS  - Precise Event-Based Sampling (Intel)
-IBS   - Instruction Based Sampling (AMD)
-LBR   - Last Branch Record (Intel, AMD)
-IPT   - Intel Processor Trace # (Intel)
-```
-<!-- .element: style="margin: 2% 2%;" -->
+```cpp
+Focused on x86-64-linux-gnu
+ ├─ RDTSC - Read Time-Stamp Counter               // Intel, AMD
+ ├─ RDPMC - Read Performance-Monitoring Counters  // Intel, AMD
+ ├─ PEBS  - Precise Event-Based Sampling          // Intel
+ ├─ IBS   - Instruction Based Sampling            // AMD
+ ├─ LBR   - Last Branch Record                    // Intel, AMD
+ └─ IPT   - Intel Processor Trace                 // Intel
 
-##### Powered by https://github.com/qlibs/perf
-<!-- .element: style="text-align:left" -->
-
+Powered by https://github.com/qlibs/perf
+ ├─ c++2x                                         // modules, ...
+ ├─ linux/perf                                    // perf_event_open/libipt
+ ├─ llvm/mca                                      // llvm-dev
+ └─ gnuplot/sixel                                 // terminal
 ```
-C++23, linux/perf, llvm/mca, gnuplot/sixel
-```
-<!-- .element: style="margin: 2% 2%;" -->
+<!-- .element: style="margin: 2% 2%; font-size:21px;" -->
 
 ----
 
@@ -633,11 +634,11 @@ int main() {
 ```cpp
 name  info
 ----- -----------------------------------------------------------------
-time  2025-09-15 11:20:00
+time  2025-09-15 11:30:00
 sys   x86_64-pc-linux-gnu
 cxx   gcc-15.0.0
 cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
-cache iL1: 32Kb/64b, dL1: 48Kb/12/64b
+cache iL1: 32Kb/64b, dL1: 48Kb/64b
 ...
 ```
 
@@ -1016,6 +1017,19 @@ void* operator new(size_t size) {
 
 ----
 
+```cpp
+main:
+        movl    $7, %edx
+        xorl    %eax, %eax
+        pext    %edx, %edi, %edx
+        movl    %edx, %edx
+        cmpl    %edi, mph::v5_0_5::type_traits::constant_t<mph::v5_0_5::find$pext<main::ids> >::value(,%rdx,8)
+        cmove   mph::v5_0_5::type_traits::constant_t<mph::v5_0_5::find$pext<main::ids> >::value+4(,%rdx,8), %eax
+        ret
+```
+
+----
+
 ### [2] Not having clear representation of results
 <!-- .element: style="text-align:left" -->
 
@@ -1188,18 +1202,18 @@ kris@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
 // Counting
 
 perf::profiler stat{            // perf stat -e
-  perf::stat::tsc,
   perf::stat::cycles,
   perf::stat::instructions,
+  perf::stat::tsc,
   // ...
 };
 
 static_assert(stat.is_syscall_free);
 
-start():
-  rdtsc
-  rdpmc
-  rdpmc
+start():  stop():            
+  rdpmc     rdtscp
+  rdpmc     rdpmc
+  rdtsc     rdpmc
 ```
 
 ----
@@ -1218,8 +1232,10 @@ perf::profiler mem{             // perf mem record
   perf::record::mem_stores,
 };
 
-static_assert(not record.is_syscall_free);
-static_assert(not mem.is_syscall_free);
+static_assert(record.is_multiplexing_free and 
+              mem.is_multiplexing_free and
+              not record.is_syscall_free and 
+              not mem.is_syscall_free);
 ```
 
 ----
@@ -1227,12 +1243,11 @@ static_assert(not mem.is_syscall_free);
 ```cpp
 // Tracing (IPT)
 
-perf::profiler trace{           // perf record -e intel_pt/
+perf::profiler trace{           // perf record -e intel_pt/cyc=1/
   perf::trace::instructions,
   perf::trace::cycles,
 };
 
-// size!
 static_assert(not trace.is_syscall_free);
 ```
 
@@ -1770,10 +1785,13 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int efi_main(perf::uefi::sys* sys) { // no kernel (ring 0)
+/**
+* No kernel (ring 0) / IBRS - Indirect Branch Restricted Speculation
+*/
+int efi_main(perf::uefi::sys* sys) {
   perf::runner bench{perf::bench::latency{
-    .setup    = [] { perf::cpu::disable(dL1, ibrs); }
-    .teardown = [] { perf::cpu::enable (dL1, ibrs); },
+    .setup    = [] { perf::cpu::disable(dL1, IBRS); },
+    .teardown = [] { perf::cpu::enable (dL1, IBRS); },
   }};
 
   bench(fizz_buzz, unpredictable<int>);
@@ -1784,12 +1802,14 @@ int efi_main(perf::uefi::sys* sys) { // no kernel (ring 0)
     min, median, p90, p99
   );
 }
-
-// dL1   - Data L1 Cache
-// ibrs  - Indirect Branch Restricted Speculation
-// rdtsc - Read Time-Stamp Counter
-// rdpmc - Read Performance-Monitoring Counters
 ```
+
+---
+
+```cpp
+$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
+```
+<!-- .element: style="text-align:left;font-size:21px" -->
 
 ----
 
