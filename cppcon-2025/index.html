@@ -72,32 +72,29 @@
   <td>
   <pre style="font-size:20px">
 (~) Frequency
+  - Heat<br />
+<hr />
 (⬆️) Transistors
+  - Cores
+  - Cache
+  - Execution
 </pre>
+<hr />
+
+<pre style="font-size:10px"><code>
+1 cycle (5Ghz) 0.20ns // cycles
+dL1            0.50ns //    2.5
+Br Mispredict  3.00ns //     15
+dL2            3.00ns //     15
+dL3           10.00ns //     50
+DRAM          70.00ns //    350
+</code></pre>
   </td>
   <td>
     <img src="images/moore.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
 </tr>
 </table>
-
-----
-
-```cpp
-(~) Frequency   // Heat
-(⬆️) Transistors // Cores / Cache / Execution
-```
-
----
-
-```cpp
-1 cycle (5Ghz)     0.20ns
-dL1                0.50ns // 2.5 cycles
-Branch Mispredict  3.00ns //  15 cycles
-dL2                3.00ns //  15 cycles
-dL3               10.00ns //  50 cycles
-DRAM              70.00ns // 350 cycles
-```
 
 ----
 
@@ -1172,7 +1169,7 @@ perf::plot::flamegraph(bench[perf::record::instructions]); //LBR
 ----
 
 ```cpp
-kris@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
+user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
 ```
 
 <table>
@@ -1210,7 +1207,7 @@ perf::profiler stat{            // perf stat -e
 
 static_assert(stat.is_syscall_free);
 
-start():  stop():            
+start():  stop():
   rdpmc     rdtscp
   rdpmc     rdpmc
   rdtsc     rdpmc
@@ -1232,9 +1229,9 @@ perf::profiler mem{             // perf mem record
   perf::record::mem_stores,
 };
 
-static_assert(record.is_multiplexing_free and 
+static_assert(record.is_multiplexing_free and
               mem.is_multiplexing_free and
-              not record.is_syscall_free and 
+              not record.is_syscall_free and
               not mem.is_syscall_free);
 ```
 
@@ -1821,13 +1818,13 @@ $CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
 
 ----
 
-```sh
-./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
+```cpp
+user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
 ```
 <!-- .element: style="text-align:left;font-size:15px" -->
 
 <p align="left">
-<img src="images/html.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+<img src="images/gh_html.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ```cpp
