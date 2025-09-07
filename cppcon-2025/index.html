@@ -52,10 +52,10 @@
 <br />
 <br />
 <br />
+<br />
+<br />
 
-<p align="left">
 <img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none; margin: 0 50px;" />
-</p>
 
 ----
 
@@ -124,6 +124,10 @@ DRAM     350 70.00ns
 ### [0] Always measure
 <!-- .element: style="text-align:left" -->
 
+```cpp
+// "If you can't measure it, you can't improve it"
+```
+
 ----
 
 #### Always measure - https://www.brendangregg.com
@@ -155,8 +159,8 @@ DRAM     350 70.00ns
         perf record -g probe_libc:malloc
         perf record intel_pt
         perf script | flamegraph
-        // vtune
-        // amd
+        vtune -collect performance-snapshot -start-paused -finalization-mode=full -r result
+        AMDuProfCLI collect --config tbp --start-paused ...
 
         // gdb
 ```
@@ -255,23 +259,23 @@ DRAM     350 70.00ns
 #### Always measure
 <!-- .element: style="text-align:left;" -->
 
-```sh
+```
  └─ System
     └── Application
 
-        linux-perf  - https://perf.wiki.kernel.org
-        dtrace      - https://github.com/opendtrace
-        intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
-        amd-uprof   - https://www.amd.com/en/developer/uprof.html
-        toplev      - https://github.com/andikleen/pmu-tools
-        bcc         - https://github.com/iovisor/bcc
-        bpftrace    - https://github.com/bpftrace/bpftrace
-        coz         - https://github.com/plasma-umass/coz
-        gperftools  - https://github.com/gperftools/gperftools
-        likwid      - https://github.com/RRZE-HPC/likwid
-        tracy       - https://github.com/wolfpld/tracy
-        magic-trace - https://github.com/janestreet/magic-trace
-        callgrind   - https://valgrind.org/docs/manual/cl-manual.html
+        linux-perf  # https://perf.wiki.kernel.org
+        intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
+        amd-uprof   # https://www.amd.com/en/developer/uprof.html
+        dtrace      # https://github.com/opendtrace
+        toplev      # https://github.com/andikleen/pmu-tools
+        bcc         # https://github.com/iovisor/bcc
+        bpftrace    # https://github.com/bpftrace/bpftrace
+        coz         # https://github.com/plasma-umass/coz
+        gperftools  # https://github.com/gperftools/gperftools
+        likwid      # https://github.com/RRZE-HPC/likwid
+        tracy       # https://github.com/wolfpld/tracy
+        magic-trace # https://github.com/janestreet/magic-trace
+        callgrind   # https://valgrind.org/docs/manual/cl-manual.html
         ...
 ```
 <!-- .element: style="font-size:17px;" -->
@@ -286,12 +290,14 @@ DRAM     350 70.00ns
     └── Application
       └── µArch
           perf stat -e cycles,instructions,cache-misses,branch-misses
-          perf stat --topdown
+          perf stat --topdown --td-level 1
+
+// hot spoting doesnt give you the overall speedup
 ```
 
 ----
 
-#### Always measure - microbenchmarking
+#### Always measure - Microbenchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -302,15 +308,16 @@ DRAM     350 70.00ns
           /**
           * Iteration speed
           * Isolation
-          * Edge cases
+          * Coverage
           * Understanding
+          * - google-benchmark, nanobench, celero, ...
           */
           auto bench(auto code) -> measurements;
 ```
 
 ----
 
-#### Performance Is Not a Number!
+#### Always measure - Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -350,8 +357,8 @@ Focused on x86-64-linux-gnu
  ├─ LBR   - Last Branch Record                    // Intel, AMD
  └─ IPT   - Intel Processor Trace                 // Intel
 
-Powered by https://github.com/qlibs/perf
- ├─ c++2x                                         // modules, ...
+Powered by perf # https://github.com/qlibs/perf
+ ├─ c++2x
  ├─ linux/perf                                    // perf_event_open/libipt
  ├─ llvm/mca                                      // llvm-dev
  └─ gnuplot/sixel                                 // terminal
@@ -360,7 +367,7 @@ Powered by https://github.com/qlibs/perf
 
 ----
 
-### [1] Ensure results are reproducible
+### [1] The Noise
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -368,23 +375,79 @@ void function():  // toolchain
  // ...
  ret
 
-int main():       // OS
-  call fn         // CPU
+int main():       // kernel
+  call fn         // cpu
   ret
 ```
 
 ----
 
-### Measurements Bias
+#### Measurements Bias - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
 <!-- .element: style="text-align:left" -->
 
-##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left" -->
+```cpp
+// Hardware effects
+├─ Do you have modern CPU?
+  ├─ Do you have branches?
+    // branch aliasing
+  ├─ Do you have loops?
+    // memory boundry
+  ├─ Do you access memory?
+    if you access caxhe
+    if you memory heap - pollute heap
+├─ Do you use OS?
+  └─ Do you use threads/processes?
+├─ Do you use optimizing-compiler/linker?
+  ├─ Do you have functions?
+    memory layout
+    stack frame
+├─ Do you use multiple cores/threads?
+```
 
 ----
 
+#### Examples
+<!-- .element: style="text-align:left" -->
+
+```cpp
+  int maib() {
+    env... // working direcotyr
+    40%
+  }
+
+  BENCHMARK=foo ./a.out # yeah will change the stack layout
+```
+
+```cpp
+void setup() {
+  cpu();
+  os();
+  memory();
+}
+```
 
 ----
+
+#### AMD Zen5 - https://chipsandcheese.com
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/cpu2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+#### Linux 6.x - https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/linux2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+#### Measurements Bias - https://emeryberger.com/research/stabilizer
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 0x0000        void function(param): // alignment
@@ -402,378 +465,23 @@ int main(): // kernel
   ret
 ```
 
-----
-
-  ### Measurements Bias
-    -Rcode -Rheap -Rstack
-    STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
-    Address Space Layout Randomization
-    /proc/sys/kernel/randomize_va_space
-    clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
-    # mold alternative:
-    mold -run clang *.o -Wl,--shuffle-sections=0 -o app
-    pyperf system tune # pip install pyperf
-    kernal isolation
-    uefi
-    sanity-checks
-    self-checks
-
-### [2] Ensure results are realistic
-<!-- .element: style="text-align:left" -->
-
-  timing
-  latency vs. throuhgput
-  branching (data distrubution)
-  memory (pollute heap, mph)
-
-### [3] Understand the results
-<!-- .element: style="text-align:left" -->
-
-  Analyzing
-  disassemble vs analyze
-
-
-#### Always measure - https://valgrind.org/docs/manual/cl-manual.html
-<!-- .element: style="text-align:left" -->
-
 ```cpp
- └─ System
-    └── Application
-
-        import prof;
-
-        int main() {
-          prof::callgrind profiler{"simulation"};
-
-          while (true) {
-            profiler.reset();
-            profiler.start();
-
-            if (action) {
-              // ...
-              profiler.stop();
-              profiler.flush();
-            }
-          }
-        }
-```
-
-```sh
-        valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ...
-```
-<!-- .element: style="font-size:18px;" -->
-
-### [4] Validate the results
-<!-- .element: style="text-align:left" -->
-
-### [5] Apply a systematic analysis method
-<!-- .element: style="text-align:left" -->
-
-
-
-
-
-
-----
-
-
-
-----
-
-Hardware effects?
-
-bench(...)
-
-setup() {
-  cpu::enable(branch_prediction, ...);
-  set<
-}
-
-----
-
-avoid microbnehcmaking pitfallas?
-
-
-
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-<table>
-<tr>
-<td><img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-</table>
-
-----
-
-```cpp
-Hardware effects
-├─ Do you have modern CPU?
-  ├─ Do you have branches?
-  ├─ Do you have loops?
-  ├─ Do you access memory?
-├─ Do you use OS?
-  └─ Do you use threads/processes?
-├─ Do you use optimizing-compiler/linker?
-  ├─ Do you have functions?
+-Rcode -Rheap -Rstack
+STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
 ```
 
 ----
-
-#### Do you have modern cpu? - https://chipsandcheese.com
-<!-- .element: style="text-align:left" -->
-
-<img src="images/cpu.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-----
-
-#### Do you have OS? - https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left" -->
-
-<img src="images/linux.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-
-----
-
-#### Do you use optimizing compiler/linker?
-<!-- .element: style="text-align:left" -->
-
-```cpp
-auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
-auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
-auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
-auto fizz_buzz_avx512       = [] [[gnu::target("avx512f")]] (int n);
-auto fizz_buzz_align16      = [] [[gnu::aligned("16")]] (int n);
-auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
-  // ...
-  perf::code::align(64); // clang::code_align(64)
-  // ...
-};
-```
-
-----
-
-#### Do you have functions?
-<!-- .element: style="text-align:left" -->
-
-```cpp
-memory layout
-stack frame
-```
-
-----
-
-#### Do you have branches?
-<!-- .element: style="text-align:left" -->
-
-<p align="right">
-<img src="images/btb.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-/**
-* branch predictor can learn 10'000 1/0 branches
-*/
-```
-
-// branch aliasing
-
-----
-
-#### Do you have loops?
-<!-- .element: style="text-align:left" -->
-
-```cpp
-code::align(1) for (auto i = 0; i < 64; ++i) {
-  // memory boundry
-}
-```
-
-----
-
-#### Do you use memory?
-<!-- .element: style="text-align:left" -->
-
-```cpp
-  if you access caxhe
-  if you memory heap - pollute heap
-```
-
-----
-
-#### Do you use multiple cores/threads?
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Do you know what and you measure?
-<!-- .element: style="text-align:left" -->
-
-```cpp
-    - latency
-    - throughput
-- how
-    - rdtsc?
-    - rdpmc
-```
-
-----
-
-latency:
-  - data dependency - overhad
-  - unroll
-
-  int maib() {
-    env... // working direcotyr
-    40%
-  }
-
-  BENCHMARK=foo ./a.out # yeah will change the stack layout
-
-cache pack dod
-alingmnet of struxt
-  alignof
-
-  pack
-
-
-normal distribution
-- central limit theorem
-- t.test null hypothesis
-- analysy of variance
-note cause profile for multithreadinf
-hot spoting doesnt give you the overall speedup
-```
-
-----
-
-<table>
-<tr>
-<td>
-  <h4>Bottom-up</h4>
-</td>
-<td>
-  <h4>Top-down</h4>
-</td>
-<tr>
-<td>
-<pre style="font-size:11px"><code>
-main()                                47.82s (100.0%)
-├─ initialize_application()            0.96s   (2.0%)
-├─ load_large_dataset()                2.39s   (5.0%)
-├─ process_data_pipeline()            43.12s  (90.2%)
-│  ├─ preprocess_data()                4.78s  (10.0%)
-│  │  ├─ validate_input_data()         1.43s   (3.0%)
-│  │  ├─ normalize_entries()           2.39s   (5.0%)
-│  │  └─ create_memory_mappings()      0.96s   (2.0%)
-│  ├─ execute_computation()           35.87s  (75.0%)
-│  │  ├─ process_large_dataset_wise()  4.78s  (10.0%)
-│  │  │  ├─ iterate_columns()          1.91s   (4.0%)
-│  │  │  ├─ access_scattered_memory()  1.91s   (4.0%)
-│  │  │  └─ update_results()           0.96s   (2.0%)
-│  │  └─ machine_learning_inference()  4.78s  (10.0%)
-│  │      ├─ layer_computations()      1.91s   (4.0%)
-│  │      ├─ activation_functions()    1.91s   (4.0%)
-│  │      └─ output_processing()       0.96s   (2.0%)
-│  └─ postprocess_results()            2.47s   (5.2%)
-│     ├─ format_output_data()          0.96s   (2.0%)
-│     ├─ verify_results_integrity()    0.96s   (2.0%)
-│     └─ cleanup_temporary_data()      0.55s   (1.2%)
-└── shutdown_application()             1.35s   (2.8%)
-</code></pre>
-</td>
-<td><pre style="font-size:13px"><code>
-[Level] Category     Desktop  Server   HPC
--------------------- -------  ------   ------
-[1] Retiring          20–50%  10–30%   30–70%
-[1] Bad Speculation   05–10%  05–10%   01–05%
-[1] Front-End Bound   05–10%  10–25%   05–10%
-[1] Back-End Bound    20–40%  20–60%   20–40%
-</code></pre>
-</td>
-</tr>
-</table>
-
-----
-
-```cpp
-Measuerments DONT' follow normal distribution
-  Normal benchmarks → non-normal distributions → bad statistics.
-  STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
-
-can't do statistics and collusion of that
-```
-
-----
-
-#### Goal - make normal distribution
-<!-- .element: style="text-align:left" -->
-
-```cpp
-void setup() {
-  cpu();
-  os();
-  memory();
-}
-```
-
-----
-
-#### https://emeryberger.com/research/stabilizer
-<!-- .element: style="text-align:left" -->
-
-```cpp
-level 0
-level 1
-
-jit
-```
-
-----
-
-```cpp
-void foo1() {
-    volatile char pad[ rand() % 128 ]; // stack
-    /* function logic */
-}
-
-```cpp
-# 1) Put each function in its own .text.<func> section
-clang -O2 -ffunction-sections -fdata-sections -c *.c
-
-# 2) Link with lld (or mold) and shuffle input sections
-#    seed=0 → random each link; seed=N → reproducible layout
-clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
-# mold alternative:
-mold -run clang *.o -Wl,--shuffle-sections=0 -o app
-```
 
 ```cpp
 Address Space Layout Randomization
 /proc/sys/kernel/randomize_va_space
 ```
 
-----
-
-### [0] Not having reproducible measurements
-<!-- .element: style="text-align:left" -->
-
-
 ```cpp
-// $CXX      // compiler/linker
-int main() { // kernel
-  ...        // cpu
-  ret
-}
+clang -O2 -ffunction-sections -fdata-sections -c *.c
+clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
+mold -run clang *.o -Wl,--shuffle-sections=0 -o app
 ```
-
-----
-
-#### Noise reduction
-<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -784,9 +492,8 @@ pyperf system tune # pip install pyperf
 
 ----
 
-```
-nice -n -20 taskset -c 2 ./a.out
-chrt -f  99 taskset -c 2 ./a.out
+```sh
+nice -n -20 taskset -c 2 ./a.out # chrt -f 99
 ```
 <!-- .element: style="text-align:left" -->
 
@@ -815,15 +522,29 @@ cat /sys/devices/system/cpu/isolated
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-int efi_main(perf::uefi::sys* sys) { // no kernel (ring 0)
-  // ... we will get back
+/**
+* No kernel (ring 0) / IBRS - Indirect Branch Restricted Speculation
+*/
+int efi_main(perf::uefi::sys* sys) {
+  perf::runner bench{perf::bench::latency{
+    .setup    = [] { perf::cpu::disable(dL1, IBRS); },
+    .teardown = [] { perf::cpu::enable (dL1, IBRS); },
+  }};
+
+  bench(fizz_buzz, unpredictable<int>);
+
+  perf::report(
+    sys->stdout,
+    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    min, median, p90, p99
+  );
 }
 ```
+
 ```cpp
-$CXX -DPERF_UEFI \
-  -target x86_64 -ffreestanding -fno-exceptions -fno-rtti \
-  ...
+$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
 ```
+<!-- .element: style="text-align:left;font-size:18px" -->
 
 ----
 
@@ -878,25 +599,6 @@ int main() {
 
 ----
 
-```cpp
-// compiler/linker
-
-// alignment (recompilation will change alignment)
-
-
-latency{.teardown = [] { perf::cpu::cache::flush(); }};
-```
-
-```cpp
-layout biases measurement
-link order
-ENV variable size - move program stack size
-
--Rcode -Rheap -Rstack
-```
-
-----
-
 #### self-checks
 <!-- .element: style="text-align:left" -->
 
@@ -916,20 +618,30 @@ auto sub  = [](int a, int b) { return a - b; };
 auto mult = [](int a, int b) { return a * b; };
 auto div  = [](int a, int b) { return a / b; };
 
+// add chart
+| mca.cycles | cycles   |
+| 1          | 3 cycles |
+// add vs mca
+// shows cycles of add, sub,
+// shows graph of rdtsc
+
+// max_ipc
+
+// https://www.agner.org/optimize/instruction_tables.pdf
 // https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 ```
 
 ----
 
-### [1] Not having accurate/realistic results
+### [2] The Illusion
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+// Timing is not following normal distribution
+// Measurements are not independent
 // Latency vs. Throughput
-// Measurements are NOT independent
-// Measurements are NOT following normal distribution
-// Statistically significant measurements
-// ...
+// Cold/Warm/Alignment/Optimizations
+// Statistically sound conclusions
 ```
 
 ----
@@ -962,6 +674,26 @@ auto bench(auto fn, auto...ts) -> nanoseconds {
 
 ----
 
+```cpp
+https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtsc
+
+auto rdtsc() {                             auto rdtscp() {
+  std::uint64_t t;                           std::uint64_t t;
+  asm volatile(                              asm volatile(
+    "lfence\n"                                 "rdtscp\n"
+    "rdtsc\n"                                  "shl $32, %%rdx\n"
+    "shl $32, %%rdx\n"                         "or %%rdx, %0\n"
+    "or %%rdx, %0\n"                           "lfence"
+    "lfence\n"                                 : "=a"(t) :: "rcx", "rdx", "memory", "cc"
+    : "=a"(t) :: "rdx", "memory", "cc"       );
+  );                                         return t;
+  return t;                                }
+}
+```
+<!-- .element: style="font-size:14px;" -->
+
+----
+
 ```md
 Latency
  ├─ Time it takes for a single
@@ -989,12 +721,24 @@ Throughput
 }
 ```
 
+```cpp
+template<auto N>
+auto uops::latency(auto fn) {
+  return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
+}
+
+// https://uops.info/table.html (nanoBench)
+// [uops.info] [A Low-Overhead Tool for Running Microbenchmarks](https://arxiv.org/abs/1911.03282)
+```
+
 ----
 
 #### CPU vs. FPGA - http://www.qbaylogic.com
 <!-- .element: style="text-align:left" -->
 
+<p align="left">
 <img src="images/fpga.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
@@ -1017,6 +761,20 @@ perf::bench::throughput::par;
 
 ----
 
+#### CPU vs. GPU
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/gpu.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+```cpp
+/**
+* branch predictor can learn 10'000 1/0 branches
+* [first-time] backwards branches are taken / loops
+*/
 auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
   for (auto i = 0u; i < iterations; ++i) {
@@ -1027,20 +785,9 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 }
 ```
 
-```
-you have a sirvey of 1000 people and ask just one 1000 times
-```
-
 ```cpp
 // shuffle(measure(repeat(fn)) -> measure(repeat(shuffle(fn));
 ```
-
-----
-
-#### CPU vs. GPU
-<!-- .element: style="text-align:left" -->
-
-<img src="images/gpu.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -1198,6 +945,24 @@ add(10,unpredictable)/latency             (1.00x) 1.00
 
 ----
 
+### alignment
+<!-- .element: style="text-align:left" -->
+
+```cpp
+auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
+auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
+auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
+auto fizz_buzz_avx512       = [] [[gnu::target("avx512f")]] (int n);
+auto fizz_buzz_align16      = [] [[gnu::aligned("16")]] (int n);
+auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
+  // ...
+  perf::code::align(64); // clang::code_align(64)
+  // memory boundry
+};
+```
+
+----
+
 ```cpp
 // memory
 
@@ -1208,13 +973,7 @@ void* operator new(size_t size) {
     size_t pad = rand() % 64;
     return malloc(size + pad);
 }
-
-----
-
 ```
-// show examples
-
-----
 
 ```cpp
 main:
@@ -1226,37 +985,6 @@ main:
         cmove   mph::v5_0_5::type_traits::constant_t<mph::v5_0_5::find$pext<main::ids> >::value+4(,%rdx,8), %eax
         ret
 ```
-
-----
-
-### [2] Not having clear representation of results
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// Plotting
-
-// used to ensure not to do eyeball statistics
-```
-
-----
-
-#### Plotting
-<!-- .element: style="text-align:left" -->
-
-##### - gnuplot / sixel - http://www.gnuplot.info / https://arewesixelyet.com
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-  ```cpp
-  PERF_IO_PLOT_TERM='sixel'                 # terminal sixel
-  PERF_IO_PLOT_TERM='dumb size 80,25'       # terminal asci
-  PERF_IO_PLOT_TERM='dumb size 150,25 ansi' # terminal ansi
-  PERF_IO_PLOT_TERM='wxt'                   # window
-  PERF_IO_PLOT_TERM='canvas'                # html
-  PERF_IO_PLOT_TERM='png'                   # png
-  ```
-<!-- .element: style="text-align:left" -->
-
-##### - jupyter notebook / matplotlib - https://jupyter.org
-<!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
@@ -1278,7 +1006,9 @@ int main() {
 
 ```cpp
 # xterm -ti 340
+jupyter notebook / matplotlib - https://jupyter.org
 ```
+<!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ----
 
@@ -1387,12 +1117,19 @@ user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
 
 ----
 
-### [2] Trusting results without understanding
+### [3] The Trap
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// Profiling/Tracing/Analyzing
-// ...
+// profiling/tracing
+// - linux-perf / dtrace
+// - intel-vtune / amd-uprof
+// - likwid
+
+// analyzing
+// - llvm-mca
+// - uica
+// - osaca
 ```
 
 ----
@@ -1431,10 +1168,10 @@ perf::profiler mem{             // perf mem record
   perf::record::mem_stores,
 };
 
-static_assert(record.is_multiplexing_free and
-              mem.is_multiplexing_free and
-              not record.is_syscall_free and
-              not mem.is_syscall_free);
+static_assert(record.is_multiplexing_free);
+static_assert(mem.is_multiplexing_free)
+static_assert(not record.is_syscall_free);
+static_assert(not mem.is_syscall_free);
 ```
 
 ----
@@ -1520,15 +1257,14 @@ perf::annotate(analyzer[]);
 ----
 
 ```sh
-// Example output
-trust
-accuracy
-understanding
-methodology
-validation
 annottate // vsplit - timeline
 resource pressure
+bootlneck
 dissasmble vs trace
+profile vs analyze
+trace vs disassemble
+trace + analyze
+trace + analyze + profile
 ```
 
 ----
@@ -1751,8 +1487,98 @@ perf::annotate<vsplit>(bench[
 
 ----
 
-### [3] Not following a methodical approach when optimizing
+####  https://valgrind.org/docs/manual/cl-manual.html
 <!-- .element: style="text-align:left" -->
+
+```cpp
+import prof;
+
+int main() {
+  prof::callgrind profiler{"simulation"};
+
+  while (true) {
+    profiler.reset();
+    profiler.start();
+
+    if (action) {
+      // ...
+      profiler.stop();
+      profiler.flush();
+    }
+  }
+}
+```
+
+```sh
+valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ...
+```
+<!-- .element: style="font-size:18px;" -->
+
+----
+
+### [4] The Red Herring
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// bench-testing
+// asm-testing
+// opt-testing
+// mca-testing
+// ...
+```
+
+----
+
+```cpp
+// testing
+
+int main() {
+  // auto fizz_buzz = [](std::vector<int>& v) {
+  //   std::ranges::sort(v);
+  // };
+
+  auto sort = []<bool debug>(std::vector<int>& v) {
+    std::ranges::sort(v);
+    if constexpr (debug) { // doesn't affect benchmarking
+      perf::verify(is_sorted(v));
+    }
+  };
+
+  for (auto i = 0; i < 1024; ++i) {
+    bench(sort, unpredictable<int> | to<std::vector>(i));
+  }
+}
+```
+
+----
+
+```cpp
+// testing
+
+int main() {
+  perf::verify(instructions.size)
+  perf::verify(asm.instruction == "mov")
+  perf::verify(asm.instruction.count < non optimizaed)
+  perf::verify(as.minstruciton.count == c++optimization)
+
+  if (perf::info::cpu::features().contains("avx512")) { }
+
+  perf::verify(entry[0].cycle_dispatched);
+  perf::verify(entry[0].cycle_executed);
+  perf::verify(optimized == []{}); // disassemble compare
+  perf::verify(optimized < []{}); // disassemble compare
+}
+```
+
+----
+
+### [5] The Chaos
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// baseline
+// Top down Microarchitecture Analysis Method
+```
 
 ----
 
@@ -1775,7 +1601,7 @@ perf::baseline()
 <img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 <td>
-<pre style="font-size:15px"><code>
+<pre style="font-size:12px"><code>
 [Level] Category     Desktop  Server      HPC
 -------------------- -------  ------   ------
 [1] Retiring          20–50%  10–30%   30–70%
@@ -1787,11 +1613,6 @@ perf::baseline()
 </tr>
 </table>
 
-```
-```
-<!-- .element: style="font-size:14px;" -->
-
-<!-- .element: background-color="white" -->
 ----
 
 #### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
@@ -1943,94 +1764,6 @@ fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0
 
 ----
 
-### [4] Not having pragmatic/systematic validation
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// bench-testing
-// asm-testing
-// opt-testing
-// mca-testing
-// ...
-```
-
-----
-
-```cpp
-// testing
-
-int main() {
-  // auto fizz_buzz = [](std::vector<int>& v) {
-  //   std::ranges::sort(v);
-  // };
-
-  auto sort = []<bool debug>(std::vector<int>& v) {
-    std::ranges::sort(v);
-    if constexpr (debug) { // doesn't affect benchmarking
-      perf::verify(is_sorted(v));
-    }
-  };
-
-  for (auto i = 0; i < 1024; ++i) {
-    bench(sort, unpredictable<int> | to<std::vector>(i));
-  }
-}
-```
-
-----
-
-```cpp
-// testing
-
-int main() {
-  perf::verify(instructions.size)
-  perf::verify(asm.instruction == "mov")
-  perf::verify(asm.instruction.count < non optimizaed)
-  perf::verify(as.minstruciton.count == c++optimization)
-
-  if (perf::info::cpu::features().contains("avx512")) { }
-
-  perf::verify(entry[0].cycle_dispatched);
-  perf::verify(entry[0].cycle_executed);
-  perf::verify(optimized == []{}); // disassemble compare
-  perf::verify(optimized < []{}); // disassemble compare
-}
-```
-
-----
-
-#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-/**
-* No kernel (ring 0) / IBRS - Indirect Branch Restricted Speculation
-*/
-int efi_main(perf::uefi::sys* sys) {
-  perf::runner bench{perf::bench::latency{
-    .setup    = [] { perf::cpu::disable(dL1, IBRS); },
-    .teardown = [] { perf::cpu::enable (dL1, IBRS); },
-  }};
-
-  bench(fizz_buzz, unpredictable<int>);
-
-  perf::report(
-    sys->stdout,
-    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
-    min, median, p90, p99
-  );
-}
-```
-
----
-
-```cpp
-$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
-```
-<!-- .element: style="text-align:left;font-size:21px" -->
-
-----
-
 ### "Code can tell you what works, not what doesn't"
 <!-- .element: style="text-align:left" -->
 
@@ -2042,15 +1775,11 @@ $CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
 ```cpp
 user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
 ```
-<!-- .element: style="text-align:left;font-size:15px" -->
+<!-- .element: style="text-align:left;font-size:13px" -->
 
 <p align="left">
 <img src="images/gh_html.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
 </p>
-
-```cpp
-// todo change to html preview
-```
 
 ----
 
@@ -2059,11 +1788,12 @@ user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, 
 
 ```cpp
 └─ [0] Always measure
-        ├─ [1] Ensure results are reproducible
-        ├─ [2] Ensure results are realistic
-        ├─ [3] Understand the results
-        ├─ [4] Validate the results
-        ├─ [5] Apply a systematic analysis method
+     Avoiding Microbenchmarking Pitfalls
+        ├─ [1] The Noise
+        ├─ [2] The Illusion
+        ├─ [3] The Trap
+        ├─ [4] The Red Herring
+        ├─ [5] The Chaos
         └─ ...
 ```
 
@@ -2072,13 +1802,13 @@ user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, 
 ### Citadel Securities https://citadelsecurities.com/careers/engineering
 <!-- .element: style="text-align:left" -->
 
-<table style="align:left">
+<table>
 <tr>
 <td>
-<img src="images/careers.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<img src="images/careers.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
 </td>
 <td>
-<pre>Come visit our booth or scan the QR code<br />to learn more!</pre>
+<pre style="margin: 0 -100px;">Come visit our booth or scan the QR code<br />to learn more!</pre>
 </td>
 </tr>
 </table>
