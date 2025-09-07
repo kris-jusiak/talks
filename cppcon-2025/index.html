@@ -52,10 +52,10 @@
 <br />
 <br />
 <br />
-<br />
-<br />
 
-<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none; margin: 0 50px;" />
+<p align="left">
+<img src="images/qr.png" style="width: 12%; background:none; border:none; box-shadow:none; margin: 0 50px;" />
+</p>
 
 ----
 
@@ -343,6 +343,15 @@ DRAM     350 70.00ns
 ### Avoiding Microbenchmarking Pitfalls
 <!-- .element: style="text-align:left" -->
 
+```cpp
+// The Noise
+// The Illusion
+// The Trap
+// The Red Herring
+// The Chaos
+// ...
+```
+
 ----
 
 #### Disclaimer
@@ -593,7 +602,6 @@ int main() {
   perf::verify(perf::info::compiler::NDEBUG);
   perf::verify(perf::info::compiler::OPTIMIZED);
   perf::verify(not perf::info::cpu::freq_scaling);
-  // ...
 }
 ```
 
@@ -647,18 +655,6 @@ auto div  = [](int a, int b) { return a / b; };
 ----
 
 ```cpp
-Time                     Description         now()
------------------------- ------------------- -------------
-perf::stat::tsc          Time-Stamp-Counter  rdtsc/rdtscp
-perf::stat::real_time    Wall clock          system_clock
-perf::stat::cpu_time     Process CPU         clock_gettime
-perf::stat::thread_time  Thread CPU          clock_gettime
-perf::stat::steady_time  Monotonic clock     steady_clock
-
-```
-<!-- .element: style="font-size:10px; margin:0 65%;" -->
-
-```cpp
 auto bench(auto fn, auto...ts) -> nanoseconds {
   auto start = now(); // [0] ?
 
@@ -671,27 +667,6 @@ auto bench(auto fn, auto...ts) -> nanoseconds {
   return (end - now) / iterations; // ? [4]
 }
 ```
-
-----
-
-```cpp
-https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=rdtsc
-
-auto rdtsc() {                             auto rdtscp() {
-  std::uint64_t t;                           std::uint64_t t;
-  asm volatile(                              asm volatile(
-    "lfence\n"                                 "rdtscp\n"
-    "rdtsc\n"                                  "shl $32, %%rdx\n"
-    "shl $32, %%rdx\n"                         "or %%rdx, %0\n"
-    "or %%rdx, %0\n"                           "lfence"
-    "lfence\n"                                 : "=a"(t) :: "rcx", "rdx", "memory", "cc"
-    : "=a"(t) :: "rdx", "memory", "cc"       );
-  );                                         return t;
-  return t;                                }
-}
-```
-<!-- .element: style="font-size:14px;" -->
-
 ----
 
 ```md
@@ -712,38 +687,36 @@ Throughput
 
 ----
 
+#### [[section("latency")]]
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-[[gnu::section("latency")]] auto latency(auto fn, auto... ts) {
+auto latency(auto fn, auto... ts) {
   perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
-    checksum ^= fn(checksum ^ ts...);       // data dependency
-    std::atomic_thread_fence(memory_order); // sync
+    checksum ^= fn(checksum ^ ts...); // data dependency
   }
 }
 ```
+
+----
+
+#### [[section("latency")]] - https://uops.info/table.html
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 template<auto N>
 auto uops::latency(auto fn) {
   return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
 }
-
-// https://uops.info/table.html (nanoBench)
-// [uops.info] [A Low-Overhead Tool for Running Microbenchmarks](https://arxiv.org/abs/1911.03282)
 ```
 
 ----
 
-#### CPU vs. FPGA - http://www.qbaylogic.com
+#### [[section("throughput")]]
 <!-- .element: style="text-align:left" -->
 
-<p align="left">
-<img src="images/fpga.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-----
-
 ```cpp
-[[gnu::section("throughput")]] auto throughput(auto fn, auto... ts) {
+auto throughput::seq(auto fn, auto... ts) {
   perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
     fn(ts...);
   }
@@ -754,19 +727,49 @@ auto uops::latency(auto fn) {
 perf::bench::throughput::seq;
 perf::bench::throughput::unseq;
 perf::bench::throughput::unroll;
-perf::bench::throughput::par;
+perf::bench::throughput::par; // requires threads
 ...
 ```
 <!-- .element: style="text-align:left" -->
 
 ----
 
-#### CPU vs. GPU
+#### CPU / FPGA / GPU - http://www.qbaylogic.com
 <!-- .element: style="text-align:left" -->
 
-<p align="left">
-<img src="images/gpu.gif" style="width: 90%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
+<table>
+<tr>
+<td>
+<img src="images/fpga.gif" style="width: 800px; height: 270px; background:none; border:none; box-shadow:none;" />
+</td>
+<td>
+<img src="images/gpu.gif" style="width: 900px; height: 270px; background:none; border:none; box-shadow:none;" />
+</td>
+</tr>
+</table>
+
+----
+
+```cpp
+// Time                     Description         now()
+// ------------------------ ------------------- -------------
+// perf::stat::tsc          Time-Stamp-Counter  rdtsc/rdtscp
+// perf::stat::real_time    Wall clock          system_clock
+// perf::stat::cpu_time     Process CPU         clock_gettime
+// perf::stat::thread_time  Thread CPU          clock_gettime
+// perf::stat::steady_time  Monotonic clock     steady_clock
+
+int main() {
+  perf::runner bench{perf::bench::latency{}};
+
+  bench(fizz_buzz, 15);
+  bench(fizz_buzz, 3);
+  bench(fizz_buzz, 5);
+
+  perf::report(bench[perf::time::tsc]);
+}
+
+```
 
 ----
 
@@ -1278,6 +1281,8 @@ auto invoke = [] (auto fn, auto... ts) {
   profiler.stop();
 };
 ```
+
+// is_elided
 
 ----
 
@@ -1812,7 +1817,7 @@ user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, 
 </td>
 </tr>
 </table>
-<!-- .element: style="margin:0 -20px;" -->
+<!-- .element: style="margin:0 0;" -->
 
 ----
 
