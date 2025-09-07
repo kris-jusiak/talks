@@ -54,7 +54,7 @@
 <br />
 
 <p align="left">
-<img src="images/qr.png" style="width: 12%; background:none; border:none; box-shadow:none; margin: 0 50px;" />
+<img src="images/qr.png" style="width: 15%; background:none; border:none; box-shadow:none; margin: 0 50px;" />
 </p>
 
 ----
@@ -90,8 +90,8 @@
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-  // More instructions per cycle
-  // 4Ghz cpu from 2005 will be much slower than 4Ghz cpu from 2025
+ / More instructions per cycle
+ // 4Ghz cpu from 2005 will be much slower than 4Ghz cpu from 2025
 
   benchmark            cycles    time // 5Ghz L1size L2 size
   -------------------- ------ -------
@@ -181,9 +181,9 @@
           int main() {
             prof::linux_perf profiler{"/dev/shm/perf"};
 
-            profiler.start();
+            profiler.start(); // syscall
             // ...
-            profiler.stop();
+            profiler.stop();  // syscall
           }
 ```
 
@@ -317,8 +317,7 @@
           * Isolation
           * Coverage
           * Understanding
-          *
-          * google-benchmark, nanobench, celero, catch2, ...
+          * Tuning
           */
           auto bench(auto code) -> measurements;
 ```
@@ -342,6 +341,10 @@
 ```
 
 ```cpp
+          // google-benchmark - https://github.com/google/benchmark
+          // nanobench - https://github.com/martinus/nanobench
+          // celero - https://github.com/DigitalInBlue/Celero
+          // ...
           bench(fizz_buzz) -> ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
@@ -388,12 +391,35 @@ Powered by perf # https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-void function():  // toolchain
+void fn1():       // toolchain
  // ...
- ret
+
+void fn2():
+ // ...
 
 int main():       // kernel
-  call fn         // cpu
+  call fn1        // cpu
+  ret
+```
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+```cpp
+0x0000        void function(param): // alignment
+                // stack
+                for (...) {
+0x0101            if (lookup_table[value]) // memory (cache)
+                    je          // branch predictor
+
+lookup_table:                 // alignmetn
+  ...
+
+int main(): // kernel
+  // stack env variables
+  call fn
   ret
 ```
 
@@ -417,73 +443,27 @@ int main():       // kernel
 
 ----
 
-#### Hardware effects
+#### Measurements Bias
 <!-- .element: style="text-align:left" -->
 
+##### &nbsp;&nbsp; [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf) / [STABILIZER: Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
+<!-- .element: style="text-align:left;font-size:28px;" -->
+
 ```cpp
-├─ Do you have modern CPU?
-  ├─ Do you have branches?
-    // branch aliasing
-  ├─ Do you have loops?
-    // memory boundry
-  ├─ Do you access memory?
-    if you access caxhe
-    if you memory heap - pollute heap
-├─ Do you use OS?
-  └─ Do you use threads/processes?
-├─ Do you use optimizing-compiler/linker?
-  ├─ Do you have functions?
-    memory layout
-    stack frame
-├─ Do you use multiple cores/threads?
+ ├─ Do you use modern CPU, OS, toolchain?
+  ├─ Do you have functions? - memory layout, stack frame
+  ├─ Do you have branches?  - branch aliasing, ...
+  ├─ Do you have loops?     - cross memory boundary
+  ├─ Do you access memory?  - flush cache, pollute heap
 ```
 
-----
-
-#### Measurements Bias - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left" -->
 
 ```cpp
-  int maib() {
-    env... // working direcotyr
-    40%
-  }
-
-  BENCHMARK=foo ./a.out # yeah will change the stack layout
+setup(); // code, heap, stack
 ```
 
 ```cpp
-void setup() {
-  cpu();
-  os();
-  memory();
-}
-```
-
-----
-
-#### Measurements Bias - https://emeryberger.com/research/stabilizer
-<!-- .element: style="text-align:left" -->
-
-```cpp
-0x0000        void function(param): // alignment
-                // stack
-                for (...) {
-0x0101            if (lookup_table[value]) // memory (cache)
-                    je          // branch predictor
-
-lookup_table:                 // alignmetn
-  ...
-
-int main(): // kernel
-  // stack env variables
-  call fn
-  ret
-```
-
-```cpp
--Rcode -Rheap -Rstack
-STABILIZER → randomized layouts → CLT kicks in → approximately normal distribution → statistically sound conclusions.
+BENCHMARK=why_slower_faster ./benchmark.out
 ```
 
 ----
@@ -509,6 +489,7 @@ pyperf system tune # pip install pyperf
 ```
 
 ```cpp
+// rin in new process
 // perf::thread::set_affinity(self, 2); // 0, 1 used by the kernel
 // perf::thread::set_priority(self, max);
 ```
@@ -535,36 +516,6 @@ isolcpus=<cpu number>,...,<cpu number> # bootloader
 cat /sys/devices/system/cpu/isolated
 # <cpu number>,...,<cpu number>
 ```
-
-----
-
-#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-/**
-* No kernel (ring 0) / IBRS - Indirect Branch Restricted Speculation
-*/
-int efi_main(perf::uefi::sys* sys) {
-  perf::runner bench{perf::bench::latency{
-    .setup    = [] { perf::cpu::disable(dL1, IBRS); },
-    .teardown = [] { perf::cpu::enable (dL1, IBRS); },
-  }};
-
-  bench(fizz_buzz, unpredictable<int>);
-
-  perf::report(
-    sys->stdout,
-    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
-    min, median, p90, p99
-  );
-}
-```
-
-```cpp
-$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
-```
-<!-- .element: style="text-align:left;font-size:18px" -->
 
 ----
 
@@ -652,14 +603,43 @@ auto div  = [](int a, int b) { return a / b; };
 
 ----
 
+#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+/**
+* No kernel (ring 0) / IBRS - Indirect Branch Restricted Speculation
+*/
+int efi_main(perf::uefi::sys* sys) {
+  perf::runner bench{perf::bench::latency{
+    .setup    = [] { perf::cpu::disable(dL1, IBRS); },
+    .teardown = [] { perf::cpu::enable (dL1, IBRS); },
+  }};
+
+  bench(fizz_buzz, unpredictable<int>);
+
+  perf::report(
+    sys->stdout,
+    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    min, median, p90, p99
+  );
+}
+```
+
+```cpp
+$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
+```
+<!-- .element: style="text-align:left;font-size:18px" -->
+
+----
+
 ### [2] The Illusion
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// Timing is not following normal distribution
+// Measurements are not following normal distribution
 // Measurements are not independent
-// Latency vs. Throughput
-// Cold/Warm/Alignment/Optimizations
+// Latency vs. Throughput / Cold vs. Warm / ...
 // Statistically sound conclusions
 ```
 
@@ -714,7 +694,7 @@ auto latency(auto fn, auto... ts) {
 
 ```cpp
 template<auto N>
-auto latency(auto fn) { // uops # https://github.com/andreas-abel/nanoBench
+auto latency(auto fn) { // https://github.com/andreas-abel/nanoBench
   return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
 }
 ```
@@ -1105,6 +1085,14 @@ perf::plot::flamegraph(bench[perf::record::instructions]); //LBR
 <img src="images/flamegraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
 </p>
 
+```cpp
+# sampling / occurrences
+main;parse;tokenize 5
+main;parse;analyze 3
+main;render 7
+```
+<!-- .element: style="text-align:left" -->
+
 ----
 
 ```cpp
@@ -1288,9 +1276,9 @@ auto invoke = [] (auto fn, auto... ts) {
   fn(ts...);
   profiler.stop();
 };
-```
-
 // is_elided
+
+```
 
 ----
 
