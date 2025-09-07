@@ -489,7 +489,7 @@ pyperf system tune # pip install pyperf
 ```
 
 ```cpp
-// rin in new process
+// run in new process
 // perf::thread::set_affinity(self, 2); // 0, 1 used by the kernel
 // perf::thread::set_priority(self, max);
 ```
@@ -730,10 +730,10 @@ perf::bench::throughput::par; // requires threads
 <table>
 <tr>
 <td>
-<img src="images/fpga.gif" style="width: 800px; height: 270px; background:none; border:none; box-shadow:none;" />
+<img src="images/fpga.gif" style="width: 900px; height: 270px; background:none; border:none; box-shadow:none;" />
 </td>
 <td>
-<img src="images/gpu.gif" style="width: 900px; height: 270px; background:none; border:none; box-shadow:none;" />
+<img src="images/gpu.gif" style="width: 950px; height: 270px; background:none; border:none; box-shadow:none;" />
 </td>
 </tr>
 </table>
@@ -1078,7 +1078,7 @@ perf::plot::ecdf(bench[perf::time::tsc / perf::bench::operations]);
 
 ```cpp
 perf::plot::flamegraph(bench[perf::record::cycles]); // LBR
-perf::plot::flamegraph(bench[perf::record::instructions]); //LBR
+perf::plot::flamegraph(bench[perf::record::branch_misses]); //LBR
 ```
 
 <p align="left">
@@ -1086,7 +1086,7 @@ perf::plot::flamegraph(bench[perf::record::instructions]); //LBR
 </p>
 
 ```cpp
-# sampling / occurrences
+# sampling/call-stack occurrences
 main;parse;tokenize 5
 main;parse;analyze 3
 main;render 7
@@ -1232,21 +1232,14 @@ perf::analyzer analyzer{
 ----
 
 ```cpp
-// auto label(const auto label)
-//   asm volatile goto(
-//     ".pushsection labels, \"aw\" \n"
-//     ".quad %c0, %l[L]\n"
-//     ".popsection \n"
-//     : : "i"(label) : "memory" : L
-//   ); L:;
-// }
-```
-<!-- .element: style="font-size:13px; margin:0 65%;" -->
-
-```cpp
-perf::code::label("start")
-+fizz_buzz;
-perf::code::label("stop");
+                                                // auto label(const auto label)
+perf::code::label("start")                      //   asm volatile goto(
++fizz_buzz;                                     //     ".pushsection labels, \"aw\" \n"
+perf::code::label("stop");                      //     ".quad %c0, %l[L]\n"
+                                                //     ".popsection \n"
+                                                //     : : "i"(label) : "memory" : L
+                                                //   ); L:;
+                                                // }
 
 analyzer << {perf::code::labels["start"], perf::code::labels["stop"]};
 perf::annotate(analyzer[]);
@@ -1309,21 +1302,6 @@ analyzer << profiler[trace::instructions];
 
 ```cpp
 // similarly in latency, throughput (events deduced based on bench[...])
-```
-
-----
-
-```cpp
-// Memory Bound
-auto cache_miss_rate = cache_misses / cache_references;
-auto branch_miss_rate = branch_misses / branches;
-```
-
-```cpp
-// Core Bound
-auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
-auto cpi = cycles / instructions;
-auto upc = uops / cycles;
 ```
 
 ----
@@ -1761,6 +1739,21 @@ fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0
 [4] median((stat.top_down.backend_bound/stat.slots))
 ```
 <!-- .element: style="font-size:16px" -->
+
+----
+
+```cpp
+// Memory Bound
+auto cache_miss_rate = cache_misses / cache_references;
+auto branch_miss_rate = branch_misses / branches;
+```
+
+```cpp
+// Core Bound
+auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
+auto cpi = cycles / instructions;
+auto upc = uops / cycles;
+```
 
 ----
 
