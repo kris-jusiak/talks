@@ -69,7 +69,7 @@
 (~) Frequency
   - Base: 3–5 GHz
   - Boost: 5–6 GHz
-  - Extreme OC: ~9 GHz<br />
+  - Overclocked: ~9 GHz<br />
 (⬆️) Transistors
   - More Cores
   - More Cache
@@ -93,7 +93,7 @@
   // More instructions per cycle
   // 4Ghz cpu from 2005 will be much slower than 4Ghz cpu from 2025
 
-  benchmark            cycles    time // 5Ghz
+  benchmark            cycles    time // 5Ghz L1size L2 size
   -------------------- ------ -------
   1 cycle execution         1  0.25ns
   dL1                       3  0.50ns
@@ -111,7 +111,7 @@
 ```cpp
  └─ System          // OS, I/O, ...
     └── Application // design, algorithms, data structures, ...
-      └── µArch     // Hardware effects
+      └── µArch     // hardware effects
 ```
 
 <!--// Low-Level: SIMD, SWAR, DOD, CTE, Par, ...-->
@@ -202,9 +202,9 @@
     └── Application
 
           function:
-            // nop ... # -fxray-instrument
+            // nop # -fxray-instrument
             ret
-            // nop ... # -fxray-instrument
+            // nop # -fxray-instrument
 
           int main() {
             // ...
@@ -242,18 +242,23 @@
           auto start(auto& profiler) { if (profile) { profiler.start(); } };
           auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
 
-          void function() {
-            start(profiler); // nop [1]
-            // ...
-            stop(profiler);  // nop [2]
-          }
-
           int main() {
-            profile = true; // [1] nop -> profiler.start()
-                            // [2] nop -> profiler.stop()
+            {
+              start(profiler); // nop
+              // ...
+              stop(profiler);  // nop
+            }
+
+            profile = true;    // code-patching
+
+            {
+              start(profiler); // jmp &profiler.start
+              // ...
+              stop(profiler);  // jmp &profiler.stop
+            }
           }
 ```
-<!-- .element: style="font-size:20px;" -->
+<!-- .element: style="font-size:19px;" -->
 
 ----
 
@@ -262,22 +267,20 @@
 
 ```
  └─ System
+      bcc         # https://github.com/iovisor/bcc
+      bpftrace    # https://github.com/bpftrace/bpftrace
+      ...
+
     └── Application
 
           linux-perf  # https://perf.wiki.kernel.org
+          dtrace      # https://github.com/opendtrace
           intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
           amd-uprof   # https://www.amd.com/en/developer/uprof.html
-          dtrace      # https://github.com/opendtrace
-          toplev      # https://github.com/andikleen/pmu-tools
-          bcc         # https://github.com/iovisor/bcc
-          bpftrace    # https://github.com/bpftrace/bpftrace
-          coz         # https://github.com/plasma-umass/coz
-          gperftools  # https://github.com/gperftools/gperftools
-          likwid      # https://github.com/RRZE-HPC/likwid
           tracy       # https://github.com/wolfpld/tracy
+          gperftools  # https://github.com/gperftools/gperftools
           magic-trace # https://github.com/janestreet/magic-trace
-          callgrind   # https://valgrind.org/docs/manual/cl-manual.html
-
+          coz         # https://github.com/plasma-umass/coz
           ...
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -289,12 +292,14 @@
 
 ```cpp
  // hot spotting doesn't give the overall speedup
+ // everything goes equally slow
 
  └─ System
     └── Application
       └── µArch
             perf stat -e cycles,instructions ...
-            perf stat --topdown --td-level 1 ...
+            perf stat --topdown ...
+            ...
 ```
 
 ----
@@ -312,7 +317,8 @@
           * Isolation
           * Coverage
           * Understanding
-          * - google-benchmark, nanobench, celero, ...
+          *
+          * google-benchmark, nanobench, celero, catch2, ...
           */
           auto bench(auto code) -> measurements;
 ```
@@ -393,11 +399,28 @@ int main():       // kernel
 
 ----
 
-#### Measurements Bias - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+#### AMD Zen5 - https://chipsandcheese.com
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/cpu2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+#### Linux 6.x - https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/linux2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// Hardware effects
 ├─ Do you have modern CPU?
   ├─ Do you have branches?
     // branch aliasing
@@ -417,7 +440,7 @@ int main():       // kernel
 
 ----
 
-#### Examples
+#### Measurements Bias - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -436,24 +459,6 @@ void setup() {
   memory();
 }
 ```
-
-----
-
-#### AMD Zen5 - https://chipsandcheese.com
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/cpu2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-</p>
-
-----
-
-#### Linux 6.x - https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/linux2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-</p>
 
 ----
 
@@ -494,33 +499,14 @@ clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
 mold -run clang *.o -Wl,--shuffle-sections=0 -o app
 ```
 
-----
-
-```sh
+```
 # Disable CPU Frequency Scaling
-sudo cpupower frequency-set --governor performance
-
-# Disable Address Space Randomization
-echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
-
 # Disable Processor Boosting
-echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
-
 # Disable Turbo Mode
-echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
-
 # Disable Hyper-threading
-echo off | sudo tee /sys/devices/system/cpu/smt/control
-```
-
----
-
-```
+# ...
 pyperf system tune # pip install pyperf
 ```
-
-
-----
 
 ```cpp
 // perf::thread::set_affinity(self, 2); // 0, 1 used by the kernel
@@ -528,7 +514,7 @@ pyperf system tune # pip install pyperf
 ```
 
 ```sh
-nice -n -20 taskset -c 2 ... # chrt -f 99 ...
+nice -n -20 taskset -c 2 ... # chrt -f 99
 ```
 
 ----
@@ -636,7 +622,7 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-import perf; // -DNTEST
+import perf; // compile-time testing
 ```
 
 ----
@@ -728,7 +714,7 @@ auto latency(auto fn, auto... ts) {
 
 ```cpp
 template<auto N>
-auto latency(auto fn) { // uops (NanoBench)
+auto latency(auto fn) { // uops # https://github.com/andreas-abel/nanoBench
   return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
 }
 ```
@@ -987,6 +973,8 @@ auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
 
 // pollute_heap - prevents continuous allocation
 // clflush - for date
+// pre_fault
+// operator_new
 
 void* operator new(size_t size) {
     size_t pad = rand() % 64;
@@ -1140,16 +1128,20 @@ user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// profiling/tracing
-// - linux-perf / dtrace
-// - intel-vtune / amd-uprof
-// - likwid
+// Profiling/Tracing
+// - linux-perf  - https://perf.wiki.kernel.org
+// - dtrace      - https://github.com/opendtrace
+// - intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+// - amd-uprof   - https://www.amd.com/en/developer/uprof.html
+// - likwid      - https://github.com/RRZE-HPC/likwid
+// - callgrind   - https://valgrind.org/docs/manual/cl-manual.html
 
-// analyzing
-// - llvm-mca
-// - uica
-// - osaca
+// Analyzing
+// - llvm-mca    - https://llvm.org/docs/CommandGuide/llvm-mca.html
+// - osaca       - https://github.com/RRZE-HPC/OSACA
+// - uica        - https://uica.uops.info
 ```
+<!-- .element: style="font-size:16px" -->
 
 ----
 
@@ -1497,11 +1489,17 @@ perf::annotate<vsplit>(bench[
 ----
 
 #### Control-Flow-Graph
-
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 perf::plot::flowgraph(analyzer[perf::mca::assembly]);
 ```
+
+```cpp
+// basic block - is a straight-line sequence of instructions
+//               with a single entry point and a single exit point
+```
+<!-- .element: style="font-size:15px" -->
 
 ----
 
@@ -1509,8 +1507,8 @@ perf::plot::flowgraph(analyzer[perf::mca::assembly]);
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-import perf;
 import prof;
+import perf;
 
 int main() {
   perf::runner bench{[](auto fn, auto... ts) {
@@ -1536,11 +1534,11 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ...
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// bench-testing
-// asm-testing
-// opt-testing
-// mca-testing
-// ...
+// Testing
+// - validation
+// - assembly
+// - optimization
+// - ...
 ```
 
 ----
@@ -1588,13 +1586,20 @@ int main() {
 
 ----
 
+```cpp
+###ensure E2E
+```
+
+----
+
 ### [5] The Chaos
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 // Baseline
-// Reducing Instruction Counter / Increasing Instruction Per Cycle
+// Reducing Instruction Count / Increasing Instruction Per Cycle
 // Top down Microarchitecture Analysis Method
+// - toplev - https://github.com/andikleen/pmu-tools
 ```
 
 ----
@@ -1605,11 +1610,11 @@ int main() {
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
-  auto _ = perf::named("_", unpredictable<int>);
+  auto _ = unpredictable<int>;
 
   bench(baseline(fizz_buzz), _);
-  bench(fizz_buzz_lut_v1,    _);
-  bench(fizz_buzz_lut_v2,    _);
+  bench(fizz_buzz_v1,        _);
+  bench(fizz_buzz_v2,        _);
   // ...
 
   perf::report(bench[perf::stat::tsc], p25, p50, p75, p99);
@@ -1619,8 +1624,9 @@ int main() {
 ----
 
 ```cpp
-// Reducing Instruction Counter / Increasing Instruction Per Cycle
+// Reducing Instruction Count / Increasing Instruction Per Cycle
 // Max IPC - dispatch_width (know when to stop)
+// auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
 // Modern CPUs are primarily bottlenecked by
 // - instruction supply
 // - data access
@@ -1719,39 +1725,6 @@ int main() {
          ├─ [3] dL2 Bound
          ├─ [3] dL3 Bound
          └─ [3] DRAM Bound
-```
-<!-- .element: style="font-size:19px;" -->
-
-----
-
-#### Performance Monitoring Unit (PMU)
-<!-- .element: style="text-align:left" -->
-
-```cpp
- ├─ [1] Retiring                            │
- │   ├─ [2] Light µops                      │
- │   └─ [2] Complex µops                    │
- │                                          │
- ├─ [1] Bad Speculation                     │
- │   ├─ [2] Branch Mispredictions           │
- │   └─ [2] Machine Clears                  │
- │                                          │ PMC  - Performance-Monitoring Counter
- ├─ [1] Front-End Bound                     │ LBR  - Last Branch Record
- │   ├─ [2] Front-End Latency               │ PEBS - Precise Event-Based Sampling
- │   │   ├─ [3] iL1 Misses                  │ IPT  - Intel Processor Trace
- │   │   ├─ [3] iTLB Misses                 │ MCA  - Machine Code Analyzer
- │   │   └─ [3] Branch Resteers             │
- │   └─ [2] Front-End Bandwidth             │
- │                                          │
- └─ [1] Back-End Bound                      │
-     ├─ [2] Core Bound                      │
-     │   └─ [3] Execution ports utilization │
-     │   └─ [3] Divider                     │
-     └─ [2] Memory Bound                    │
-         ├─ [3] dL1 Bound                   │
-         ├─ [3] dL2 Bound                   │
-         ├─ [3] dL3 Bound                   │
-         └─ [3] DRAM Bound                  │
 ```
 <!-- .element: style="font-size:19px;" -->
 
