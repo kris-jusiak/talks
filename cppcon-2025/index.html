@@ -399,19 +399,19 @@ Powered by perf # https://github.com/qlibs/perf
 ```cpp
 // Hardware effects
 
-0x0000        void fn1(param): // alignment
-                // stack
+0x0010        void fn1(param):              // alignment
+                push                        // stack
                 for (...) {
-0x0101            if (lookup_table[value]) // memory (cache)
-                    je          // branch predictor
+0x0100            if (lookup_table[value])  // memory access
+0x0104              je                      // branch prediction
 
-0x0000        void fn2(param): // alignment
-lookup_table:                 // alignmetn
-  ...
+0x1000        void fn2(param):              // alignment
 
-int main(): // kernel
-  // stack env variables
-  call fn
+lookup_table:                               // alignment
+ ...
+
+int main():                                 // kernel
+  call fn1
   ret
 ```
 
@@ -435,46 +435,17 @@ int main(): // kernel
 
 ----
 
-#### Measurements Bias
+### Measurements Bias
 <!-- .element: style="text-align:left" -->
 
+##### - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left;" -->
+
+##### - [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
+<!-- .element: style="text-align:left;" -->
+
 ```
- Do you use modern CPU,OS,toolchain?
-  ├─ Do you have code?      - code alignment, ...
-  ├─ Do you have functions? - stack frame, ...
-  ├─ Do you have branches?  - branch aliasing, ...
-  ├─ Do you have loops?     - crossing boundary, ...
-  ├─ Do you access memory?  - data alignment, cache, heap, ...
-  └─ ...
-```
-
-##### &nbsp;&nbsp; [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left;font-size:28px;margin: 0 0;" -->
-##### &nbsp;&nbsp; [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
-<!-- .element: style="text-align:left;font-size:28px;margin: 0 0;" -->
-----
-
-#### Measurements Bias
-<!-- .element: style="text-align:left" -->
-
-
-```cpp
-// why faster     // why lower?
-void fn1();        void fn2();
-void fn2();        void fn1();
-```
-
-```cpp
-void fn(int n) {
-  // int n; why slower?
-  for (auto i = 0; i < n; ++i) {
-    if (rand()) // why slower?
-  }
-}
-```
-
-```cpp
-BENCHMARK=why_slower_with_env_variable ./benchmark.out
+  // -Rcode -Rstack -Rheap
 ```
 
 ----
@@ -533,7 +504,7 @@ int main() {
 ```cpp
 user@perf:~# $CXX -std=c++23 -O3 -g perf.cpp && ./a.out
 ```
-<!-- .element: style="text-align:left;font-size:16px" -->
+<!-- .element: style="text-align:left;font-size:16px;" -->
 
 ```sh
  name  info
@@ -575,9 +546,9 @@ user@perf:~# taskset -c 2 nice -n -20 ./a.out # xterm -ti 340
 ```
 benchmark                         [1]            [2]
 ---------------------  -------------- --------------
-add(reg,reg)/latency   (12.98x)  1.00 (13.00x)  1.00 // https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-sub(reg,reg)/latency   (13.01x)  1.00 (13.00x)  1.00 // https://www.agner.org/optimize/instruction_tables.pdf
-mult(reg,reg)/latency   (4.33x)  3.00  (4.33x)  3.00
+add(reg,reg)/latency   (12.98x)  1.00 (13.00x)  1.00
+sub(reg,reg)/latency   (13.01x)  1.00 (13.00x)  1.00  // https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+mul(reg,reg)/latency    (4.33x)  3.00  (4.33x)  3.00  // https://www.agner.org/optimize/instruction_tables.pdf
 div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
 
 (0) speedup(slowest:1.00x)
@@ -587,11 +558,11 @@ div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
 <!-- .element: style="text-align:left;font-size:11px" -->
 
 <p align="left">
-<img src="images/self2.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
+<img src="images/self2.png" style="width: 78%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ```java
-add(reg,reg)/latency:      sub(reg,reg)/latency:      mult(reg,reg)/latency:     div(reg,reg)/latency:
+add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:      div(reg,reg)/latency:
  [0] [1]                    [0] [1]                    [0] [1]                    [0] [1]
  --- ------------           --- ------------           --- -------------          --- ------------
   1. add esi, edi            1. sub edi, esi            1. imul esi, edi           1. mov eax, edi
@@ -1003,7 +974,7 @@ int main() {
 ```
 
 ```cpp
-# xterm -ti 340 # printf '\033Pq#1@\033\\' sixel pixel
+# xterm -ti 340 # printf '\033Pq#1@\033\\' # pixel
 jupyter notebook / matplotlib - https://jupyter.org
 ```
 <!-- .element: style="text-align:left; margin: 0 0;" -->
@@ -1251,6 +1222,14 @@ perf::code::label("stop");                      //     ".quad %c0, %l[L]\n"
                                                 //     : : "i"(label) : "memory" : L
                                                 //   ); L:;
                                                 // }
+
+    auto invoke = [](auto fn, auto... ts) {
+      perf::code::label("begin");
+      fn(ts...);
+      perf::code::label("end");
+    };
+
+    perf::prevent_elision(&decltype(invoke)::operator()<decltype(fizz_buzz), int>);
 
 analyzer << {perf::code::labels["start"], perf::code::labels["stop"]};
 perf::annotate(analyzer[]);
@@ -1523,11 +1502,13 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ...
 
 ```cpp
 int main() {
-  // auto sort = [](std::vector<int>& v) {
-  //   std::ranges::sort(v);
-  // };
+  perf::runner bench{perf::bench::throughput{.policy = seq}};
 
-  auto sort = []<bool debug>(std::vector<int>& v) {
+  auto sort = [](std::vector<int>& v) {
+    std::ranges::sort(v);
+  };
+
+  auto sort_debug = []<bool debug>(std::vector<int>& v) {
     std::ranges::sort(v);
     if constexpr (debug) { // doesn't affect benchmarking
       perf::verify(is_sorted(v));
@@ -1535,7 +1516,8 @@ int main() {
   };
 
   for (auto i = 0; i < 1024; ++i) {
-    bench(sort, unpredictable<int> | to<std::vector>(i));
+    bench(sort,       unpredictable<int> | to<std::vector>(i));
+    bench(sort_debug, unpredictable<int> | to<std::vector>(i));
   }
 }
 ```
@@ -1546,17 +1528,71 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+"mca.assembly/disassemble"_test = [] {
+  auto&& instructions =
+    perf::analyzer{perf::mca::assembly} << fizz_buzz;
+  perf::verify(19u == instructions.size());
+  perf::verify(instructions[0].contains("imul"));
+  // ...
+};
+
+"mca.assembly/trace"_test = [] {
+  perf::profiler profiler{perf::trace::instructions};
+  perf::analyzer analyzer{perf::mca::assembly};
+  invoke(fizz_buzz, 15);
+  auto&& instructions =
+    analyzer << profiler[perf::trace::instructions];
+
+  perf::verify(8u == instructions.size());
+  perf::verify(instructions[0].contains("imul"));
+  // ...
+};
+
+----
+
+#### Testing
+<!-- .element: style="text-align:left" -->
+
+"optimized"_test = [] {
+  auto fn1 = [] {
+  };
+
+  perf::verify(
+};
+
 int main() {
   perf::verify(instructions.size)
   perf::verify(asm.instruction == "mov")
   perf::verify(asm.instruction.count < non optimizaed)
   perf::verify(as.minstruciton.count == c++optimization)
 
-  perf::verify(entry[0].cycle_dispatched);
-  perf::verify(entry[0].cycle_executed);
   perf::verify(optimized == []{}); // disassemble compare
   perf::verify(optimized < []{}); // disassemble compare
 }
+```
+
+----
+
+```cpp
+"mca.timeline"_test = [] {
+  auto analyze = [](auto fn, auto... ts) {
+    perf::profiler profiler{perf::trace::instructions};
+    perf::analyzer analyzer{perf::mca::timeline};
+    invoke(profiler, fn, ts...);
+    analyzer << profiler[perf::trace::instructions];
+    return analyzer[];
+  };
+
+  auto&& timeline = analyze(fizz_buzz, 15);
+
+  perf::verify(8u == timeline.size());
+  perf::verify(6u == timeline[0].dispatch_width);
+  perf::verify(0  == timeline[0].cycle_ready);
+  perf::verify(1  == timeline[0].cycle_issued);
+  perf::verify(6  == timeline[0].cycle_executed);
+  perf::verify(7  == timeline[0].cycle_retired);
+  // ...
+};
 ```
 
 ----
@@ -1573,7 +1609,7 @@ int main() {
 ```
 
 ```
-"Benchmarks slower, app faster" - what do you do?
+"benchmarks slower, app faster" - what to do?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
