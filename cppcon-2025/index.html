@@ -697,7 +697,7 @@ auto latency(auto fn) { // https://github.com/andreas-abel/nanoBench
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto throughput(auto fn, auto... ts) { // seq
+auto throughput(auto fn, auto... ts) {
   perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
     fn(ts...);
   }
@@ -712,7 +712,7 @@ perf::bench::throughput::unroll;
 perf::bench::throughput::par;
 ...
 ```
-<!-- .element: style="text-align:left" -->
+<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
@@ -747,6 +747,10 @@ int main() {
 
 ----
 
+<p align="left">
+<img src="images/btb.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
+</p>
+
 ```cpp
 /**
 * branch predictor can learn 10'000 1/0 branches
@@ -776,14 +780,14 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 0, 15, 3, 5, ...
 
 // likely-predictable
-sequence<int>{1, 3, 5}                   // 1,3,5,1,3,5,...
-sequence<int>{3, 1, 5}                   // 3,1,5,3,1,5,...
-sequence<int>{0, 1, 5, 3, 15, 0}         // 0,1,5,3,15,...
-range<int>{.start = 0, .stop = 15}       // 0,1,2,3,4,5,...
+sequence<int>{1, 3, 5}                    // 1,3,5,1,3,5,...
+sequence<int>{3, 1, 5}                    // 3,1,5,3,1,5,...
+sequence<int>{0, 1, 5, 3, 15, 0}          // 0,1,5,3,15,...
+range<int>{.start = 0, .stop = 15}        // 0,1,2,3,4,5,...
 
 // likely-unpredictable
-unpredictable<int>;                       // (-min<int>, max<int>)
-uniform<int>{.min = 0, .max = 15};        // <0, 15>, <0, 15>, ...
+unpredictable<int>                        // (-min<int>, max<int>)
+uniform<int>{.min = 0, .max = 15}         // <0, 15>, <0, 15>, ...
 choice<int>{                              // 15,5,5,5,3,3,5,5,...
   .probabilities = {.25, .50, .25},
   .values = {3, 5, 15}
@@ -1536,17 +1540,18 @@ int main() {
 
 ----
 
-```cpp
-// Always measure
-// - Validate
-// - Apply
-// - Profile
-// - Analyze
-```
+#### Validation
+<!-- .element: style="text-align:left" -->
 
 ```sh
-./app --profile # profile = true nop
+# Measurement bias
+# Production-like environment
+# Validate findings / correlation
+
+./app --profile
 ```
+
+<img src="images/f1.jpg" style="width: 20%; background:none; border:none; box-shadow:none; margin: 0 70%;" />
 
 ----
 
