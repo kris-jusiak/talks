@@ -349,7 +349,7 @@
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left; font-size:20px;" -->
 
 ```cpp
-          bench(fizz_buzz) -> ?
+          bench(fizz_buzz) // ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
 
@@ -518,9 +518,9 @@ int main() {
     // ...
   });
 
+  perf::verify(not perf::info::cpu::freq_scaling);
   perf::verify(perf::info::compiler::NDEBUG);
   perf::verify(perf::info::compiler::OPTIMIZED);
-  perf::verify(not perf::info::cpu::freq_scaling);
   perf::verify(perf::info::cpu::features().contains("avx512"));
   perf::verify(perf::info::cpu::dispatch_width() >= 4u);
   // ...
@@ -763,15 +763,23 @@ int main() {
 
 ----
 
+```cpp
+/**
+ * Branch Predictor can learn 10'000 1/0 branches
+ * First-time backward branches -> taken
+ */
+```
+
 <p align="left">
-<img src="images/btb.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
+<img src="images/btb.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 </p>
+
+----
 
 ```cpp
 /**
-* branch predictor can learn 10'000 1/0 branches
-* [first-time] backwards branches are taken
-*/
+ * pseudo.cpu[0].branch_predictor[ip].history = {1, 1, 1, 0, 0, ...};
+ */
 auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
   for (auto i = 0u; i < iterations; ++i) {
@@ -788,7 +796,7 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 
 ----
 
-#### Data distribution
+#### Data distribution / specific
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -808,8 +816,7 @@ choice<int>{                              // 15,5,5,5,3,3,5,5,...
   .probabilities = {.25, .50, .25},
   .values = {3, 5, 15}
 }
-// normal
-// beronolii
+...
 ```
 <!-- .element: style="font-size:19px;" -->
 
@@ -1504,20 +1511,19 @@ valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ...
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+// Verfication
 // Testing
-// - validation
-// - assembly
-// - optimization
-// - ...
+// Validation
 ```
 
 ----
 
-```cpp
-// testing
+#### Verification
+<!-- .element: style="text-align:left" -->
 
+```cpp
 int main() {
-  // auto fizz_buzz = [](std::vector<int>& v) {
+  // auto sort = [](std::vector<int>& v) {
   //   std::ranges::sort(v);
   // };
 
@@ -1536,9 +1542,10 @@ int main() {
 
 ----
 
-```cpp
-// testing
+#### Testing
+<!-- .element: style="text-align:left" -->
 
+```cpp
 int main() {
   perf::verify(instructions.size)
   perf::verify(asm.instruction == "mov")
@@ -1562,8 +1569,13 @@ int main() {
 # Production-like environment
 # Validate findings / correlation
 
-./app --profile
+./app --profile ...
 ```
+
+```
+"Benchmarks slower, app faster" - what do you do?
+```
+<!-- .element: class="fragment" data-fragment-index="1" -->
 
 <img src="images/f1.jpg" style="width: 20%; background:none; border:none; box-shadow:none; margin: 0 70%;" />
 
@@ -1576,14 +1588,14 @@ int main() {
 // Baseline
 // Reducing Instruction Count / Increasing Instruction Per Cycle
 // Top down Microarchitecture Analysis Method
-// - toplev - https://github.com/andikleen/pmu-tools
 ```
 
 ----
 
-```cpp
-// Baseline
+#### Baseline
+<!-- .element: style="text-align:left" -->
 
+```cpp
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
@@ -1751,6 +1763,9 @@ fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0
 ```
 <!-- .element: style="font-size:16px" -->
 
+```
+toplev - https://github.com/andikleen/pmu-tools
+```
 ----
 
 ```cpp
