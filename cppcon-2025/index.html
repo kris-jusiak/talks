@@ -161,9 +161,9 @@
 
           (gdb) record function-call-history /ilc
           (gdb) run
-          1  bar     inst 1,4     at foo.c:6,8
-          2  foo     inst 5,10    at foo.c:2,3
-          3  bar     inst 11,13   at foo.c:9,10
+            1  bar     inst 1,4     at foo.c:6,8
+            2  foo     inst 5,10    at foo.c:2,3
+            3  bar     inst 11,13   at foo.c:9,10
           (gdb) reverse-step
 ```
 
@@ -270,8 +270,8 @@
  // no-bottlenecks != fastest
 
  └─ System
-      bcc         # https://github.com/iovisor/bcc
-      bpftrace    # https://github.com/bpftrace/bpftrace
+      bcc      # https://github.com/iovisor/bcc
+      bpftrace # https://github.com/bpftrace/bpftrace
       ...
 
     └── Application
@@ -293,7 +293,7 @@
 #### Always measure
 <!-- .element: style="text-align:left;" -->
 
-```cpp
+```sh
  └─ System
     └── Application
       └── µArch
@@ -332,7 +332,7 @@
     └── Application
       └── µArch
 
-          [[optimize("O3")]] constexpr auto fizz_buzz(int n) {
+          [[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
                  if (n % 15 == 0) { return "FizzBuzz"; }
             else if (n % 3  == 0) { return "Fizz";     }
             else if (n % 5  == 0) { return "Buzz";     }
@@ -684,7 +684,7 @@ Throughput
 
 ----
 
-##### [[section("latency")]]
+##### [[gnu::section("latency")]]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -709,7 +709,7 @@ auto latency(auto fn) { // https://github.com/andreas-abel/nanoBench
 
 ----
 
-##### [[section("throughput")]]
+##### [[gnu::section("throughput")]]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
