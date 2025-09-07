@@ -155,20 +155,20 @@ DRAM     350 70.00ns
 ```
  └─ System
     └── Application
-        perf probe -x /usr/lib/libc.so malloc
-        perf record -g probe_libc:malloc ...
 
-        vtune -collect hotspots -- ...
-        AMDuProfCLI --profile -t cpu -- ...
+          perf probe -x /usr/lib/libc.so malloc
+          perf record -g probe_libc:malloc ...
 
-        (gdb) record function-call-history /ilc
-        (gdb) run
-        1  bar     inst 1,4     at foo.c:6,8
-        2  foo     inst 5,10    at foo.c:2,3
-        3  bar     inst 11,13   at foo.c:9,10
-        (gdb) reverse-step
+          vtune -collect hotspots -- ...
+          AMDuProfCLI --profile -t cpu -- ...
+
+          (gdb) record function-call-history /ilc
+          (gdb) run
+          1  bar     inst 1,4     at foo.c:6,8
+          2  foo     inst 5,10    at foo.c:2,3
+          3  bar     inst 11,13   at foo.c:9,10
+          (gdb) reverse-step
 ```
-<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
 
@@ -179,15 +179,15 @@ DRAM     350 70.00ns
  └─ System
     └── Application
 
-        import prof; // https://github.com/qlibs/prof
+          import prof; // https://github.com/qlibs/prof
 
-        int main() {
-          prof::linux_perf profiler{"/dev/shm/perf"};
+          int main() {
+            prof::linux_perf profiler{"/dev/shm/perf"};
 
-          profiler.start();
-          // ...
-          profiler.stop();
-        }
+            profiler.start();
+            // ...
+            profiler.stop();
+          }
 ```
 
 ```sh
@@ -204,23 +204,23 @@ DRAM     350 70.00ns
  └─ System
     └── Application
 
-        function:
-          // nop ... # -fxray-instrument
-          ret
-          // nop ... # -fxray-instrument
+          function:
+            // nop ... # -fxray-instrument
+            ret
+            // nop ... # -fxray-instrument
 
-        int main() {
-          // ...
-          auto handler = [](int func_id, XRayEntryType entry) {
-            if (entry == XRayEntryType::ENTRY) {
-              profiler.start();
-            } else {
-              profiler.stop();
-            }
-          };
-          __xray_set_handler(+handler);
-          __xray_patch(); // nop -> jmp &handler
-        }
+          int main() {
+            // ...
+            auto handler = [](int func_id, XRayEntryType entry) {
+              if (entry == XRayEntryType::ENTRY) {
+                profiler.start();
+              } else {
+                profiler.stop();
+              }
+            };
+            __xray_set_handler(+handler);
+            __xray_patch(); // nop -> jmp &handler
+          }
 ```
 <!-- .element: style="font-size:21px;" -->
 
@@ -239,22 +239,22 @@ DRAM     350 70.00ns
  └─ System
     └── Application
 
-        import jmp; // https://github.com/qlibs/jmp
+          import jmp; // https://github.com/qlibs/jmp
 
-        constexpr jmp::boolean profile = false;
-        auto start(auto& profiler) { if (profile) { profiler.start(); } };
-        auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
+          constexpr jmp::boolean profile = false;
+          auto start(auto& profiler) { if (profile) { profiler.start(); } };
+          auto stop (auto& profiler) { if (profile) { profiler.stop();  } };
 
-        void function() {
-          start(profiler); // nop [1]
-          // ...
-          stop(profiler);  // nop [2]
-        }
+          void function() {
+            start(profiler); // nop [1]
+            // ...
+            stop(profiler);  // nop [2]
+          }
 
-        int main() {
-          profile = true; // [1] nop -> profiler.start()
-                          // [2] nop -> profiler.stop()
-        }
+          int main() {
+            profile = true; // [1] nop -> profiler.start()
+                            // [2] nop -> profiler.stop()
+          }
 ```
 <!-- .element: style="font-size:20px;" -->
 
@@ -267,20 +267,21 @@ DRAM     350 70.00ns
  └─ System
     └── Application
 
-        linux-perf  # https://perf.wiki.kernel.org
-        intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
-        amd-uprof   # https://www.amd.com/en/developer/uprof.html
-        dtrace      # https://github.com/opendtrace
-        toplev      # https://github.com/andikleen/pmu-tools
-        bcc         # https://github.com/iovisor/bcc
-        bpftrace    # https://github.com/bpftrace/bpftrace
-        coz         # https://github.com/plasma-umass/coz
-        gperftools  # https://github.com/gperftools/gperftools
-        likwid      # https://github.com/RRZE-HPC/likwid
-        tracy       # https://github.com/wolfpld/tracy
-        magic-trace # https://github.com/janestreet/magic-trace
-        callgrind   # https://valgrind.org/docs/manual/cl-manual.html
-        ...
+          linux-perf  # https://perf.wiki.kernel.org
+          intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
+          amd-uprof   # https://www.amd.com/en/developer/uprof.html
+          dtrace      # https://github.com/opendtrace
+          toplev      # https://github.com/andikleen/pmu-tools
+          bcc         # https://github.com/iovisor/bcc
+          bpftrace    # https://github.com/bpftrace/bpftrace
+          coz         # https://github.com/plasma-umass/coz
+          gperftools  # https://github.com/gperftools/gperftools
+          likwid      # https://github.com/RRZE-HPC/likwid
+          tracy       # https://github.com/wolfpld/tracy
+          magic-trace # https://github.com/janestreet/magic-trace
+          callgrind   # https://valgrind.org/docs/manual/cl-manual.html
+
+          ...
 ```
 <!-- .element: style="font-size:17px;" -->
 
@@ -295,8 +296,8 @@ DRAM     350 70.00ns
  └─ System
     └── Application
       └── µArch
-          perf stat -e cycles,instructions ...
-          perf stat --topdown --td-level 1 ...
+            perf stat -e cycles,instructions ...
+            perf stat --topdown --td-level 1 ...
 ```
 
 ----
@@ -1565,17 +1566,27 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// baseline
+// Establish baseline
 // Top down Microarchitecture Analysis Method
 ```
 
 ----
 
-#### Establish a baseline
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::baseline()
+// Baseline
+
+int main() {
+  perf::runner bench{perf::bench::latency{}};
+
+  auto _ = perf::named("_", unpredictable<int>);
+
+  bench(baseline(fizz_buzz), _);
+  bench(fizz_buzz_lut_v1,    _);
+  bench(fizz_buzz_lut_v2,    _);
+  // ...
+
+  perf::report(bench[perf::stat::tsc], p25, p50, p75, p99);
+}
 ```
 
 ----
@@ -1587,7 +1598,7 @@ perf::baseline()
 <tr>
 <td>
 <p align="left">
-<img src="images/td.png" style="width: 900px; height:400px; background:none; border:none; box-shadow:none;" />
+<img src="images/td.png" style="width: 900px; height:350px; background:none; border:none; box-shadow:none;" />
 </p>
 <td>
 <pre style="font-size:14px"><code>
@@ -1685,11 +1696,11 @@ perf::baseline()
  ├─ [1] Bad Speculation                     │
  │   ├─ [2] Branch Mispredictions           │
  │   └─ [2] Machine Clears                  │
- │                                          │ PMC - Performance-Monitoring Counter
- ├─ [1] Front-End Bound                     │ LBR - Last Branch Record
+ │                                          │ PMC  - Performance-Monitoring Counter
+ ├─ [1] Front-End Bound                     │ LBR  - Last Branch Record
  │   ├─ [2] Front-End Latency               │ PEBS - Precise Event-Based Sampling
- │   │   ├─ [3] iL1 Misses                  │ IPT - Intel Processor Trace
- │   │   ├─ [3] iTLB Misses                 │ MCA - Machine Code Analyzer
+ │   │   ├─ [3] iL1 Misses                  │ IPT  - Intel Processor Trace
+ │   │   ├─ [3] iTLB Misses                 │ MCA  - Machine Code Analyzer
  │   │   └─ [3] Branch Resteers             │
  │   └─ [2] Front-End Bandwidth             │
  │                                          │
