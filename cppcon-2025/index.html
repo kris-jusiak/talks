@@ -152,17 +152,21 @@ DRAM     350 70.00ns
 #### Always measure
 <!-- .element: style="text-align:left" -->
 
-```sh
+```
  └─ System
     └── Application
         perf probe -x /usr/lib/libc.so malloc
-        perf record -g probe_libc:malloc
-        perf record intel_pt
-        perf script | flamegraph
-        vtune -collect performance-snapshot -start-paused -finalization-mode=full -r result
-        AMDuProfCLI collect --config tbp --start-paused ...
+        perf record -g probe_libc:malloc ...
 
-        // gdb
+        vtune -collect hotspots -- ...
+        AMDuProfCLI --profile -t cpu -- ...
+
+        (gdb) record function-call-history /ilc
+        (gdb) run
+        1  bar     inst 1,4     at foo.c:6,8
+        2  foo     inst 5,10    at foo.c:2,3
+        3  bar     inst 11,13   at foo.c:9,10
+        (gdb) reverse-step
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
@@ -286,13 +290,13 @@ DRAM     350 70.00ns
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
+ // hot spotting doesn't give the overall speedup
+
  └─ System
     └── Application
       └── µArch
-          perf stat -e cycles,instructions,cache-misses,branch-misses
-          perf stat --topdown --td-level 1
-
-// hot spoting doesnt give you the overall speedup
+          perf stat -e cycles,instructions ...
+          perf stat --topdown --td-level 1 ...
 ```
 
 ----
@@ -368,7 +372,7 @@ Focused on x86-64-linux-gnu
 
 Powered by perf # https://github.com/qlibs/perf
  ├─ c++2x
- ├─ linux/perf                                    // perf_event_open/libipt
+ ├─ linux/perf                                    // perf_event_open/lib-ipt
  ├─ llvm/mca                                      // llvm-dev
  └─ gnuplot/sixel                                 // terminal
 ```
@@ -581,7 +585,7 @@ int main() {
 ```cpp
 name  info
 ----- -----------------------------------------------------------------
-time  2025-09-15 11:30:00
+time  2025-09-15 11:15:00
 sys   x86_64-pc-linux-gnu
 cxx   gcc-15.0.0
 cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
@@ -687,7 +691,7 @@ Throughput
 
 ----
 
-#### [[section("latency")]]
+##### [[section("latency")]]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -698,30 +702,32 @@ auto latency(auto fn, auto... ts) {
 }
 ```
 
-----
+---
 
-#### [[section("latency")]] - https://uops.info/table.html
+##### https://uops.info/table.html
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 template<auto N>
-auto uops::latency(auto fn) {
+auto latency(auto fn) { // uops (NanoBench)
   return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
 }
 ```
 
 ----
 
-#### [[section("throughput")]]
+##### [[section("throughput")]]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto throughput::seq(auto fn, auto... ts) {
+auto throughput(auto fn, auto... ts) { // seq
   perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
     fn(ts...);
   }
 }
 ```
+
+---
 
 ```cpp
 perf::bench::throughput::seq;
@@ -760,7 +766,7 @@ perf::bench::throughput::par; // requires threads
 // perf::stat::steady_time  Monotonic clock     steady_clock
 
 int main() {
-  perf::runner bench{perf::bench::latency{}};
+  perf::runner bench{perf::bench::latency{.samples = 1}};
 
   bench(fizz_buzz, 15);
   bench(fizz_buzz, 3);
@@ -776,7 +782,7 @@ int main() {
 ```cpp
 /**
 * branch predictor can learn 10'000 1/0 branches
-* [first-time] backwards branches are taken / loops
+* [first-time] backwards branches are taken
 */
 auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
@@ -794,46 +800,83 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 
 ----
 
-```cpp
-// predictable                          // exact
-
-3                                       // 3
-5                                       // 5
-std::integral_constant<int, 15>         // 15
-
-sequence<int>{1, 3, 5};                 // 1,3,5,1,3,5,...
-sequence<int>{3, 1, 5};                 // 3,1,5,3,1,5,...
-sequence<int>{0, 1, 5, 3, 15, 0};       // 0,1,5,3,15,0,...
-range<int>{.start = 0, .stop = 15};     // 0,1,2,3,4,5,...
-```
-
-----
+#### Data distribution
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-// unpredictable                        // example
+// predictable
+0, 15, 3, 5, ...
 
-unpredictable<int>;                     // <-min<int>, max<int>>, ..
-uniform<int>{.min = 0, .max = 15};      // <0, 15>, <0, 15>, ...
-choice<int>{                            // 15,5,5,5,3,3,5,5,...
+// likely-predictable
+sequence<int>{1, 3, 5}                   // 1,3,5,1,3,5,...
+sequence<int>{3, 1, 5}                   // 3,1,5,3,1,5,...
+sequence<int>{0, 1, 5, 3, 15, 0}         // 0,1,5,3,15,...
+range<int>{.start = 0, .stop = 15}       // 0,1,2,3,4,5,...
+
+// likely-unpredictable
+unpredictable<int>;                       // (-min<int>, max<int>)
+uniform<int>{.min = 0, .max = 15};        // <0, 15>, <0, 15>, ...
+choice<int>{                              // 15,5,5,5,3,3,5,5,...
   .probabilities = {.25, .50, .25},
   .values = {3, 5, 15}
-};
-...
+}
+// normal
+// beronolii
+```
+<!-- .element: style="font-size:19px;" -->
+
+----
+
+```cpp
+int main() {
+  perf::runner bench{perf::benc::latency{}};
+
+  auto add = [](int a, int b) { return a + b; };
+
+  for (int a = 0; a < 10; ++a) {
+    for (int b = 0; b < 10; ++b) {
+      bench(add, a, b);
+    }
+  }
+
+  bench(add, unpredictable<int>, unpredictable<int>);
+  bench(add, unpredictable<int>, 10);
+  bench(add, 10, unpredictable<int>);
+
+  perf::report(bench[perf::stat::cycles / perf::bench::operations]);
+}
 ```
 
 ----
 
 ```cpp
-bench(fizz_buzz, 0);
-bench(fizz_buzz, 15);
-bench(fizz_buzz, 3);
-bench(fizz_buzz, 5);
-bench(fizz_buzz, sequence<int>{1, 3, 5});
-bench(fizz_buzz, sequence<int>{3, 1, 5});
-bench(fizz_buzz, sequence<int>{0, 1, 5, 3, 15, 0});
-bench(fizz_buzz, range<int>{.start = 0, .stop = 15);
-bench(fizz_buzz, unpredictable<int>);
+benchmark                                          [1]
+----------------------------------------  ------------
+add(0,0)/latency                          (1.00x) 1.00
+add(0,1)/latency                          (1.00x) 1.00
+add(0,2)/latency                          (1.00x) 1.00
+add(0,3)/latency                          (1.00x) 1.00
+add(1,0)/latency                          (1.00x) 1.00
+add(1,1)/latency                          (1.00x) 1.00
+add(1,2)/latency                          (1.00x) 1.00
+add(1,3)/latency                          (1.00x) 1.00
+add(2,0)/latency                          (1.00x) 1.00
+add(2,1)/latency                          (1.00x) 1.00
+add(2,2)/latency                          (1.00x) 1.00
+add(2,3)/latency                          (1.00x) 1.00
+add(3,0)/latency                          (1.00x) 1.00
+add(3,1)/latency                          (1.00x) 1.00
+add(3,2)/latency                          (1.00x) 1.00
+add(3,3)/latency                          (1.00x) 1.00
+...
+add(unpredictable,unpredictable)/latency  (1.00x) 1.00
+add(unpredictable,10)/latency             (1.00x) 1.00
+add(10,unpredictable)/latency             (1.00x) 1.00
+
+(0) speedup(slowest:1.00x)
+[1] median((stat.cycles/bench.operations))
 ```
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -900,51 +943,6 @@ fizz_buzz(unpredictable)/latency           (1.04x) 6231.11  (3.55x) 0.01  (3.49x
 [6] cv(stat.real_time[ns])
 ```
 <!-- .element: style="font-size:12px;" -->
-
-----
-
-```cpp
-for (int a = 0; a < 10; ++a) {
-  for (int b = 0; b < 10; ++b) {
-    bench(add, a, b);
-  }
-}
-
-bench(add, unpredictable<int>, unpredictable<int>);
-bench(add, unpredictable<int>, 10);
-bench(add, 10, unpredictable<int>);
-```
-
-----
-
-```cpp
-benchmark                                          [1]
-----------------------------------------  ------------
-add(0,0)/latency                          (1.00x) 1.00
-add(0,1)/latency                          (1.00x) 1.00
-add(0,2)/latency                          (1.00x) 1.00
-add(0,3)/latency                          (1.00x) 1.00
-add(1,0)/latency                          (1.00x) 1.00
-add(1,1)/latency                          (1.00x) 1.00
-add(1,2)/latency                          (1.00x) 1.00
-add(1,3)/latency                          (1.00x) 1.00
-add(2,0)/latency                          (1.00x) 1.00
-add(2,1)/latency                          (1.00x) 1.00
-add(2,2)/latency                          (1.00x) 1.00
-add(2,3)/latency                          (1.00x) 1.00
-add(3,0)/latency                          (1.00x) 1.00
-add(3,1)/latency                          (1.00x) 1.00
-add(3,2)/latency                          (1.00x) 1.00
-add(3,3)/latency                          (1.00x) 1.00
-...
-add(unpredictable,unpredictable)/latency  (1.00x) 1.00
-add(unpredictable,10)/latency             (1.00x) 1.00
-add(10,unpredictable)/latency             (1.00x) 1.00
-
-(0) speedup(slowest:1.00x)
-[1] median((stat.cycles/bench.operations))
-```
-<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -1299,18 +1297,6 @@ perf::log(analyzer[]);
 ----
 
 ```cpp
-perf::analyzer analyzer{perf::mca::assembly,
-                        perf::mca::timeline};
-
-invoke(fn(1));
-analyzer << profiler[trace::instructions];
-
-perf::log(analyzer[]);
-```
-
-----
-
-```cpp
 // duplicate
 analyzer << profiler[trace::instructions];
 analyzer << profiler[trace::instructions];
@@ -1496,21 +1482,19 @@ perf::annotate<vsplit>(bench[
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+import perf;
 import prof;
 
 int main() {
-  prof::callgrind profiler{"simulation"};
-
-  while (true) {
-    profiler.reset();
+  perf::runner bench{[](auto fn, auto... ts) {
+    prof::callgrind profiler{"simulation"};
     profiler.start();
+    perf::compiler::prevent_elision(fn(ts...));
+    profiler.stop();
+    profiler.flush();
+  }};
 
-    if (action) {
-      // ...
-      profiler.stop();
-      profiler.flush();
-    }
-  }
+  bench(fizz_buzz, unpredictable<int>);
 }
 ```
 
@@ -1603,10 +1587,10 @@ perf::baseline()
 <tr>
 <td>
 <p align="left">
-<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+<img src="images/td.png" style="width: 900px; height:400px; background:none; border:none; box-shadow:none;" />
 </p>
 <td>
-<pre style="font-size:12px"><code>
+<pre style="font-size:14px"><code>
 [Level] Category     Desktop  Server      HPC
 -------------------- -------  ------   ------
 [1] Retiring          20–50%  10–30%   30–70%
