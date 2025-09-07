@@ -65,25 +65,17 @@
 <table>
   <tr>
   <td>
-  <pre style="font-size:20px">
+  <pre style="font-size:17px">
 (~) Frequency
-  - Heat<br />
-<hr />
+  - Base: 3–5 GHz
+  - Boost: 5–6 GHz
+  - Extreme OC: ~9 GHz<br />
 (⬆️) Transistors
-  - Cores
-  - Cache
-  - Execution
-</pre>
-<hr />
-
-<pre style="font-size:15px"><code>
-//    cycles    5Ghz
-           1  0.25ns
-dL1        3  0.50ns
-Br Misp.  15  3.00ns
-dL2       15  3.00ns
-dL3       50 10.00ns
-DRAM     350 70.00ns
+  - More Cores
+  - More Cache
+  - Improved Execution
+  - Improved Parallelism
+  - ...<br />
 </code></pre>
   </td>
   <td>
@@ -98,12 +90,17 @@ DRAM     350 70.00ns
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-// Modern CPUs are primarily bottlenecked by
-// - instruction supply
-// - data access
-// - branch prediction
-// cpu 2025 4gh >>>> fater than cpu 2005 4gz
-// more instructions per cycle
+  // More instructions per cycle
+  // 4Ghz cpu from 2005 will be much slower than 4Ghz cpu from 2025
+
+  benchmark            cycles    time // 5Ghz
+  -------------------- ------ -------
+  1 cycle execution         1  0.25ns
+  dL1                       3  0.50ns
+  branch misprediction     15  3.00ns
+  dL2                      15  3.00ns
+  dL3                      50 10.00ns
+  DRAM                    350 70.00ns
 ```
 
 ----
@@ -152,7 +149,7 @@ DRAM     350 70.00ns
 #### Always measure
 <!-- .element: style="text-align:left" -->
 
-```
+```sh
  └─ System
     └── Application
 
@@ -283,7 +280,7 @@ DRAM     350 70.00ns
 
           ...
 ```
-<!-- .element: style="font-size:17px;" -->
+<!-- .element: style="font-size:19px;" -->
 
 ----
 
@@ -499,17 +496,40 @@ mold -run clang *.o -Wl,--shuffle-sections=0 -o app
 
 ----
 
+```sh
+# Disable CPU Frequency Scaling
+sudo cpupower frequency-set --governor performance
+
+# Disable Address Space Randomization
+echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
+
+# Disable Processor Boosting
+echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
+
+# Disable Turbo Mode
+echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+
+# Disable Hyper-threading
+echo off | sudo tee /sys/devices/system/cpu/smt/control
+```
+
+---
+
 ```
 pyperf system tune # pip install pyperf
 ```
-<!-- .element: style="text-align:left" -->
+
 
 ----
 
-```sh
-nice -n -20 taskset -c 2 ./a.out # chrt -f 99
+```cpp
+// perf::thread::set_affinity(self, 2); // 0, 1 used by the kernel
+// perf::thread::set_priority(self, max);
 ```
-<!-- .element: style="text-align:left" -->
+
+```sh
+nice -n -20 taskset -c 2 ... # chrt -f 99 ...
+```
 
 ----
 
@@ -703,8 +723,6 @@ auto latency(auto fn, auto... ts) {
 }
 ```
 
----
-
 ##### https://uops.info/table.html
 <!-- .element: style="text-align:left" -->
 
@@ -728,9 +746,8 @@ auto throughput(auto fn, auto... ts) { // seq
 }
 ```
 
----
-
 ```cpp
+// policies
 perf::bench::throughput::seq;
 perf::bench::throughput::unseq;
 perf::bench::throughput::unroll;
@@ -947,7 +964,7 @@ fizz_buzz(unpredictable)/latency           (1.04x) 6231.11  (3.55x) 0.01  (3.49x
 
 ----
 
-### alignment
+#### Alignment
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1479,6 +1496,15 @@ perf::annotate<vsplit>(bench[
 
 ----
 
+#### Control-Flow-Graph
+
+
+```cpp
+perf::plot::flowgraph(analyzer[perf::mca::assembly]);
+```
+
+----
+
 ####  https://valgrind.org/docs/manual/cl-manual.html
 <!-- .element: style="text-align:left" -->
 
@@ -1566,7 +1592,8 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// Establish baseline
+// Baseline
+// Reducing Instruction Counter / Increasing Instruction Per Cycle
 // Top down Microarchitecture Analysis Method
 ```
 
@@ -1587,6 +1614,18 @@ int main() {
 
   perf::report(bench[perf::stat::tsc], p25, p50, p75, p99);
 }
+```
+
+----
+
+```cpp
+// Reducing Instruction Counter / Increasing Instruction Per Cycle
+// Max IPC - dispatch_width (know when to stop)
+// Modern CPUs are primarily bottlenecked by
+// - instruction supply
+// - data access
+// - branch prediction
+
 ```
 
 ----
