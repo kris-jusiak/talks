@@ -90,7 +90,7 @@
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
- / More instructions per cycle
+ // More instructions per cycle
  // 4Ghz cpu from 2005 will be much slower than 4Ghz cpu from 2025
 
   benchmark            cycles    time // 5Ghz L1size L2 size
@@ -266,6 +266,9 @@
 <!-- .element: style="text-align:left;" -->
 
 ```
+ // hot-spotting   != speedup
+ // no-bottlenecks != fastest
+
  └─ System
       bcc         # https://github.com/iovisor/bcc
       bpftrace    # https://github.com/bpftrace/bpftrace
@@ -291,9 +294,6 @@
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
- // hot spotting doesn't give the overall speedup
- // everything goes equally slow
-
  └─ System
     └── Application
       └── µArch
@@ -450,27 +450,51 @@ int main(): // kernel
 #### Measurements Bias
 <!-- .element: style="text-align:left" -->
 
-##### &nbsp;&nbsp; [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf) / [STABILIZER: Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
-<!-- .element: style="text-align:left;font-size:28px;" -->
-
-```cpp
- ├─ Do you use modern CPU, OS, toolchain?
-  ├─ Do you have functions? - memory layout, stack frame
+```
+ Do you use modern CPU,OS,toolchain?
+  ├─ Do you have code?      - code alignment, ...
+  ├─ Do you have functions? - stack frame, ...
   ├─ Do you have branches?  - branch aliasing, ...
-  ├─ Do you have loops?     - cross memory boundary
-  ├─ Do you access memory?  - flush cache, pollute heap
+  ├─ Do you have loops?     - crossing boundary, ...
+  ├─ Do you access memory?  - data alignment, cache, heap, ...
+  └─ ...
 ```
+
+##### &nbsp;&nbsp; [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left;font-size:28px;margin: 0 0;" -->
+##### &nbsp;&nbsp; [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
+<!-- .element: style="text-align:left;font-size:28px;margin: 0 0;" -->
+----
+
+#### Measurements Bias
+<!-- .element: style="text-align:left" -->
 
 
 ```cpp
-setup(); // code, heap, stack
+// why faster     // why lower?
+void fn1();        void fn2();
+void fn2();        void fn1();
 ```
 
 ```cpp
-BENCHMARK=why_slower_faster ./benchmark.out
+void fn(int n) {
+  // int n; why slower?
+  for (auto i = 0; i < n; ++i) {
+    if (rand()) // why slower?
+  }
+}
+```
+
+```cpp
+BENCHMARK=why_slower_with_env_variable ./benchmark.out
 ```
 
 ----
+
+```
+# Kernel Mode Task-Isolation - https://lwn.net/articles/816298
+isolcpus=<cpu number>,...,<cpu number> # bootloader
+```
 
 ```
 # Disable CPU Frequency Scaling
@@ -481,31 +505,33 @@ BENCHMARK=why_slower_faster ./benchmark.out
 pyperf system tune # pip install pyperf
 ```
 
-```cpp
-Address Space Layout Randomization
-/proc/sys/kernel/randomize_va_space
 ```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-```cpp
+# Address Space Layout Randomization
 clang -O2 -ffunction-sections -fdata-sections -c *.c
 clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
 mold -run clang *.o -Wl,--shuffle-sections=0 -o app
 ```
-<!-- .element: class="fragment" data-fragment-index="2" -->
 
 ```sh
-// run in new process
-nice -n -20 taskset -c 2 ... # chrt -f 99 # // 0, 1 used by the kernel
+# Affinity / Priority
+taskset -c 2 ... # 0,1 used by the kernel
+nice -n -20  ... # priority
+chrt -f 99   ... # real-time priorioty
 ```
-<!-- .element: class="fragment" data-fragment-index="3" -->
 
-```sh
-// Kernel Mode Task-Isolation - https://lwn.net/articles/816298
-isolcpus=<cpu number>,...,<cpu number> # bootloader
-# cat /sys/devices/system/cpu/isolated
+----
+
+#### sanity-checks
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  perf::verify(perf::info::compiler::NDEBUG);
+  perf::verify(perf::info::compiler::OPTIMIZED);
+  perf::verify(not perf::info::cpu::freq_scaling);
+  // ...
+}
 ```
-<!-- .element: class="fragment" data-fragment-index="4" -->
 
 ----
 
@@ -525,11 +551,6 @@ int main() {
 }
 ```
 
-----
-
-#### cpu/info
-<!-- .element: style="text-align:left" -->
-
 ```cpp
 name  info
 ----- -----------------------------------------------------------------
@@ -543,22 +564,6 @@ cache iL1: 32Kb/64b, dL1: 48Kb/64b
 
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
 <!-- .element: style="text-align:left" -->
-
-----
-
-#### sanity-checks
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::verify(perf::info::compiler::NDEBUG);
-  perf::verify(perf::info::compiler::OPTIMIZED);
-  perf::verify(not perf::info::cpu::freq_scaling);
-
-// perf::thread::set_affinity(self, 2);
-// perf::thread::set_priority(self, max);
-}
-```
 
 ----
 
@@ -1546,11 +1551,15 @@ int main() {
 ----
 
 ```cpp
-Validate
-  // Apply
-  // Profile
-  // Analyze
-./app profile=true
+// Always measure
+// - Validate
+// - Apply
+// - Profile
+// - Analyze
+```
+
+```sh
+./app --profile # profile = true nop
 ```
 
 ----
