@@ -341,9 +341,9 @@
 ```
 
 ```cpp
-           // google-benchmark - https://github.com/google/benchmark
-           // nanobench        - https://github.com/martinus/nanobench
-           // celero           - https://github.com/DigitalInBlue/Celero
+           // Google Benchmark - https://github.com/google/benchmark
+           // Nanobench        - https://github.com/martinus/nanobench
+           // Celero           - https://github.com/DigitalInBlue/Celero
            // ...
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left; font-size:20px;" -->
@@ -485,45 +485,26 @@ isolcpus=<cpu number>,...,<cpu number> # bootloader
 ```
 
 ```
-# Disable CPU Frequency Scaling
-# Disable Processor Boosting
-# Disable Turbo Mode
-# Disable Hyper-threading
-# ...
+# Disable CPU Frequency Scaling, Processor Boosting, ...
 pyperf system tune # pip install pyperf
 ```
 
-```
+```sh
 # Address Space Layout Randomization
-clang -O2 -ffunction-sections -fdata-sections -c *.c
-clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
-mold -run clang *.o -Wl,--shuffle-sections=0 -o app
+$CXX -ffunction-sections -fdata-sections ...
+$CXX -Wl,--shuffle-sections=0 -fuse-ld=lld ...
 ```
 
 ```sh
 # Affinity / Priority
 taskset -c 2 ... # 0,1 used by the kernel
 nice -n -20  ... # priority
-chrt -f 99   ... # real-time priorioty
+chrt -f 99   ... # real-time
 ```
 
 ----
 
 #### sanity-checks
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::verify(perf::info::compiler::NDEBUG);
-  perf::verify(perf::info::compiler::OPTIMIZED);
-  perf::verify(not perf::info::cpu::freq_scaling);
-  // ...
-}
-```
-
-----
-
-#### cpu/info
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -536,22 +517,37 @@ int main() {
     {"cache", perf::info::memory::cache()},
     // ...
   });
+
+  perf::verify(perf::info::compiler::NDEBUG);
+  perf::verify(perf::info::compiler::OPTIMIZED);
+  perf::verify(not perf::info::cpu::freq_scaling);
+  perf::verify(perf::info::cpu::features().contains("avx512"));
+  perf::verify(perf::info::cpu::dispatch_width() >= 4u);
+  // ...
 }
 ```
+<!-- .element: style="text-align:left;font-size:17px" -->
+
+----
 
 ```cpp
-name  info
------ -----------------------------------------------------------------
-time  2025-09-15 11:15:00
-sys   x86_64-pc-linux-gnu
-cxx   gcc-15.0.0
-cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
-cache iL1: 32Kb/64b, dL1: 48Kb/64b
-...
+user@perf:~# $CXX -std=c++23 -O3 -g perf.cpp && ./a.out
 ```
+<!-- .element: style="text-align:left;font-size:16px" -->
 
-##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="text-align:left" -->
+```sh
+ name  info
+ ----- -----------------------------------------------------------------
+ time  2025-09-15 11:15:00
+ sys   x86_64-pc-linux-gnu
+ cxx   gcc-15.0.0
+ cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
+ cache iL1: 32Kb/64b, dL1: 48Kb/64b
+```
+<!-- .element: style="text-align:left;font-size:16px" -->
+
+##### &nbsp; https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
+<!-- .element: style="text-align:left;" -->
 
 ----
 
@@ -559,33 +555,53 @@ cache iL1: 32Kb/64b, dL1: 48Kb/64b
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-import perf; // compile-time testing
+import perf; // compile-time checks
+```
+
+```cpp
+int main() {
+  perf::self::test({.verbose = true}); // run-time checks
+}
 ```
 
 ----
 
-```cpp
-int main() {
-  perf::self::test({.verbose = true});
-}
-
-auto add  = [](int a, int b) { return a + b; };
-auto sub  = [](int a, int b) { return a - b; };
-auto mult = [](int a, int b) { return a * b; };
-auto div  = [](int a, int b) { return a / b; };
-
-// add chart
-| mca.cycles | cycles   |
-| 1          | 3 cycles |
-// add vs mca
-// shows cycles of add, sub,
-// shows graph of rdtsc
-
-// max_ipc
-
-// https://www.agner.org/optimize/instruction_tables.pdf
-// https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 ```
+user@perf:~# taskset -c 2 nice -n -20 ./a.out # xterm -ti 340
+```
+<!-- .element: style="text-align:left;font-size:12px; margin: 0 -5px;" -->
+
+
+```
+benchmark                         [1]            [2]
+---------------------  -------------- --------------
+add(reg,reg)/latency   (12.98x)  1.00 (13.00x)  1.00 // https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+sub(reg,reg)/latency   (13.01x)  1.00 (13.00x)  1.00 // https://www.agner.org/optimize/instruction_tables.pdf
+mult(reg,reg)/latency   (4.33x)  3.00  (4.33x)  3.00
+div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
+
+(0) speedup(slowest:1.00x)
+[1] median((stat.cycles/bench.operations))
+[2] median((stat.mca_cycles/bench.operations))
+```
+<!-- .element: style="text-align:left;font-size:11px" -->
+
+<p align="left">
+<img src="images/self2.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
+</p>
+
+```java
+add(reg,reg)/latency:      sub(reg,reg)/latency:      mult(reg,reg)/latency:     div(reg,reg)/latency:
+ [0] [1]                    [0] [1]                    [0] [1]                    [0] [1]
+ --- ------------           --- ------------           --- -------------          --- ------------
+  1. add esi, edi            1. sub edi, esi            1. imul esi, edi           1. mov eax, edi
+                                                                                   2. cdq
+                                                                                   3. idiv esi
+
+ [0] index                  [0] index                  [0] index                  [0] index
+ [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel
+```
+<!-- .element: style="text-align:left;font-size:11px" -->
 
 ----
 
@@ -594,15 +610,15 @@ auto div  = [](int a, int b) { return a / b; };
 
 ```cpp
 /**
-* No kernel (ring 0) / IBRS - Indirect Branch Restricted Speculation
+* No kernel (ring 0)
 */
 int efi_main(perf::uefi::sys* sys) {
-  perf::runner bench{perf::bench::latency{
+  perf::runner bench{ // IBRS - Indirect Branch Restricted Speculation
     .setup    = [] { perf::cpu::disable(dL1, IBRS); },
     .teardown = [] { perf::cpu::enable (dL1, IBRS); },
-  }};
+  };
 
-  bench(fizz_buzz, unpredictable<int>);
+  bench(fizz_buzz, /*...*/);
 
   perf::report(
     sys->stdout,
@@ -612,10 +628,10 @@ int efi_main(perf::uefi::sys* sys) {
 }
 ```
 
-```cpp
-$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ...
+```sh
+$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ... # boot from USB
 ```
-<!-- .element: style="text-align:left;font-size:18px" -->
+<!-- .element: style="text-align:left;font-size:15px" -->
 
 ----
 
@@ -980,7 +996,7 @@ int main() {
 ```
 
 ```cpp
-# xterm -ti 340
+# xterm -ti 340 # printf '\033Pq#1@\033\\' sixel pixel
 jupyter notebook / matplotlib - https://jupyter.org
 ```
 <!-- .element: style="text-align:left; margin: 0 0;" -->
@@ -1528,8 +1544,6 @@ int main() {
   perf::verify(asm.instruction == "mov")
   perf::verify(asm.instruction.count < non optimizaed)
   perf::verify(as.minstruciton.count == c++optimization)
-
-  if (perf::info::cpu::features().contains("avx512")) { }
 
   perf::verify(entry[0].cycle_dispatched);
   perf::verify(entry[0].cycle_executed);
