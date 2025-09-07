@@ -341,10 +341,14 @@
 ```
 
 ```cpp
-          // google-benchmark - https://github.com/google/benchmark
-          // nanobench - https://github.com/martinus/nanobench
-          // celero - https://github.com/DigitalInBlue/Celero
-          // ...
+           // google-benchmark - https://github.com/google/benchmark
+           // nanobench        - https://github.com/martinus/nanobench
+           // celero           - https://github.com/DigitalInBlue/Celero
+           // ...
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left; font-size:20px;" -->
+
+```cpp
           bench(fizz_buzz) -> ?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="text-align:left" -->
@@ -468,17 +472,6 @@ BENCHMARK=why_slower_faster ./benchmark.out
 
 ----
 
-```cpp
-Address Space Layout Randomization
-/proc/sys/kernel/randomize_va_space
-```
-
-```cpp
-clang -O2 -ffunction-sections -fdata-sections -c *.c
-clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
-mold -run clang *.o -Wl,--shuffle-sections=0 -o app
-```
-
 ```
 # Disable CPU Frequency Scaling
 # Disable Processor Boosting
@@ -489,33 +482,30 @@ pyperf system tune # pip install pyperf
 ```
 
 ```cpp
+Address Space Layout Randomization
+/proc/sys/kernel/randomize_va_space
+```
+<!-- .element: class="fragment" data-fragment-index="1" -->
+
+```cpp
+clang -O2 -ffunction-sections -fdata-sections -c *.c
+clang *.o -Wl,--shuffle-sections=0 -fuse-ld=lld -o app
+mold -run clang *.o -Wl,--shuffle-sections=0 -o app
+```
+<!-- .element: class="fragment" data-fragment-index="2" -->
+
+```sh
 // run in new process
-// perf::thread::set_affinity(self, 2); // 0, 1 used by the kernel
-// perf::thread::set_priority(self, max);
+nice -n -20 taskset -c 2 ... # chrt -f 99 # // 0, 1 used by the kernel
 ```
+<!-- .element: class="fragment" data-fragment-index="3" -->
 
 ```sh
-nice -n -20 taskset -c 2 ... # chrt -f 99
-```
-
-----
-
-#### Kernel Mode Task-Isolation - https://lwn.net/articles/816298
-<!-- .element: style="text-align:left" -->
-
-```sh
+// Kernel Mode Task-Isolation - https://lwn.net/articles/816298
 isolcpus=<cpu number>,...,<cpu number> # bootloader
+# cat /sys/devices/system/cpu/isolated
 ```
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/isolcpus.png" style="width: 50%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-```sh
-cat /sys/devices/system/cpu/isolated
-# <cpu number>,...,<cpu number>
-```
+<!-- .element: class="fragment" data-fragment-index="4" -->
 
 ----
 
@@ -564,6 +554,9 @@ int main() {
   perf::verify(perf::info::compiler::NDEBUG);
   perf::verify(perf::info::compiler::OPTIMIZED);
   perf::verify(not perf::info::cpu::freq_scaling);
+
+// perf::thread::set_affinity(self, 2);
+// perf::thread::set_priority(self, max);
 }
 ```
 
@@ -1553,7 +1546,11 @@ int main() {
 ----
 
 ```cpp
-###ensure E2E
+Validate
+  // Apply
+  // Profile
+  // Analyze
+./app profile=true
 ```
 
 ----
