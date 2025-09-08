@@ -401,9 +401,10 @@ Powered by perf # https://github.com/qlibs/perf
 
 0x0010        void fn1(param):              // alignment
                 push                        // stack
-                for (...) {
-0x0100            if (lookup_table[value])  // memory access
-0x0104              je                      // branch prediction
+
+0x0100          for (...) {
+0x0104            if (lookup_table[value])  // memory access
+0x0108              je                      // branch prediction
 
 0x1000        void fn2(param):              // alignment
 
@@ -443,10 +444,6 @@ int main():                                 // kernel
 
 ##### - [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
 <!-- .element: style="text-align:left;" -->
-
-```
-  // -Rcode -Rstack -Rheap
-```
 
 ----
 
@@ -823,15 +820,7 @@ add(0,1)/latency                          (1.00x) 1.00
 add(0,2)/latency                          (1.00x) 1.00
 add(0,3)/latency                          (1.00x) 1.00
 add(1,0)/latency                          (1.00x) 1.00
-add(1,1)/latency                          (1.00x) 1.00
-add(1,2)/latency                          (1.00x) 1.00
-add(1,3)/latency                          (1.00x) 1.00
-add(2,0)/latency                          (1.00x) 1.00
-add(2,1)/latency                          (1.00x) 1.00
-add(2,2)/latency                          (1.00x) 1.00
-add(2,3)/latency                          (1.00x) 1.00
-add(3,0)/latency                          (1.00x) 1.00
-add(3,1)/latency                          (1.00x) 1.00
+...
 add(3,2)/latency                          (1.00x) 1.00
 add(3,3)/latency                          (1.00x) 1.00
 ...
@@ -1055,28 +1044,6 @@ perf::plot::ecdf(bench[perf::time::tsc / perf::bench::operations]);
 
 ----
 
-#### Flamegraph - https://github.com/brendangregg/FlameGraph
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::plot::flamegraph(bench[perf::record::cycles]); // LBR
-perf::plot::flamegraph(bench[perf::record::branch_misses]); //LBR
-```
-
-<p align="left">
-<img src="images/flamegraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-# sampling/call-stack occurrences
-main;parse;tokenize 5
-main;parse;analyze 3
-main;render 7
-```
-<!-- .element: style="text-align:left" -->
-
-----
-
 ```cpp
 user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
 ```
@@ -1173,7 +1140,7 @@ static_assert(not trace.is_syscall_free);
 ```cpp
 perf::profiler profiler{
   perf::stat::tsc,
-  perf::stat:cycles, perf::stat::instructions,
+  perf::stat::branches, perf::stat::branch_misses,
   perf::trace::instructions, perf::trace::cycles,
   perf::record::mem_loads, perf::record::mem_stores
 };
@@ -1183,7 +1150,7 @@ perf::profiler profiler{
 
 ```cpp
 profiler.start();
-perf::compiler::prevent_elision(fizz_buzz({}));
+perf::prevent_elision(fizz_buzz({}));
 profiler.stop();
 
 perf::log(profiler[]);
@@ -1209,7 +1176,7 @@ perf::analyzer analyzer{
   // ...
 };
 ```
-<!-- .element: style="font-size:18px" -->
+<!-- .element: style="font-size:22px" -->
 
 ----
 
@@ -1459,6 +1426,29 @@ perf::plot::flowgraph(analyzer[perf::mca::assembly]);
 
 ----
 
+#### Flamegraph - https://github.com/brendangregg/FlameGraph
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::flamegraph(bench[perf::record::cycles]); // LBR
+perf::plot::flamegraph(bench[perf::record::branch_misses]); // LBR
+```
+
+<p align="left">
+<img src="images/flamegraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+# call-stack/sampling occurrences
+main;parse;tokenize 5
+main;parse;analyze 3
+main;render 7
+```
+<!-- .element: style="text-align:left" -->
+
+
+----
+
 ####  https://valgrind.org/docs/manual/cl-manual.html
 <!-- .element: style="text-align:left" -->
 
@@ -1469,9 +1459,11 @@ import perf;
 int main() {
   perf::runner bench{[](auto fn, auto... ts) {
     prof::callgrind profiler{"simulation"};
+
     profiler.start();
-    perf::compiler::prevent_elision(fn(ts...));
+    perf::prevent_elision(fn(ts...));
     profiler.stop();
+
     profiler.flush();
   }};
 
@@ -1528,21 +1520,58 @@ int main() {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-"mca.assembly/disassemble"_test = [] {
-  auto&& instructions =
-    perf::analyzer{perf::mca::assembly} << fizz_buzz;
+template<auto Begin = +[]{}, auto End = +[]{}>
+auto disassemble = [](auto fn, auto... ts) {
+  auto invoke = [&] {
+    perf::code::label(Begin);
+    perf::prevent_elision(fn(ts...));
+    perf::code::label(End);
+  };
+  perf::prevent_elision(&decltype(invoke)::operator());
+  return analyzer << perf::mca::region{
+    perf::code::labels[Begin],
+    perf::code::labels[End],
+  };
+};
+
+auto trace = [](auto fn, auto... ts) {
+  perf::profiler profiler{perf::trace::instructions};
+  perf::analyzer analyzer{perf::mca::assembly};
+  profiler.start();
+  perf::prevent_elision(fn(ts...));
+  profiler.stop();
+  return analyzer << profiler[perf::trace::instructions];
+};
+
+auto analyze = [](auto fn, auto... ts) {
+  perf::profiler profiler{perf::trace::instructions};
+  perf::analyzer analyzer{perf::mca::timeline};
+
+  profiler.start();
+  perf::prevent_elision(fn(ts...));
+  profiler.stop();
+
+  return analyzer << profiler[perf::trace::instructions];
+};
+```
+<!-- .element: style="font-size:14px;" -->
+
+----
+
+```cpp
+"dissasemble"_test = [] {
+  auto&& instructions = disassemble(fizz_buzz, int{});
   perf::verify(19u == instructions.size());
   perf::verify(instructions[0].contains("imul"));
   // ...
 };
+```
 
-"mca.assembly/trace"_test = [] {
-  perf::profiler profiler{perf::trace::instructions};
-  perf::analyzer analyzer{perf::mca::assembly};
-  invoke(fizz_buzz, 15);
-  auto&& instructions =
-    analyzer << profiler[perf::trace::instructions];
+----
 
+```cpp
+"trace"_test = [] {
+  auto&& instructions = trace(fizz_buzz, 15);
   perf::verify(8u == instructions.size());
   perf::verify(instructions[0].contains("imul"));
   // ...
@@ -1550,39 +1579,20 @@ int main() {
 
 ----
 
-#### Testing
-<!-- .element: style="text-align:left" -->
+```cpp
+"compare"_test = [] {
+  auto ub  = [](int x) { return x + 1 > x; };
+  auto opt = [](int x) { return true; };
 
-"optimized"_test = [] {
-  auto fn1 = [] {
-  };
-
-  perf::verify(
+  perf::verify(disassemble(ub) == disassemble(opt));
+  perf::verify(trace(ub)       == trace(opt));
 };
-
-int main() {
-  perf::verify(instructions.size)
-  perf::verify(asm.instruction == "mov")
-  perf::verify(asm.instruction.count < non optimizaed)
-  perf::verify(as.minstruciton.count == c++optimization)
-
-  perf::verify(optimized == []{}); // disassemble compare
-  perf::verify(optimized < []{}); // disassemble compare
-}
 ```
 
 ----
 
 ```cpp
-"mca.timeline"_test = [] {
-  auto analyze = [](auto fn, auto... ts) {
-    perf::profiler profiler{perf::trace::instructions};
-    perf::analyzer analyzer{perf::mca::timeline};
-    invoke(profiler, fn, ts...);
-    analyzer << profiler[perf::trace::instructions];
-    return analyzer[];
-  };
-
+"analyze"_test = [] {
   auto&& timeline = analyze(fizz_buzz, 15);
 
   perf::verify(8u == timeline.size());
@@ -1637,9 +1647,9 @@ int main() {
 
   auto _ = unpredictable<int>;
 
-  bench(baseline(fizz_buzz), _);
-  bench(fizz_buzz_v1,        _);
-  bench(fizz_buzz_v2,        _);
+  bench(baseline(fizz_buzz), _); // baseline
+  bench(fizz_buzz_v1,        _); // v1
+  bench(fizz_buzz_v2,        _); // v2
   // ...
 
   perf::report(bench[perf::stat::tsc], p25, p50, p75, p99);
@@ -1649,14 +1659,18 @@ int main() {
 ----
 
 ```cpp
-// Reducing Instruction Count / Increasing Instruction Per Cycle
-// Max IPC - dispatch_width (know when to stop)
-// auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
-// Modern CPUs are primarily bottlenecked by
-// - instruction supply
-// - data access
-// - branch prediction
+Modern CPUs are primarily bottlenecked by
+- instruction supply
+- data access
+- branch prediction
+```
 
+```cpp
+// Reducing Instruction Count
+// Increasing Instruction Per Cycle
+
+auto ipc = instructions / cycles;
+perf::verify(max_ipc <= perf::cpu::info::dispatch_width());
 ```
 
 ----
@@ -1799,8 +1813,8 @@ fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0
 ```
 <!-- .element: style="font-size:16px" -->
 
-```
-toplev - https://github.com/andikleen/pmu-tools
+```cpp
+// toplev - https://github.com/andikleen/pmu-tools
 ```
 ----
 
