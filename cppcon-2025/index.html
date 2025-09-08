@@ -504,18 +504,18 @@ user@perf:~# $CXX -std=c++23 -O3 -g perf.cpp && ./a.out
 <!-- .element: style="text-align:left;font-size:16px;" -->
 
 ```sh
- name  info
- ----- -----------------------------------------------------------------
- time  2025-09-15 11:15:00
- sys   x86_64-pc-linux-gnu
- cxx   gcc-15.0.0
- cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
- cache iL1: 32Kb/64b, dL1: 48Kb/64b
+name  info
+----- -----------------------------------------------------------------
+time  2025-09-15 11:15:00
+sys   x86_64-pc-linux-gnu
+cxx   gcc-15.0.0
+cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
+cache iL1: 32Kb/64b, dL1: 48Kb/64b
 ```
 <!-- .element: style="text-align:left;font-size:16px" -->
 
-##### &nbsp; https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="text-align:left;" -->
+##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
+<!-- .element: style="text-align:left; margin: 0px 5px;" -->
 
 ----
 
@@ -581,12 +581,12 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 * No kernel (ring 0)
 */
 int efi_main(perf::uefi::sys* sys) {
-  perf::runner bench{ // IBRS - Indirect Branch Restricted Speculation
+  perf::runner bench{perf::bench::latency{ // IBRS - Indirect Branch Restricted Speculation
     .setup    = [] { perf::cpu::disable(dL1, IBRS); },
     .teardown = [] { perf::cpu::enable (dL1, IBRS); },
-  };
+  }};
 
-  bench(fizz_buzz, /*...*/);
+  bench(fizz_buzz, {});
 
   perf::report(
     sys->stdout,
@@ -625,11 +625,15 @@ $CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ... # b
 // steady_time  Monotonic clock     chrono::steady_clock
 
 auto bench(auto fn, auto...ts) -> nanoseconds {
-  auto start = now(); // ? [0]
-  fn(ts...);          // ? [1]
-  auto end = now();   // ? [2]
-  return end - now;   // ? [3]
+  auto start = now();               // ? [0]
+  perf::prevent_elision(fn(ts...)); // ? [1]
+  auto end = now();                 // ? [2]
+  return end - now;                 // ? [3]
 }
+```
+
+```cpp
+// perf::verify(perf::is_elided([] { fn(ts...); }));
 ```
 
 ----
@@ -718,16 +722,38 @@ perf::bench::throughput::par;
 
 ```cpp
 int main() {
-  perf::runner bench{perf::bench::latency{}};
+  perf::runner bench{perf::bench::latency{.samples = 1}};
 
   bench(fizz_buzz, 15);
   bench(fizz_buzz, 3);
   bench(fizz_buzz, 5);
+  bench(fizz_buzz, 0);
 
-  perf::report(bench[perf::time::tsc]);
+  // TODO charts
+  // perf::runner bench{perf::bench::latency{.samples = 30}};
+  // ...
 }
-
 ```
+
+----
+
+```cpp
+perf::report(bench[perf::stat::tsc / perf::bench::operations]);
+```
+<!-- .element: style="font-size:18px;" -->
+
+```cpp
+benchmark                       [1]
+---------------------  ------------
+fizz_buzz(15)/latency  (2.01x) 1.62
+fizz_buzz(3)/latency   (1.81x) 1.81
+fizz_buzz(5)/latency   (1.00x) 3.27
+fizz_buzz(0)/latency   (2.50x) 1.31
+
+(0) speedup(slowest:1.00x)
+[1] (stat.tsc[ns]/bench.operations)
+```
+<!-- .element: style="font-size:19px;" -->
 
 ----
 
@@ -840,8 +866,7 @@ perf::report(bench[perf::stat::tsc / perf::bench::operations],
   min, median, p90, p99
 );
 ```
-
-----
+<!-- .element: style="font-size:17px;" -->
 
 ```cpp
 benchmark                                           [1]           [2]           [3]           [4]
@@ -873,8 +898,7 @@ perf::report(bench[perf::stat::cpu_time, perf::stat::real_time],
   cv      // coefficient of variation
 );
 ```
-
-----
+<!-- .element: style="font-size:15px;" -->
 
 ```cpp
 benchmark                                              [1]           [2]           [3]              [4]           [5]           [6]
@@ -897,14 +921,12 @@ fizz_buzz(unpredictable)/latency           (1.04x) 6231.11  (3.55x) 0.01  (3.49x
 [5] cv(stat.cpu_time[ns])
 [6] cv(stat.real_time[ns])
 ```
-<!-- .element: style="font-size:12px;" -->
+<!-- .element: style="font-size:11px;" -->
 
 ----
 
-#### Alignment
-<!-- .element: style="text-align:left" -->
-
 ```cpp
+// alignment
 auto fizz_buzz_O1           = [] [[gnu::optimize("O1")]] (int n);
 auto fizz_buzz_O2           = [] [[gnu::optimize("O2")]] (int n);
 auto fizz_buzz_O3           = [] [[gnu::optimize("O3,fast-math")]] (int n);
@@ -915,34 +937,14 @@ auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
   perf::code::align(64); // clang::code_align(64)
   // memory boundry
 };
-```
 
-----
-
-```cpp
 // memory
-
 // pollute_heap - prevents continuous allocation
-// clflush - for date
+// clflush
 // pre_fault
 // operator_new
-
-void* operator new(size_t size) {
-    size_t pad = rand() % 64;
-    return malloc(size + pad);
-}
 ```
-
-```cpp
-main:
-        movl    $7, %edx
-        xorl    %eax, %eax
-        pext    %edx, %edi, %edx
-        movl    %edx, %edx
-        cmpl    %edi, mph::v5_0_5::type_traits::constant_t<mph::v5_0_5::find$pext<main::ids> >::value(,%rdx,8)
-        cmove   mph::v5_0_5::type_traits::constant_t<mph::v5_0_5::find$pext<main::ids> >::value+4(,%rdx,8), %eax
-        ret
-```
+<!-- .element: style="font-size:18px;" -->
 
 ----
 
@@ -1146,14 +1148,14 @@ perf::profiler profiler{
 };
 ```
 
-----
-
 ```cpp
-profiler.start();
-perf::prevent_elision(fizz_buzz({}));
-profiler.stop();
+auto invoke = [&](auto fn, auto... ts) {
+  profiler.start();
+  perf::prevent_elision(fn(ts...));
+  profiler.stop();
+};
 
-perf::log(profiler[]);
+perf::log(profiler[]); // [] - all elements
 ```
 
 ----
@@ -1166,14 +1168,13 @@ perf::analyzer analyzer{
   perf::mca::encoding,
   perf::mca::assembly,
   perf::mca::size,
-  perf::mca::cycles,
   perf::mca::uops,
+  perf::mca::latency,
   perf::mca::rthroughput,
   perf::mca::timeline,
   perf::mca::resource_pressure,
   perf::mca::bottleneck,
-  perf::mca::source,                  // requires debug symbols (-g)
-  // ...
+  perf::mca::source,              // requires debug symbols (-g)
 };
 ```
 <!-- .element: style="font-size:22px" -->
@@ -1181,89 +1182,192 @@ perf::analyzer analyzer{
 ----
 
 ```cpp
-                                                // auto label(const auto label)
-perf::code::label("start")                      //   asm volatile goto(
-+fizz_buzz;                                     //     ".pushsection labels, \"aw\" \n"
-perf::code::label("stop");                      //     ".quad %c0, %l[L]\n"
-                                                //     ".popsection \n"
-                                                //     : : "i"(label) : "memory" : L
-                                                //   ); L:;
-                                                // }
+auto invoke(auto fn, auto... ts) {        // auto label(const auto label)
+  perf::code::label("begin");             //   asm volatile goto(
+  perf::prevent_elision(fn(ts...));       //     ".pushsection labels, \"aw\" \n"
+  perf::code::label("end");               //     ".quad %c0, %l[L]\n"
+}                                         //     ".popsection \n"
+                                          //     : : "i"(label) : "memory" : L
+perf::prevent_elision(                    //   ); L:;
+  &invoke<decltype(fizz_buzz), int>       // }
+);
 
-    auto invoke = [](auto fn, auto... ts) {
-      perf::code::label("begin");
-      fn(ts...);
-      perf::code::label("end");
-    };
-
-    perf::prevent_elision(&decltype(invoke)::operator()<decltype(fizz_buzz), int>);
-
-analyzer << {perf::code::labels["start"], perf::code::labels["stop"]};
-perf::annotate(analyzer[]);
+analyzer << perf::mca::region{
+  perf::code::labels["begin"],
+  perf::code::labels["end"],
+};
 ```
 <!-- .element: style="font-size:18px" -->
 
 ----
 
-```sh
-annottate // vsplit - timeline
-resource pressure
-bootlneck
-dissasmble vs trace
-profile vs analyze
-trace vs disassemble
-trace + analyze
-trace + analyze + profile
+```cpp
+perf::annotate(analyzer[]);
 ```
+<!-- .element: style="font-size:18px" -->
+
+```
+ [0] [1]  [2]                   [3]                              [4] [5] [6] [7] [8]                      [9]                                                                            [10]
+ --- ---- --------------------- -------------------------------- --- --- --- --- ------------------------ ------------------------------------------------------------------------------ --------------
+                                if (n % 15 == 0) {
+  1. 0100 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef        6  1   3  1.0 DeeeER.     .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     - {ADLPort1:50%}
+  2. 0106 05 88 88 88 08          add eax, 0x8888888               5  1   1  0.2 D===eER     .     .           -     -     -     -     -  0.50     -     -     -     -  0.50     -     -
+  3. 010b 3d 11 11 11 11          cmp eax, 0x11111111              5  1   1  0.2 D====eER    .     .        0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     -
+  4. 0110 72 36                   jb 0x36                          2  1   1  0.5 D=====eER   .     .        0.50     -     -     -     -     -  0.50     -     -     -     -     -     -
+                                } else if (n % 3 == 0) {
+  5. 0112 69 c7 ab aa aa aa       imul eax, edi, 0xaaaaaaab        6  1   3  1.0 D=eeeE--R   .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
+  6. 0118 05 aa aa aa 2a          add eax, 0x2aaaaaaa              5  1   1  0.2 D====eE-R   .     .        0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     -
+  7. 011d 3d 55 55 55 55          cmp eax, 0x55555555              5  1   1  0.2 .D====eER   .     .           -     -     -     -     -  0.50     -     -     -     -  0.50     -     -
+  8. 0122 72 2d                   jb 0x2d                          2  1   1  0.5 .D=====eER  .     .        0.50     -     -     -     -     -  0.50     -     -     -     -     -     -
+                                } else if (n % 5 == 0) {
+  9. 0124 69 c7 cd cc cc cc       imul eax, edi, 0xcccccccd        6  1   3  1.0 .D=eeeE--R  .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 10. 012a 05 99 99 99 19          add eax, 0x19999999              5  1   1  0.2 .D====eE-R  .     .        0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     -
+ 11. 012f 3d 33 33 33 33          cmp eax, 0x33333333              5  1   1  0.2 .D=====eER  .     .           -     -     -     -     -  0.50     -     -     -     -  0.50     -     -
+ 12. 0134 48 8d 0d 2e 1d 00 00    lea rcx, [rip + 0x1d2e]          7  1   1  1.0 .D==eE---R  .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 13. 013b 48 8d 05 31 1d 00 00    lea rax, [rip + 0x1d31]          7  1   1  1.0 . D==eE--R  .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 14. 0142 48 0f 42 c1             cmovb rax, rcx                   4  1   1  0.5 . D=====eER .     .        0.50     -     -     -     -     -  0.50     -     -     -     -     -     -
+ 15. 0146 eb 10                   jmp 0x10                         2  0   0  0.0 . D-------R .     .           -     -     -     -     -     -     -     -     -     -     -     -     -
+                                 } else {
+ 16. 0148 48 8d 05 16 1d 00 00    lea rax, [rip + 0x1d16]          7  1   1  1.0 . D===eE--R .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 17. 014f eb 07                   jmp 0x7                          2  0   0  0.0 . D-------R .     .           -     -     -     -     -     -     -     -     -     -     -     -     -
+ 18. 0151 48 8d 05 16 1d 00 00    lea rax, [rip + 0x1d16]          7  1   1  1.0 . D====eE-R .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 19. 0158 48 89 44 24 f8          mov qword ptr [rsp - 0x8], rax   5  2  12  0.5 . D=====eeeeeeeeeeeeER        -     -     -     -  0.50     -     -  0.50  0.50  0.50     -     -     -
+                                 }
+
+ [0] index
+ [1] mca.address
+ [2] mca.encoding
+ [3] mca.assembly # intel
+ [4] mca.size
+ [5] mca.uops
+ [6] mca.latency
+ [7] mca.rthroughput
+ [8] mca.timeline
+  - 'D': instruction dispatched
+  - 'e': instruction executing
+  - 'E': instruction executed
+  - 'R': instruction retired
+  - '=': instruction waiting
+  - '-': instruction executed
+ [9] mca.resource_pressure
+	- ADLPPort00-11
+ [10] mca.bottleneck
+  - <register>
+  - [memory]
+  - {resource:probability}
+```
+<!-- .element: style="font-size:8px" -->
 
 ----
 
 ```cpp
-perf::profiler profiler{perf::trace::instructions};
-
-auto invoke = [] (auto fn, auto... ts) {
-  profiler.start();
-  fn(ts...);
-  profiler.stop();
-};
-// is_elided
+perf::annotate(analyzer[
+  perf::mca::address, perf::mca::encoding, perf::mca::assembly,
+  perf::mca::size, perf::mca::uops, perf::mca::latency, perf::mca::rthroughput
+]);
+```
+<!-- .element: style="font-size:15px" -->
 
 ```
+ [0] [1]  [2]                   [3]                            [4] [5] [6] [7]
+ --- ---- --------------------- ------------------------------ --- --- --- ---
+  1. f400 69 c7 ef ee ee ee     imul eax, edi, 0xeeeeeeef        6   3 1.0   1
+  2. f406 05 88 88 88 08        add eax, 0x8888888               5   1 0.2   1
+  3. f40b 3d 11 11 11 11        cmp eax, 0x11111111              5   1 0.2   1
+  4. f410 72 36                 jb 0x36                          2   1 0.5   1
+  5. f412 69 c7 ab aa aa aa     imul eax, edi, 0xaaaaaaab        6   3 1.0   1
+  6. f418 05 aa aa aa 2a        add eax, 0x2aaaaaaa              5   1 0.2   1
+  7. f41d 3d 55 55 55 55        cmp eax, 0x55555555              5   1 0.2   1
+  8. f422 72 2d                 jb 0x2d                          2   1 0.5   1
+  9. f424 69 c7 cd cc cc cc     imul eax, edi, 0xcccccccd        6   3 1.0   1
+ 10. f42a 05 99 99 99 19        add eax, 0x19999999              5   1 0.2   1
+ 11. f42f 3d 33 33 33 33        cmp eax, 0x33333333              5   1 0.2   1
+ 12. f434 48 8d 0d 2e 1a 00 00  lea rcx, [rip + 0x1a2e]          7   1 1.0   1
+ 13. f43b 48 8d 05 31 1a 00 00  lea rax, [rip + 0x1a31]          7   1 1.0   1
+ 14. f442 48 0f 42 c1           cmovb rax, rcx                   4   1 0.5   1
+ 15. f446 eb 10                 jmp 0x10                         2   0 0.0   0
+ 16. f448 48 8d 05 16 1a 00 00  lea rax, [rip + 0x1a16]          7   1 1.0   1
+ 17. f44f eb 07                 jmp 0x7                          2   0 0.0   0
+ 18. f451 48 8d 05 16 1a 00 00  lea rax, [rip + 0x1a16]          7   1 1.0   1
+ 19. f458 48 89 44 24 f8        mov qword ptr [rsp - 0x8], rax   5  12 0.5   2
+
+ [0] index
+ [1] mca.address
+ [2] mca.encoding
+ [3] mca.assembly # intel
+ [4] mca.size
+ [6] mca.uops         // instructions may decode into multiple micro-operations # https://uops.info/table.html
+ [5] mca.latency      // instructions have different latency
+ [7] mca.rthroughput  // instructions have different throughput
+```
+<!-- .element: style="font-size:12px" -->
 
 ----
 
 ```cpp
-perf::analyzer analyzer{perf::mca::assembly,
-                        perf::mca::timeline};
-
-invoke(fn(1));
-analyzer << profiler[trace::instructions];
-
-perf::log(analyzer[]);
+perf::annotate(analyzer[
+  perf::mca::address, perf::mca::encoding,
+  perf::mca::resource_pressure, perf::mca::assembly
+]);
 ```
+<!-- .element: style="font-size:15px" -->
+
+```
+ [0] [1]  [2]                   [3]                                                                            [4]
+ --- ---- --------------------- ------------------------------------------------------------------------------ ------------------------------
+  1. f400 69 c7 ef ee ee ee          -  1.00     -     -     -     -     -     -     -     -     -     -     - imul eax, edi, 0xeeeeeeef
+  2. f406 05 88 88 88 08             -     -     -     -     -  0.50     -     -     -     -  0.50     -     - add eax, 0x8888888
+  3. f40b 3d 11 11 11 11          0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - cmp eax, 0x11111111
+  4. f410 72 36                   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - jb 0x36
+  5. f412 69 c7 ab aa aa aa          -  1.00     -     -     -     -     -     -     -     -     -     -     - imul eax, edi, 0xaaaaaaab
+  6. f418 05 aa aa aa 2a          0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - add eax, 0x2aaaaaaa
+  7. f41d 3d 55 55 55 55             -     -     -     -     -  0.50     -     -     -     -  0.50     -     - cmp eax, 0x55555555
+  8. f422 72 2d                   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - jb 0x2d
+  9. f424 69 c7 cd cc cc cc          -  1.00     -     -     -     -     -     -     -     -     -     -     - imul eax, edi, 0xcccccccd
+ 10. f42a 05 99 99 99 19          0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - add eax, 0x19999999
+ 11. f42f 3d 33 33 33 33             -     -     -     -     -  0.50     -     -     -     -  0.50     -     - cmp eax, 0x33333333
+ 12. f434 48 8d 0d 2e 1a 00 00       -  1.00     -     -     -     -     -     -     -     -     -     -     - lea rcx, [rip + 0x1a2e]
+ 13. f43b 48 8d 05 31 1a 00 00       -  1.00     -     -     -     -     -     -     -     -     -     -     - lea rax, [rip + 0x1a31]
+ 14. f442 48 0f 42 c1             0.50     -     -     -     -     -  0.50     -     -     -     -     -     - cmovb rax, rcx
+ 15. f446 eb 10                      -     -     -     -     -     -     -     -     -     -     -     -     - jmp 0x10
+ 16. f448 48 8d 05 16 1a 00 00       -  1.00     -     -     -     -     -     -     -     -     -     -     - lea rax, [rip + 0x1a16]
+ 17. f44f eb 07                      -     -     -     -     -     -     -     -     -     -     -     -     - jmp 0x7
+ 18. f451 48 8d 05 16 1a 00 00       -  1.00     -     -     -     -     -     -     -     -     -     -     - lea rax, [rip + 0x1a16]
+ 19. f458 48 89 44 24 f8             -     -     -     -  0.50     -     -  0.50  0.50  0.50     -     -     - mov qword ptr [rsp - 0x8], rax
+
+ [0] index
+ [1] mca.address
+ [2] mca.encoding
+ [3] mca.resource_pressure
+	- ADLPPort00-11
+ [4] mca.assembly # intel
+```
+<!-- .element: style="font-size:11px" -->
 
 ----
 
+#### Disassemble vs. Trace
+<!-- .element: style="text-align:left" -->
+
 ```cpp
+// TODO
 // duplicate
 analyzer << profiler[trace::instructions];
 analyzer << profiler[trace::instructions];
 analyzer << profiler[trace::instructions];
 ```
 
-----
-
-```sh
-// Example output
-```
-
 ```cpp
-// similarly in latency, throughput (events deduced based on bench[...])
+// TODO
+profiler[perf::trace::instructions];
+// IPC
 ```
 
 ----
 
 ```cpp
+// Profiler/Analyzer -> Runner
+
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
@@ -1271,8 +1375,7 @@ int main() {
   bench(fizz_buzz, 5);
   bench(fizz_buzz, unpredictable<int>);
 
-  perf::annotate<vsplit>(bench[perf::mca::assembly / perf::disasm::instructions]);
-  perf::annotate<vsplit>(bench[perf::mca::assembly / perf::trace::instructions]);
+  perf::annotate<vsplit>(bench[perf::mca::assembly]);
 }
 ```
 <!-- .element: style="font-size:18px" -->
@@ -1280,7 +1383,7 @@ int main() {
 ----
 
 ```cpp
-perf::annotate<vsplit>(bench[perf::mca::assembly / perf::mca::instructions]);
+perf::annotate<vsplit>(bench[perf::mca::assembly]); // disassemble (MCA)
 ```
 <!-- .element: style="font-size:15px" -->
 
@@ -1316,7 +1419,7 @@ fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz
 ----
 
 ```cpp
-perf::annotate<vsplit>(bench[perf::mca::assembly / perf::trace::instructions]);
+perf::annotate<vsplit>(bench[perf::mca::assembly]); // trace (IPT)
 ```
 <!-- .element: style="font-size:15px" -->
 
@@ -1352,62 +1455,44 @@ fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz
 ----
 
 ```cpp
-perf::annotate(bench[
-  perf::mca::address, perf::mca::encoding, perf::mca::size, perf::mca::assembly, perf::mca::latency, perf::mca::uops,
-  perf::record::cycles, perf::record::branch_misses] / perf::trace::instructions
-);
-```
-<!-- .element: style="font-size:13px" -->
-
-```
-fizz_buzz(unpredictable)/latency:
- [0] [1]  [2]                   [3] [4]                           [5] [6]
- --- ---- --------------------- -- ------------------------------ -- --
-  1. b8c0 69 c7 ef ee ee ee      6 imul eax, edi, 0xeeeeeeef       3  1
-  2. b8c6 05 88 88 88 08         5 add eax, 0x8888888              1  1
-  3. b8cb 3d 11 11 11 11         5 cmp eax, 0x11111111             1  1
-  4. b8d0 72 36                  2 jb 0x36                         1  1
-  5. b8d2 69 c7 ab aa aa aa      6 imul eax, edi, 0xaaaaaaab       3  1
-  6. b8d8 05 aa aa aa 2a         5 add eax, 0x2aaaaaaa             1  1
-  7. b8dd 3d 55 55 55 55         5 cmp eax, 0x55555555             1  1
-  8. b8e2 72 2d                  2 jb 0x2d                         1  1
-  9. b911 48 8d 05 58 12 00 00   7 lea rax, [rip + 0x1258]         1  1
- 10. b918 48 89 44 24 f8         5 mov qword ptr [rsp - 0x8], rax 12  2
- 11. b8e4 69 c7 cd cc cc cc      6 imul eax, edi, 0xcccccccd       3  1
- 12. b8ea 05 99 99 99 19         5 add eax, 0x19999999             1  1
- 13. b8ef 3d 33 33 33 33         5 cmp eax, 0x33333333             1  1
- 14. b8f4 48 8d 0d 70 12 00 00   7 lea rcx, [rip + 0x1270]         1  1
- 15. b8fb 48 8d 05 73 12 00 00   7 lea rax, [rip + 0x1273]         1  1
- 16. b902 48 0f 42 c1            4 cmovb rax, rcx                  1  1
- 17. b906 eb 10                  2 jmp 0x10                        0  0
- 18. b908 48 8d 05 58 12 00 00   7 lea rax, [rip + 0x1258]         1  1
- 19. b90f eb 07                  2 jmp 0x7                         0  0
-
- [0] index
- [1] mc.address
- [2] mc.encoding
- [3] mc.size
- [4] mc.assembly # intel
- [5] mc.latency  # instruction have different latencies - less doesn't mean faster
- [6] mc.uops
+perf::annotate<vsplit>(bench[perf::mca::timeline]);
 ```
 <!-- .element: style="font-size:15px" -->
 
-----
-
-```cpp
-perf::annotate<vsplit>(bench[mca::timeline]);
 ```
+fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpredictable)/latency:
+ [0] [1]                          [0] [1]                          [0] [1]
+ -- ------------------            --- ------------------------     --- -----------------------
+ 1. DeeeER.     .                  1. DeeeER.     .     .           1. DeeeER.     .     .
+ 2. D===eER     .                  2. D===eER     .     .           2. D===eER     .     .
+ 3. D====eER    .                  3. D====eER    .     .           3. D====eER    .     .
+ 4. D=====eER   .                  4. D=====eER   .     .           4. D=====eER   .     .
+ 5. D=eE----R   .                  5. D=eeeE--R   .     .           5. D=eeeE--R   .     .
+ 6. D-------R   .                  6. D====eE-R   .     .           6. D====eE-R   .     .
+ 7. .D=eeeeeeeeeeeeER              7. .D====eER   .     .           7. .D====eER   .     .
+                                   8. .D=====eER  .     .           8. .D=====eER  .     .
+                                   9. .D=eeeE--R  .     .           9. .D=eeeE--R  .     .
+                                  10. .D====eE-R  .     .          10. .D====eE-R  .     .
+                                  11. .D=====eER  .     .          11. .D=====eER  .     .
+                                  12. .D==eE---R  .     .          12. .D==eE---R  .     .
+                                  13. . D==eE--R  .     .          13. . D==eE--R  .     .
+                                  14. . D=====eER .     .          14. . D=====eER .     .
+                                  15. . D-------R .     .          15. . D-------R .     .
+                                  16. . D======eeeeeeeeeeeeER      16. . D===eE--R .     .
+                                                                   17. . D-------R .     .
+                                                                   18. . D====eE-R .     .
+                                                                   19. . D=====eeeeeeeeeeeeER
 
-----
-
-```cpp
-perf::annotate<vsplit>(bench[
-  perf::mca::assembly,
-  perf::mca::resource_pressure,
-  perf::mca::bottleneck
-]);
+ [0] index                        [0] index                        [0] index
+ [1] mca.timeline                 [1] mca.timeline                 [1] mca.timeline
+  - 'D': instruction dispatched    - 'D': instruction dispatched    - 'D': instruction dispatched
+  - 'e': instruction executing     - 'e': instruction executing     - 'e': instruction executing
+  - 'E': instruction executed      - 'E': instruction executed      - 'E': instruction executed
+  - 'R': instruction retired       - 'R': instruction retired       - 'R': instruction retired
+  - '=': instruction waiting       - '=': instruction waiting       - '=': instruction waiting
+  - '-': instruction executed      - '-': instruction executed      - '-': instruction executed
 ```
+<!-- .element: style="font-size:12px" -->
 
 ----
 
@@ -1419,6 +1504,7 @@ perf::plot::flowgraph(analyzer[perf::mca::assembly]);
 ```
 
 ```cpp
+// TODO
 // basic block - is a straight-line sequence of instructions
 //               with a single entry point and a single exit point
 ```
@@ -1445,7 +1531,6 @@ main;parse;analyze 3
 main;render 7
 ```
 <!-- .element: style="text-align:left" -->
-
 
 ----
 
@@ -1559,7 +1644,7 @@ auto analyze = [](auto fn, auto... ts) {
 ----
 
 ```cpp
-"dissasemble"_test = [] {
+"disassemble"_test = [] {
   auto&& instructions = disassemble(fizz_buzz, int{});
   perf::verify(19u == instructions.size());
   perf::verify(instructions[0].contains("imul"));
@@ -1811,24 +1896,21 @@ fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0
 [3] median((stat.top_down.fronted_bound/stat.slots))
 [4] median((stat.top_down.backend_bound/stat.slots))
 ```
-<!-- .element: style="font-size:16px" -->
+<!-- .element: style="font-size:15px" -->
 
-```cpp
-// toplev - https://github.com/andikleen/pmu-tools
-```
 ----
 
 ```cpp
 // Memory Bound
 auto cache_miss_rate = cache_misses / cache_references;
 auto branch_miss_rate = branch_misses / branches;
-```
 
-```cpp
 // Core Bound
-auto ipc = instructions / cycles; // ipc <= cpu::dispatch_width
+auto ipc = instructions / cycles;
 auto cpi = cycles / instructions;
 auto upc = uops / cycles;
+
+// toplev - https://github.com/andikleen/pmu-tools
 ```
 
 ----
