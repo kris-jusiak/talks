@@ -445,6 +445,9 @@ int main():                                 // kernel
 ##### - [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
 <!-- .element: style="text-align:left;" -->
 
+##### - [Rigorous Benchmarking In Reasonable Time](https://dl.acm.org/doi/10.1145/2555670.2464160)
+<!-- .element: style="text-align:left;" -->
+
 ----
 
 ```
@@ -570,6 +573,30 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
  [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel
 ```
 <!-- .element: style="text-align:left;font-size:11px" -->
+
+----
+
+##### https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/X86/X86SchedAlderlakeP.td
+<!-- .element: style="text-align:left" -->
+
+```
+def AlderlakePModel : SchedMachineModel {
+  let DispatchWidth = 6;
+  let MicroOpBufferSize = 512;
+  let LoadLatency = 5;
+  let MispredictPenalty = 14;
+  let LoopMicroOpBufferSize = 72;
+}
+```
+
+```cpp
+More self-checks
+- max-ipc: 6
+- cpu:frequency: 2.67Ghz
+- branch-missprediction penalty: 14 cycles
+- L1:cache-size: 48Kb
+- ...
+```
 
 ----
 
@@ -1553,7 +1580,7 @@ int main() {
 ```
 
 ```sh
-valgrind --tool=callgrind --branch-sim=yes --instr-atstart=no ...
+valgrind --tool=callgrind --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes --instr-atstart=no ...
 ```
 <!-- .element: style="font-size:18px;" -->
 
@@ -1627,11 +1654,9 @@ auto trace = [](auto fn, auto... ts) {
 auto analyze = [](auto fn, auto... ts) {
   perf::profiler profiler{perf::trace::instructions};
   perf::analyzer analyzer{perf::mca::timeline};
-
   profiler.start();
   perf::prevent_elision(fn(ts...));
   profiler.stop();
-
   return analyzer << profiler[perf::trace::instructions];
 };
 ```
@@ -1642,6 +1667,7 @@ auto analyze = [](auto fn, auto... ts) {
 ```cpp
 "disassemble"_test = [] {
   auto&& instructions = disassemble(fizz_buzz, int{});
+
   perf::verify(19u == instructions.size());
   perf::verify(instructions[0].contains("imul"));
   // ...
@@ -1653,6 +1679,7 @@ auto analyze = [](auto fn, auto... ts) {
 ```cpp
 "trace"_test = [] {
   auto&& instructions = trace(fizz_buzz, 15);
+
   perf::verify(8u == instructions.size());
   perf::verify(instructions[0].contains("imul"));
   // ...
@@ -1712,7 +1739,7 @@ auto analyze = [](auto fn, auto... ts) {
 
 ```sh
 # Measurement bias
-# Production-like environment
+# Production-like environment (end-to-end)
 # Validate findings / correlation
 
 ./app --profile ...
@@ -1782,7 +1809,7 @@ fizz_buzz_lut(unpredictable)/latency       (0.87x)  (0.88x)  (0.92x)  (1.02x)
 // fizz_buzz(unpredictable)/latency           (1.15x)  (1.11x)  (1.10x)  (1.03x)
 // fizz_buzz_fast_mod(unpredictable)/latency  (1.65x)  (1.63x)  (1.60x)  (1.53x)
 // fizz_buzz_lut(unpredictable)/latency       (1.00x)  (1.00x)  (1.00x)  (1.00x)
-// 
+//
 // (0) speedup(slowest:1.00x) // relative speedup against the slowest
 ```
 <!-- .element: style="font-size:14px;" -->
@@ -1935,17 +1962,17 @@ perf::report(bench[
 <!-- .element: style="font-size:15px" -->
 
 ```
-benchmark                                           [1]           [2]           [3]           [4]
------------------------------------------  ------------  ------------  ------------  ------------
-fizz_buzz(0)/latency                       (1.22x) 0.20    (n/a) 0.00    (n/a) 0.00  (1.00x) 0.80
-fizz_buzz(15)/latency                      (1.23x) 0.20    (n/a) 0.00    (n/a) 0.00  (1.00x) 0.80
-fizz_buzz(3)/latency                       (1.08x) 0.23    (n/a) 0.00    (n/a) 0.00  (1.04x) 0.77
-fizz_buzz(5)/latency                       (1.00x) 0.25    (n/a) 0.00    (n/a) 0.00  (1.06x) 0.75
-fizz_buzz(sequence{1,3,5})/latency         (1.02x) 0.24    (n/a) 0.00    (n/a) 0.00  (1.05x) 0.76
-fizz_buzz(sequence{3,1,5})/latency         (1.02x) 0.24    (n/a) 0.00    (n/a) 0.00  (1.05x) 0.76
-fizz_buzz(sequence{0,1,5,3,15,0})/latency  (1.00x) 0.25    (n/a) 0.00    (n/a) 0.00  (1.06x) 0.75
-fizz_buzz(range{0,15,1})/latency           (1.02x) 0.24    (n/a) 0.00    (n/a) 0.00  (1.05x) 0.76
-fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0.14  (1.43x) 0.56
+benchmark                                   [1]   [2]   [3]   [4]
+-----------------------------------------  ----  ----  ----  ----
+fizz_buzz(0)/latency                       0.20  0.00  0.00  0.80
+fizz_buzz(15)/latency                      0.20  0.00  0.00  0.80
+fizz_buzz(3)/latency                       0.23  0.00  0.00  0.77
+fizz_buzz(5)/latency                       0.25  0.00  0.00  0.75
+fizz_buzz(sequence{1,3,5})/latency         0.24  0.00  0.00  0.76
+fizz_buzz(sequence{3,1,5})/latency         0.24  0.00  0.00  0.76
+fizz_buzz(sequence{0,1,5,3,15,0})/latency  0.25  0.00  0.00  0.75
+fizz_buzz(range{0,15,1})/latency           0.24  0.00  0.00  0.76
+fizz_buzz(unpredictable)/latency           0.12  0.18  0.14  0.56
 
 (0) speedup(slowest:1.00x)
 [1] median((stat.top_down.retiring/stat.slots))
@@ -1953,7 +1980,7 @@ fizz_buzz(unpredictable)/latency           (2.15x) 0.12  (1.00x) 0.18  (1.00x) 0
 [3] median((stat.top_down.fronted_bound/stat.slots))
 [4] median((stat.top_down.backend_bound/stat.slots))
 ```
-<!-- .element: style="font-size:15px" -->
+<!-- .element: style="font-size:17px" -->
 
 ----
 
@@ -1972,22 +1999,23 @@ auto upc = uops / cycles;
 
 ----
 
-### "Code can tell you what works, not what doesn't"
-<!-- .element: style="text-align:left" -->
-
 ##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 <!-- .element: style="text-align:left" -->
 
-----
+```cpp
+// "Code can tell you what works, not what doesn't"
+```
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
+ user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
 ```
-<!-- .element: style="text-align:left;font-size:13px" -->
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left;font-size:11px;" -->
 
 <p align="left">
-<img src="images/gh_html.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+&nbsp; <img src="images/gh_html.png" style="width: 85%; background:none; border:none; box-shadow:none;" />
 </p>
+<!-- .element: class="fragment" data-fragment-index="1" style="margin: -30px 0;" -->
 
 ----
 

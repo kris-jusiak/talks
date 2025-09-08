@@ -24,6 +24,7 @@ Notes:
   - wind-tunnel F1 corelaction - if' it's not correlated dont's ship it (if you expected slower but it got faster what you do? ship-it?)
   - iterate - that' show you get deep understanding
   - you have a sirvey of 1000 people and ask just one 1000 times
+  - testing in production-like lab might be expensive (production)
   - no hypthosies - lets'try that and that -> profile
     ├─ Do you have code?      - code alignment, icache, ...
     ├─ Do you have functions? - stack frame size, ...
@@ -47,3 +48,40 @@ TODO
   - pack struct - dod
   - perf::thread::set_affinity(self, 2);
   - perf::thread::set_priority(self, max);
+
+Slides
+- normal distrubution picture
+    - show that mean make no sense (sound statistics) / multiple runs
+
+- latency vs thropughput
+    - cpu increateing throughput but not as much latency
+
+- SHOW graphs for all benchmark runs (together)
+
+- Intel manual quotes
+    - branching (form the llvm talk)
+    - nops (from the tuturial)
+
+Slides Fixups
+- analyzer (just labels no invoke, invoke just in testing)
+- jupyter notebook is out of place
+- annotate with source (more often)
+- fixup uops latency (unroll)
+- memory (pollute_heap vs overload operator new)
+
+- change fizz_buzz to no branching and branching -> but it's slower because of memory
+
+TODO
+- add mph (for memory caching lut) / lookup table in register vs lookup table in cache
+- add nop (example with for-loop for alignment)
+- add big0 complexity (example)
+- ecdf (add vs fizz_buzz or fizz_buzz static vs unpredictable)
+- annotate (opt.pass) // requires clang -frecord
+
+Features
+- disable perf (asm goto)
+- opt.pass
+- flowgraph
+- flamegraph
+    - fixup for rdpmc in spec
+- fixup for godbolt cpuid name
