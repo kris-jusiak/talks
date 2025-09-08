@@ -262,7 +262,7 @@
 
 ----
 
-#### Always measure
+#### Always measure - [Dockerfile](https://github.com/qlibs/perf/blob/main/.github/workflows/Dockerfile)
 <!-- .element: style="text-align:left;" -->
 
 ```
@@ -625,15 +625,11 @@ $CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ... # b
 // steady_time  Monotonic clock     chrono::steady_clock
 
 auto bench(auto fn, auto...ts) -> nanoseconds {
-  auto start = now();               // ? [0]
-  perf::prevent_elision(fn(ts...)); // ? [1]
-  auto end = now();                 // ? [2]
-  return end - now;                 // ? [3]
+  auto start = now();   // ? [0]
+  fn(ts...);            // ? [1]
+  auto end = now();     // ? [2]
+  return end - now;     // ? [3]
 }
-```
-
-```cpp
-// perf::verify(perf::is_elided([] { fn(ts...); }));
 ```
 
 ----
@@ -1204,7 +1200,7 @@ analyzer << perf::mca::region{
 ```cpp
 perf::annotate(analyzer[]);
 ```
-<!-- .element: style="font-size:18px" -->
+<!-- .element: style="font-size:16px" -->
 
 ```
  [0] [1]  [2]                   [3]                              [4] [5] [6] [7] [8]                      [9]                                                                            [10]
@@ -1359,7 +1355,7 @@ analyzer << profiler[trace::instructions];
 
 ```cpp
 // TODO
-profiler[perf::trace::instructions];
+profiler[perf::trace::instructions / perf::trace::cycles];
 // IPC
 ```
 
@@ -1692,6 +1688,25 @@ auto analyze = [](auto fn, auto... ts) {
 
 ----
 
+```cpp
+"coverage"_test = [] {
+  perf::runner bench{perf::bench::latency{}};
+
+  bench(fizz_buzz, 5);
+  bench(fizz_buzz, unpredictable<int>);
+
+  for (const auto& [name, data] :
+    bench[perf::trace::instructions, perf::mca::instructions]) {
+    perf::verify(
+      unique(data[perf::trace::instructions]).size() ==
+      data[perf::mca::instructions].size()
+    );
+  }
+};
+```
+
+----
+
 #### Validation
 <!-- .element: style="text-align:left" -->
 
@@ -1733,29 +1748,67 @@ int main() {
   auto _ = unpredictable<int>;
 
   bench(baseline(fizz_buzz), _); // baseline
-  bench(fizz_buzz_v1,        _); // v1
-  bench(fizz_buzz_v2,        _); // v2
-  // ...
+  bench(fizz_buzz_fast_mod,  _);
+  bench(fizz_buzz_lut,       _);
 
-  perf::report(bench[perf::stat::tsc], p25, p50, p75, p99);
+  // ...
 }
 ```
+<!-- .element: style="font-size:21px;" -->
+
+----
+
+```cpp
+perf::report<relative>(bench[perf::stat::tsc / perf::bench::operations],
+  p25, p50, p75, p99
+);
+```
+<!-- .element: style="font-size:16px;" -->
+
+```cpp
+benchmark (with baseline)                      [1]      [2]      [3]      [4]
+-----------------------------------------  -------  -------  -------  -------
+baseline/fizz_buz(unpredictable)/latency   (1.00x)  (1.00x)  (1.00x)  (1.00x)
+fizz_buzz_fast_mod(unpredictable)/latency  (1.44x)  (1.43x)  (1.47x)  (1.53x)
+fizz_buzz_lut(unpredictable)/latency       (0.87x)  (0.88x)  (0.92x)  (1.02x)
+
+(0) speedup(slowest:1.00x) // relative speedup against the baseline
+```
+<!-- .element: style="font-size:14px;" -->
+
+```cpp
+// benchmark (without baseline)                   [1]      [2]      [3]      [4]
+// -----------------------------------------  -------  -------  -------  -------
+// fizz_buzz(unpredictable)/latency           (1.15x)  (1.11x)  (1.10x)  (1.03x)
+// fizz_buzz_fast_mod(unpredictable)/latency  (1.65x)  (1.63x)  (1.60x)  (1.53x)
+// fizz_buzz_lut(unpredictable)/latency       (1.00x)  (1.00x)  (1.00x)  (1.00x)
+// 
+// (0) speedup(slowest:1.00x) // relative speedup against the slowest
+```
+<!-- .element: style="font-size:14px;" -->
 
 ----
 
 ```cpp
 Modern CPUs are primarily bottlenecked by
-- instruction supply
-- data access
-- branch prediction
+ - Instruction supply
+ - Data access
+ - Branch prediction
 ```
 
-```cpp
-// Reducing Instruction Count
-// Increasing Instruction Per Cycle
+```sh
+Approaches
+ - Reducing instruction count
+     perf::stat::instructions
+     perf::record::instructions
+     perf::trace::instructions
 
-auto ipc = instructions / cycles;
-perf::verify(max_ipc <= perf::cpu::info::dispatch_width());
+ - Increasing instruction per cycle (IPC) # max_ipc <= dispatch_width
+     perf::stat::ipc    # stat::instructions   / stat::cycles
+     perf::record::ipc  # record::instructions / record::cycles
+     perf::trace::ipc   # trace::instructions  / trace::cycles
+
+ - Top down Microarchitecture Analysis Method
 ```
 
 ----
@@ -1861,21 +1914,25 @@ perf::verify(max_ipc <= perf::cpu::info::dispatch_width());
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
-  bench(fizz_buzz, sequence<int>{1, 3, 5});
-  bench(fizz_buzz, sequence<int>{3, 1, 5});
   bench(fizz_buzz, sequence<int>{0, 1, 5, 3, 15, 0});
   bench(fizz_buzz, range<int>{.start = 0, .stop = 15});
+  bench(fizz_buzz, unpredictable<int>);
 
-  perf::report(bench[
-    perf::stat::retiring,
-    perf::stat::bad_speculation,
-    perf::stat::frontend_bound,
-    perf::stat::backend_bound
-  ], median);
+  // ...
 }
 ```
 
 ----
+
+```cpp
+perf::report(bench[
+  perf::stat::retiring,
+  perf::stat::bad_speculation,
+  perf::stat::frontend_bound,
+  perf::stat::backend_bound
+], median);
+```
+<!-- .element: style="font-size:15px" -->
 
 ```
 benchmark                                           [1]           [2]           [3]           [4]
