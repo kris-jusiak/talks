@@ -535,6 +535,22 @@ int main() {
 }
 ```
 
+```cpp
+// /**
+//  * https://github.com/llvm/llvm-project/lib/Target
+//  */
+// def AlderlakePModel : SchedMachineModel {
+//   let IssueWidth = 6;
+//   let MicroOpBufferSize = 512;
+//   let LoadLatency = 5;
+//   let MispredictPenalty = 14;
+//   let LoopMicroOpBufferSize = 72;
+//   ...
+// }
+// ...
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left;font-size:20px" -->
+
 ----
 
 ```
@@ -573,25 +589,6 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
  [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel
 ```
 <!-- .element: style="text-align:left;font-size:11px" -->
-
-----
-
-##### self-checks...
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// https://github.com/llvm/llvm-project/lib/Target
-
-def AlderlakePModel : SchedMachineModel {
-  let IssueWidth = 6;
-  let MicroOpBufferSize = 512;
-  let LoadLatency = 5;
-  let MispredictPenalty = 14;
-  let LoopMicroOpBufferSize = 72;
-  // ...
-}
-```
-<!-- .element: style="text-align:left;font-size:20px" -->
 
 ----
 
