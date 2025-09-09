@@ -360,10 +360,10 @@
 
 ```cpp
   ├─ [1] The Noise
-  ├─ [2] The Illusion
-  ├─ [3] The Trap
-  ├─ [4] The Red Herring
-  ├─ [5] The Chaos
+  ├─ [2] The Bias
+  ├─ [3] The Faith
+  ├─ [4] The Chaos
+  ├─ [5] The Truth
   └─ ...
 ```
 
@@ -397,33 +397,8 @@ Powered by perf # https://github.com/qlibs/perf
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// Hardware effects
-
-0x0010        void fn1(param):              // alignment
-                push                        // stack
-
-0x0100          for (...) {
-0x0104            if (lookup_table[value])  // memory access
-0x0108              je                      // branch prediction
-
-0x1000        void fn2(param):              // alignment
-
-lookup_table:                               // alignment
- ...
-
-int main():                                 // kernel
-  call fn1
-  ret
+int main();
 ```
-
-----
-
-#### AMD Zen5 - https://chipsandcheese.com
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/cpu2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-</p>
 
 ----
 
@@ -431,47 +406,54 @@ int main():                                 // kernel
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
-<img src="images/linux2.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<img src="images/linux.png" style="width: 85%; background:none; border:none; box-shadow:none; margin: -10px 0;" />
 </p>
 
 ----
 
-### Measurements Bias
+#### Linux
 <!-- .element: style="text-align:left" -->
 
-##### - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left;" -->
-
-##### - [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
-<!-- .element: style="text-align:left;" -->
-
-##### - [Rigorous Benchmarking In Reasonable Time](https://dl.acm.org/doi/10.1145/2555670.2464160)
-<!-- .element: style="text-align:left;" -->
-
-----
-
-```
+```sh
 # Kernel Mode Task-Isolation - https://lwn.net/articles/816298
 isolcpus=<cpu number>,...,<cpu number> # bootloader
-```
 
-```
-# Disable CPU Frequency Scaling, Processor Boosting, ...
+
+# Disable CPU Frequency Scaling, ...
 pyperf system tune # pip install pyperf
-```
 
-```sh
-# Address Space Layout Randomization
-$CXX -ffunction-sections -fdata-sections -falign-functions=16 ...
-$CXX -Wl,--shuffle-sections=0 -fuse-ld=lld ...
-```
 
-```sh
 # Affinity / Priority
 taskset -c 2 ... # 0,1 used by the kernel
 nice -n -20  ... # priority
 chrt -f 99   ... # real-time
 ```
+
+----
+
+#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+/**
+ * No kernel (ring 0)
+*/
+int efi_main(perf::uefi::sys* sys) {
+  perf::cpu::disable(DCACHE, IBRS, /*...*/);
+  // ...
+  perf::cpu::enable (DCACHE, IBRS, /*...*/);
+}
+
+// DCACHE - Data cache
+// IBRS   - Indirect Branch Restricted Speculation
+// ...
+```
+
+```sh
+$CXX -DPERF_UEFI -target x86_64 \              # test: qemu-system-x86_64
+  -ffreestanding -fno-exceptions -fno-rtti ... # live: boot/USB
+```
+<!-- .element: style="text-align:left;font-size:17px" -->
 
 ----
 
@@ -492,19 +474,10 @@ int main() {
   perf::verify(not perf::info::cpu::freq_scaling);
   perf::verify(perf::info::compiler::NDEBUG);
   perf::verify(perf::info::compiler::OPTIMIZED);
-  perf::verify(perf::info::cpu::features().contains("avx512"));
-  perf::verify(perf::info::cpu::dispatch_width() >= 4u);
   // ...
 }
 ```
 <!-- .element: style="text-align:left;font-size:17px" -->
-
-----
-
-```cpp
-user@perf:~# $CXX -std=c++23 -O3 -g perf.cpp && ./a.out
-```
-<!-- .element: style="text-align:left;font-size:16px;" -->
 
 ```sh
 name  info
@@ -534,22 +507,6 @@ int main() {
   perf::self::test({.verbose = true}); // run-time checks
 }
 ```
-
-```cpp
-// /**
-//  * https://github.com/llvm/llvm-project/lib/Target
-//  */
-// def AlderlakePModel : SchedMachineModel {
-//   let IssueWidth = 6;
-//   let MicroOpBufferSize = 512;
-//   let LoadLatency = 5;
-//   let MispredictPenalty = 14;
-//   let LoopMicroOpBufferSize = 72;
-//   ...
-// }
-// ...
-```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left;font-size:20px" -->
 
 ----
 
@@ -592,38 +549,9 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 
 ----
 
-#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
+### [2] The Bias
 <!-- .element: style="text-align:left" -->
 
-```cpp
-/**
-* No kernel (ring 0)
-*/
-int efi_main(perf::uefi::sys* sys) {
-  perf::runner bench{perf::bench::latency{ // IBRS - Indirect Branch Restricted Speculation
-    .setup    = [] { perf::cpu::disable(dL1, IBRS); },
-    .teardown = [] { perf::cpu::enable (dL1, IBRS); },
-  }};
-
-  bench(fizz_buzz, {});
-
-  perf::report(
-    sys->stdout,
-    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
-    min, median, p90, p99
-  );
-}
-```
-
-```sh
-$CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ... # boot from USB
-```
-<!-- .element: style="text-align:left;font-size:15px" -->
-
-----
-
-### [2] The Illusion
-<!-- .element: style="text-align:left" -->
 
 ```cpp
 // Measurements are not following normal distribution
@@ -631,6 +559,47 @@ $CXX -DPERF_UEFI -target x86_64 -ffreestanding -fno-exceptions -fno-rtti ... # b
 // Latency vs. Throughput / Cold vs. Warm / ...
 // Statistically sound conclusions
 ```
+
+----
+
+#### Measurements Bias / Hardware effects
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ 0x0100: void unused();                     // code layout
+
+ 0x0110: void fn(value) {
+ 0x0110:   push                             // stack setup
+
+ 0x0114:   for (...) {
+ 0x0118:     auto i = lookup_table[value];  // memory access
+ 0x011C:     if (i) {                       // branch prediction
+ 0x0120:         ...
+ 0x0124:     }
+ 0x0128:   }
+
+ 0x012C:   pop                              // stack cleanup
+         }
+
+ 0x1000: lookup_table:                      // data layout
+          ...
+```
+
+---
+
+##### - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left; font-size:26px; margin: 3px 12px;" -->
+##### - [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
+<!-- .element: style="text-align:left; font-size:26px; margin: 3px 12px;" -->
+
+----
+
+#### AMD Zen5 - https://chipsandcheese.com
+<!-- .element: style="text-align:left;" -->
+
+<p align="left">
+<img src="images/cpu.png" style="width: 90%; background:none; border:none; box-shadow:none; margin: -15px 0;" />
+</p>
 
 ----
 
@@ -755,7 +724,6 @@ int main() {
 ```cpp
 perf::report(bench[perf::stat::tsc / perf::bench::operations]);
 ```
-<!-- .element: style="font-size:18px;" -->
 
 ```cpp
 benchmark                       [1]
@@ -768,7 +736,6 @@ fizz_buzz(0)/latency   (2.50x) 1.31
 (0) speedup(slowest:1.00x)
 [1] (stat.tsc[ns]/bench.operations)
 ```
-<!-- .element: style="font-size:19px;" -->
 
 ----
 
@@ -780,7 +747,7 @@ fizz_buzz(0)/latency   (2.50x) 1.31
 ```
 
 <p align="left">
-<img src="images/btb.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<img src="images/btb.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: -20px 0;" />
 </p>
 
 ----
@@ -1078,7 +1045,7 @@ user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
 
 ----
 
-### [3] The Trap
+### [3] The Faith
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1178,14 +1145,14 @@ perf::log(profiler[]); // [] - all elements
 ```cpp
 // Machine Code Analyzer (MCA)
 
-perf::analyzer analyzer{
-  perf::mca::address,
-  perf::mca::encoding,
-  perf::mca::assembly,
-  perf::mca::size,
-  perf::mca::uops,
-  perf::mca::latency,
-  perf::mca::rthroughput,
+perf::analyzer analyzer{          // https://github.com/llvm/llvm-project/lib/Target
+  perf::mca::address,             // def AlderlakePModel : SchedMachineModel {
+  perf::mca::encoding,            //   let IssueWidth = 6;
+  perf::mca::assembly,            //   let MicroOpBufferSize = 512;
+  perf::mca::size,                //   let LoadLatency = 5;
+  perf::mca::uops,                //   let MispredictPenalty = 14;
+  perf::mca::latency,             //   ...
+  perf::mca::rthroughput,         // }
   perf::mca::timeline,
   perf::mca::resource_pressure,
   perf::mca::bottleneck,
@@ -1578,175 +1545,7 @@ valgrind --tool=callgrind --cache-sim=yes --branch-sim=yes --collect-jumps=yes -
 
 ----
 
-### [4] The Red Herring
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// Verfication
-// Testing
-// Validation
-```
-
-----
-
-#### Verification
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::runner bench{perf::bench::throughput{.policy = seq}};
-
-  auto sort = [](std::vector<int>& v) {
-    std::ranges::sort(v);
-  };
-
-  auto sort_debug = []<bool debug>(std::vector<int>& v) {
-    std::ranges::sort(v);
-    if constexpr (debug) { // doesn't affect benchmarking
-      perf::verify(is_sorted(v));
-    }
-  };
-
-  for (auto i = 0; i < 1024; ++i) {
-    bench(sort,       unpredictable<int> | to<std::vector>(i));
-    bench(sort_debug, unpredictable<int> | to<std::vector>(i));
-  }
-}
-```
-
-----
-
-#### Testing
-<!-- .element: style="text-align:left" -->
-
-```cpp
-template<auto Begin = +[]{}, auto End = +[]{}>
-auto disassemble = [](auto fn, auto... ts) {
-  auto invoke = [&] {
-    perf::code::label(Begin);
-    perf::prevent_elision(fn(ts...));
-    perf::code::label(End);
-  };
-  perf::prevent_elision(&decltype(invoke)::operator());
-  return analyzer << perf::mca::region{
-    perf::code::labels[Begin],
-    perf::code::labels[End],
-  };
-};
-
-auto trace = [](auto fn, auto... ts) {
-  perf::profiler profiler{perf::trace::instructions};
-  perf::analyzer analyzer{perf::mca::assembly};
-  profiler.start();
-  perf::prevent_elision(fn(ts...));
-  profiler.stop();
-  return analyzer << profiler[perf::trace::instructions];
-};
-
-auto analyze = [](auto fn, auto... ts) {
-  perf::profiler profiler{perf::trace::instructions};
-  perf::analyzer analyzer{perf::mca::timeline};
-  profiler.start();
-  perf::prevent_elision(fn(ts...));
-  profiler.stop();
-  return analyzer << profiler[perf::trace::instructions];
-};
-```
-<!-- .element: style="font-size:14px;" -->
-
-----
-
-```cpp
-"disassemble"_test = [] {
-  auto&& instructions = disassemble(fizz_buzz, int{});
-
-  perf::verify(19u == instructions.size());
-  perf::verify(instructions[0].contains("imul"));
-  // ...
-};
-```
-
-----
-
-```cpp
-"trace"_test = [] {
-  auto&& instructions = trace(fizz_buzz, 15);
-
-  perf::verify(8u == instructions.size());
-  perf::verify(instructions[0].contains("imul"));
-  // ...
-};
-
-----
-
-```cpp
-"compare"_test = [] {
-  auto ub  = [](int x) { return x + 1 > x; };
-  auto opt = [](int x) { return true; };
-
-  perf::verify(disassemble(ub) == disassemble(opt));
-  perf::verify(trace(ub)       == trace(opt));
-};
-```
-
-----
-
-```cpp
-"analyze"_test = [] {
-  auto&& timeline = analyze(fizz_buzz, 15);
-
-  perf::verify(8u == timeline.size());
-  perf::verify(6u == timeline[0].dispatch_width);
-  perf::verify(0  == timeline[0].cycle_ready);
-  perf::verify(1  == timeline[0].cycle_issued);
-  perf::verify(6  == timeline[0].cycle_executed);
-  perf::verify(7  == timeline[0].cycle_retired);
-  // ...
-};
-```
-
-----
-
-```cpp
-"coverage"_test = [] {
-  perf::runner bench{perf::bench::latency{}};
-
-  bench(fizz_buzz, 5);
-  bench(fizz_buzz, unpredictable<int>);
-
-  for (const auto& [name, data] :
-    bench[perf::trace::instructions, perf::mca::instructions]) {
-    perf::verify(
-      unique(data[perf::trace::instructions]).size() ==
-      data[perf::mca::instructions].size()
-    );
-  }
-};
-```
-
-----
-
-#### Validation
-<!-- .element: style="text-align:left" -->
-
-```sh
-# Measurement bias
-# Production-like environment (end-to-end)
-# Validate findings / correlation
-
-./app --profile ...
-```
-
-```
-"benchmarks slower, app faster" - what to do?
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-<img src="images/f1.jpg" style="width: 20%; background:none; border:none; box-shadow:none; margin: 0 70%;" />
-
-----
-
-### [5] The Chaos
+### [4] The Chaos
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1991,7 +1790,175 @@ auto upc = uops / cycles;
 
 ----
 
-##### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+### [5] The Truth
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// Verification
+// Testing
+// Validation
+```
+
+----
+
+#### Verification
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  perf::runner bench{perf::bench::throughput{.policy = seq}};
+
+  auto sort = [](std::vector<int>& v) {
+    std::ranges::sort(v);
+  };
+
+  auto sort_debug = []<bool debug>(std::vector<int>& v) {
+    std::ranges::sort(v);
+    if constexpr (debug) { // doesn't affect benchmarking
+      perf::verify(is_sorted(v));
+    }
+  };
+
+  for (auto i = 0; i < 1024; ++i) {
+    bench(sort,       unpredictable<int> | to<std::vector>(i));
+    bench(sort_debug, unpredictable<int> | to<std::vector>(i));
+  }
+}
+```
+
+----
+
+#### Testing
+<!-- .element: style="text-align:left" -->
+
+```cpp
+template<auto Begin = +[]{}, auto End = +[]{}>
+auto disassemble = [](auto fn, auto... ts) {
+  auto invoke = [&] {
+    perf::code::label(Begin);
+    perf::prevent_elision(fn(ts...));
+    perf::code::label(End);
+  };
+  perf::prevent_elision(&decltype(invoke)::operator());
+  return analyzer << perf::mca::region{
+    perf::code::labels[Begin],
+    perf::code::labels[End],
+  };
+};
+
+auto trace = [](auto fn, auto... ts) {
+  perf::profiler profiler{perf::trace::instructions};
+  perf::analyzer analyzer{perf::mca::assembly};
+  profiler.start();
+  perf::prevent_elision(fn(ts...));
+  profiler.stop();
+  return analyzer << profiler[perf::trace::instructions];
+};
+
+auto analyze = [](auto fn, auto... ts) {
+  perf::profiler profiler{perf::trace::instructions};
+  perf::analyzer analyzer{perf::mca::timeline};
+  profiler.start();
+  perf::prevent_elision(fn(ts...));
+  profiler.stop();
+  return analyzer << profiler[perf::trace::instructions];
+};
+```
+<!-- .element: style="font-size:14px;" -->
+
+----
+
+```cpp
+"disassemble"_test = [] {
+  auto&& instructions = disassemble(fizz_buzz, int{});
+
+  perf::verify(19u == instructions.size());
+  perf::verify(instructions[0].contains("imul"));
+  // ...
+};
+```
+
+----
+
+```cpp
+"trace"_test = [] {
+  auto&& instructions = trace(fizz_buzz, 15);
+
+  perf::verify(8u == instructions.size());
+  perf::verify(instructions[0].contains("imul"));
+  // ...
+};
+
+----
+
+```cpp
+"compare"_test = [] {
+  auto ub  = [](int x) { return x + 1 > x; };
+  auto opt = [](int x) { return true; };
+
+  perf::verify(disassemble(ub) == disassemble(opt));
+  perf::verify(trace(ub)       == trace(opt));
+};
+```
+
+----
+
+```cpp
+"analyze"_test = [] {
+  auto&& timeline = analyze(fizz_buzz, 15);
+
+  perf::verify(8u == timeline.size());
+  perf::verify(6u == timeline[0].dispatch_width);
+  perf::verify(0  == timeline[0].cycle_ready);
+  perf::verify(1  == timeline[0].cycle_issued);
+  perf::verify(6  == timeline[0].cycle_executed);
+  perf::verify(7  == timeline[0].cycle_retired);
+  // ...
+};
+```
+
+----
+
+```cpp
+"bench.coverage"_test = [] {
+  perf::runner bench{perf::bench::latency{}};
+
+  bench(fizz_buzz, 5);
+  bench(fizz_buzz, unpredictable<int>);
+
+  for (const auto& [name, data] :
+    bench[perf::trace::instructions, perf::mca::instructions]) {
+    perf::verify(
+      unique(data[perf::trace::instructions]).size() ==
+      data[perf::mca::instructions].size()
+    );
+  }
+};
+```
+
+----
+
+#### Validation
+<!-- .element: style="text-align:left" -->
+
+```sh
+# The Noise / The Bias
+# Production-like environment (end-to-end)
+# Validate findings / correlation
+
+./app --profile ...
+```
+
+```
+"benchmarks slower, app faster" - what to do?
+```
+<!-- .element: class="fragment" data-fragment-index="1" -->
+
+<img src="images/f1.jpg" style="width: 20%; background:none; border:none; box-shadow:none; margin: 0 70%;" />
+
+----
+
+#### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -2018,10 +1985,10 @@ auto upc = uops / cycles;
 └─ [0] Always measure
      Avoiding Microbenchmarking Pitfalls
         ├─ [1] The Noise
-        ├─ [2] The Illusion
-        ├─ [3] The Trap
-        ├─ [4] The Red Herring
-        ├─ [5] The Chaos
+        ├─ [2] The Bias
+        ├─ [3] The Faith
+        ├─ [4] The Chaos
+        ├─ [5] The Truth
         └─ ...
 ```
 

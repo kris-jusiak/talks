@@ -25,6 +25,7 @@ Notes:
   - iterate - that' show you get deep understanding
   - you have a sirvey of 1000 people and ask just one 1000 times
   - testing in production-like lab might be expensive (production)
+  - cpu increateing throughput but not as much latency
   - no hypthosies - lets'try that and that -> profile
     ├─ Do you have code?      - code alignment, icache, ...
     ├─ Do you have functions? - stack frame size, ...
@@ -52,9 +53,6 @@ TODO
 Slides
 - normal distrubution picture
     - show that mean make no sense (sound statistics) / multiple runs
-
-- latency vs thropughput
-    - cpu increateing throughput but not as much latency
 
 - SHOW graphs for all benchmark runs (together)
 
@@ -85,3 +83,6 @@ Features
 - flamegraph
     - fixup for rdpmc in spec
 - fixup for godbolt cpuid name
+
+  perf::verify(perf::info::cpu::features().contains("avx512"));
+  perf::verify(perf::info::cpu::dispatch_width() >= 4u);
