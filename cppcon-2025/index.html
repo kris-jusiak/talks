@@ -511,7 +511,7 @@ int main() {
 ```
 user@perf:~# taskset -c 2 nice -n -20 ./a.out # xterm -ti 340
 ```
-<!-- .element: style="text-align:left;font-size:12px; margin: 0 -5px;" -->
+<!-- .element: style="text-align:left;font-size:13px; margin: 0 -5px;" -->
 
 
 ```
@@ -525,25 +525,13 @@ div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
 (0) speedup(slowest:1.00x)
 [1] median((stat.cycles/bench.operations))
 [2] median((stat.mca_cycles/bench.operations))        // https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+
 ```
-<!-- .element: style="text-align:left;font-size:11px" -->
+<!-- .element: style="text-align:left;font-size:14px" -->
 
 <p align="left">
-<img src="images/self2.png" style="width: 78%; background:none; border:none; box-shadow:none;" />
+<img src="images/self2.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
 </p>
-
-```java
-add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:      div(reg,reg)/latency:
- [0] [1]                    [0] [1]                    [0] [1]                    [0] [1]
- --- ------------           --- ------------           --- -------------          --- ------------
-  1. add esi, edi            1. sub edi, esi            1. imul esi, edi           1. mov eax, edi
-                                                                                   2. cdq
-                                                                                   3. idiv esi
-
- [0] index                  [0] index                  [0] index                  [0] index
- [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel
-```
-<!-- .element: style="text-align:left;font-size:11px" -->
 
 ----
 
@@ -978,6 +966,8 @@ auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
 // pre_fault
 // operator_new
 
+// note may consider running in a different process
+
 # Layout Randomization
 # echo 2 | sudo tee /proc/sys/kernel/randomize_va_space
 # $CXX -ffunction-sections -fdata-sections -falign-functions=16 ...
@@ -1391,6 +1381,10 @@ profiler[perf::trace::instructions / perf::trace::cycles];
 // IPC
 ```
 
+```
+https://compiler-explorer.com
+```
+
 ----
 
 #### profiler/analyzer -> bench
@@ -1693,7 +1687,7 @@ Approaches
 </table>
 
 ```cpp
-// toplev - https://github.com/andikleen/pmu-tools
+Measuring Workloads With TopLev - https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 ```
 <!-- .element: style="font-size:17px;" -->
 
@@ -2019,7 +2013,7 @@ auto disassemble = [](auto fn, auto... ts) {
 ```cpp
  user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
 ```
-<!-- .element: style="text-align:left;font-size:11px;" -->
+<!-- .element: style="text-align:left;font-size:13px;" -->
 
 <p align="left">
 &nbsp; <img src="images/gh_html.png" style="width: 85%; background:none; border:none; box-shadow:none;" />
