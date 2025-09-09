@@ -977,6 +977,11 @@ auto fizz_buzz_code_aligned = [] [[gnu::always_inline]] (int n) {
 // clflush
 // pre_fault
 // operator_new
+
+# Layout Randomization
+# echo 2 | sudo tee /proc/sys/kernel/randomize_va_space
+# $CXX -ffunction-sections -fdata-sections -falign-functions=16 ...
+# $CXX -Wl,--shuffle-sections=0 -fuse-ld=lld ...
 ```
 <!-- .element: style="font-size:18px;" -->
 
