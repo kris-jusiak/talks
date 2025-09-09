@@ -93,7 +93,7 @@
  // More instructions per cycle
  // 4Ghz cpu from 2005 will be much slower than 4Ghz cpu from 2025
 
-  benchmark            cycles    time // 5Ghz L1size L2 size
+  benchmark            cycles    time // 5Ghz
   -------------------- ------ -------
   1 cycle execution         1  0.25ns
   dL1                       3  0.50ns
@@ -297,9 +297,7 @@
  └─ System
     └── Application
       └── µArch
-            perf stat -e cycles,instructions ...
-            perf stat --topdown ...
-            ...
+            perf stat ...
 ```
 
 ----
@@ -406,7 +404,7 @@ int main();
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
-<img src="images/linux.png" style="width: 85%; background:none; border:none; box-shadow:none; margin: -10px 0;" />
+<img src="images/linux.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: -10px 0;" />
 </p>
 
 ----
@@ -598,7 +596,7 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 <!-- .element: style="text-align:left;" -->
 
 <p align="left">
-<img src="images/cpu.png" style="width: 90%; background:none; border:none; box-shadow:none; margin: -15px 0;" />
+<img src="images/cpu.png" style="width: 95%; background:none; border:none; box-shadow:none; margin: -15px 0;" />
 </p>
 
 ----
@@ -622,7 +620,7 @@ auto bench(auto fn, auto...ts) -> nanoseconds {
 
 ----
 
-```md
+```
 Latency
  ├─ Time it takes for a single
  │  operation to complete
@@ -672,7 +670,7 @@ auto latency(auto fn) { // https://github.com/andreas-abel/nanoBench
 auto throughput(auto fn, auto... ts) {
   perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
     fn(ts...);
-  }
+  } // ?
 }
 ```
 
@@ -706,36 +704,110 @@ perf::bench::throughput::par;
 
 ```cpp
 int main() {
-  perf::runner bench{perf::bench::latency{.samples = 1}};
+  perf::runner bench{
+    perf::bench::latency{.samples = 1}; // iterations deduced
+  };
 
   bench(fizz_buzz, 15);
   bench(fizz_buzz, 3);
   bench(fizz_buzz, 5);
   bench(fizz_buzz, 0);
 
-  // TODO charts
-  // perf::runner bench{perf::bench::latency{.samples = 30}};
-  // ...
+  perf::report(bench[perf::stat::tsc / perf::bench::operations]);
+
+  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::bar(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
+<!-- .element: style="font-size:19px;" -->
 
 ----
 
 ```cpp
-perf::report(bench[perf::stat::tsc / perf::bench::operations]);
-```
-
-```cpp
 benchmark                       [1]
 ---------------------  ------------
-fizz_buzz(15)/latency  (2.01x) 1.62
-fizz_buzz(3)/latency   (1.81x) 1.81
-fizz_buzz(5)/latency   (1.00x) 3.27
-fizz_buzz(0)/latency   (2.50x) 1.31
+fizz_buzz(15)/latency  (1.38x) 2.32
+fizz_buzz(3)/latency   (1.78x) 1.81
+fizz_buzz(5)/latency   (1.00x) 3.21
+fizz_buzz(0)/latency   (2.46x) 1.31
 
 (0) speedup(slowest:1.00x)
 [1] (stat.tsc[ns]/bench.operations)
 ```
+<!-- .element: style="font-size:14px;" -->
+
+<p align="left">
+<img src="images/fb1.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+<p align="left">
+<img src="images/fb2.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+----
+
+```cpp
+int main() {
+  perf::runner bench{
+    perf::bench::latency{}; // iterations deduced, samples deduced
+  }
+
+  bench(fizz_buzz, 15);
+  bench(fizz_buzz, 3);
+  bench(fizz_buzz, 5);
+  bench(fizz_buzz, 0);
+
+  perf::report(
+    bench[perf::stat::tsc / perf::bench::operations],
+    min, median, p90, p99
+  );
+
+  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::bar (bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
+}
+```
+<!-- .element: style="font-size:18px;" -->
+
+----
+
+```cpp
+benchmark                       [1]           [2]           [3]           [4]
+---------------------  ------------  ------------  ------------  ------------
+fizz_buzz(15)/latency  (1.79x) 1.23  (2.40x) 1.36  (2.20x) 1.53  (2.16x) 1.57
+fizz_buzz(3)/latency   (4.24x) 0.52  (1.95x) 1.67  (1.85x) 1.82  (1.82x) 1.86
+fizz_buzz(5)/latency   (1.00x) 2.21  (1.00x) 3.26  (1.00x) 3.35  (1.00x) 3.39
+fizz_buzz(0)/latency   (1.82x) 1.22  (2.34x) 1.39  (2.20x) 1.53  (2.07x) 1.64
+
+(0) speedup(slowest:1.00x)
+[1] min((stat.tsc[ns]/bench.operations))
+[2] median((stat.tsc[ns]/bench.operations))
+[3] p90((stat.tsc[ns]/bench.operations))
+[4] p99((stat.tsc[ns]/bench.operations))
+```
+<!-- .element: style="font-size:12px;" -->
+
+<p align="left">
+<img src="images/fb3.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+<p align="left">
+<img src="images/fb4.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+----
+
+#### Empirical distribution function (ecdf)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
+```
+<!-- .element: style="font-size:13px;" -->
+
+<p align="left">
+<img src="images/fb5.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
 
 ----
 
@@ -747,14 +819,15 @@ fizz_buzz(0)/latency   (2.50x) 1.31
 ```
 
 <p align="left">
-<img src="images/btb.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: -20px 0;" />
+&nbsp; <img src="images/btb.png" style="width: 70%; background:none; border:none; box-shadow:none; margin: -20px 0;" />
 </p>
 
 ----
 
 ```cpp
 /**
- * pseudo.cpu[0].branch_predictor[ip].history = {1, 1, 1, 0, 0, ...};
+ * pseudo.cpu[0].
+ *   branch_predictor[ip].history = {1, 1, 1, 0, 0, ...};
  */
 auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
@@ -772,7 +845,7 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
 
 ----
 
-#### Data distribution / specific
+#### data distribution / use-case specific
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -799,56 +872,17 @@ choice<int>{                              // 15,5,5,5,3,3,5,5,...
 ----
 
 ```cpp
-int main() {
-  perf::runner bench{perf::bench::latency{}};
-
-  auto add = [](int a, int b) { return a + b; };
-
-  for (int a = 0; a < 10; ++a) {
-    for (int b = 0; b < 10; ++b) {
-      bench(add, a, b);
-    }
-  }
-
-  bench(add, unpredictable<int>, unpredictable<int>);
-  bench(add, unpredictable<int>, 10);
-  bench(add, 10, unpredictable<int>);
-
-  perf::report(bench[perf::stat::cycles / perf::bench::operations]);
-}
 ```
 
-----
-
 ```cpp
-benchmark                                          [1]
-----------------------------------------  ------------
-add(0,0)/latency                          (1.00x) 1.00
-add(0,1)/latency                          (1.00x) 1.00
-add(0,2)/latency                          (1.00x) 1.00
-add(0,3)/latency                          (1.00x) 1.00
-add(1,0)/latency                          (1.00x) 1.00
-...
-add(3,2)/latency                          (1.00x) 1.00
-add(3,3)/latency                          (1.00x) 1.00
-...
-add(unpredictable,unpredictable)/latency  (1.00x) 1.00
-add(unpredictable,10)/latency             (1.00x) 1.00
-add(10,unpredictable)/latency             (1.00x) 1.00
-
-(0) speedup(slowest:1.00x)
-[1] median((stat.cycles/bench.operations))
-```
-<!-- .element: style="font-size:17px;" -->
-
-----
-
-```cpp
-perf::report(bench[perf::stat::tsc / perf::bench::operations],
-  min, median, p90, p99
+perf::report(bench[perf::stat::tsc, perf::stat::cpu_time],
+  stddev, // standard deviation (variability), degrees_of_freedom = 1
+  mae,    // median absolute error
+  cv      // coefficient of variation
 );
 ```
-<!-- .element: style="font-size:17px;" -->
+
+----
 
 ```cpp
 benchmark                                           [1]           [2]           [3]           [4]
@@ -874,11 +908,6 @@ fizz_buzz(unpredictable)/latency           (1.00x) 4.91  (1.00x) 5.59  (1.00x) 5
 ----
 
 ```cpp
-perf::report(bench[perf::stat::cpu_time, perf::stat::real_time],
-  stddev, // standard deviation (variability), degrees_of_freedom = 1
-  mae,    // median absolute error
-  cv      // coefficient of variation
-);
 ```
 <!-- .element: style="font-size:15px;" -->
 
@@ -980,9 +1009,6 @@ perf::plot::bar(bench[perf::time::tsc / perf::bench::operations]);
 
 ----
 
-#### Bar / issue
-<!-- .element: style="text-align:left" -->
-
 ```cpp
 perf::bench::latency{.iterations = 1, .samples = 1};
 ```
@@ -990,6 +1016,10 @@ perf::bench::latency{.iterations = 1, .samples = 1};
 <p align="left">
 <img src="images/bar3.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
+
+```cpp
+// variability
+```
 
 ----
 
@@ -1015,7 +1045,7 @@ perf::plot::box(bench[perf::time::tsc / perf::bench::operations],
 
 ----
 
-#### Empirical distribution function
+#### empirical distribution function (ecdf)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1145,18 +1175,18 @@ perf::log(profiler[]); // [] - all elements
 ```cpp
 // Machine Code Analyzer (MCA)
 
-perf::analyzer analyzer{          // https://github.com/llvm/llvm-project/lib/Target
-  perf::mca::address,             // def AlderlakePModel : SchedMachineModel {
-  perf::mca::encoding,            //   let IssueWidth = 6;
-  perf::mca::assembly,            //   let MicroOpBufferSize = 512;
-  perf::mca::size,                //   let LoadLatency = 5;
-  perf::mca::uops,                //   let MispredictPenalty = 14;
-  perf::mca::latency,             //   ...
-  perf::mca::rthroughput,         // }
+perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
+  perf::mca::address,            //   let IssueWidth = 6;
+  perf::mca::encoding,           //   let MicroOpBufferSize = 512;
+  perf::mca::assembly,           //   let LoadLatency = 5;
+  perf::mca::size,               //   let MispredictPenalty = 14;
+  perf::mca::uops,               //   ...
+  perf::mca::latency,            // }
+  perf::mca::rthroughput,        //
   perf::mca::timeline,
   perf::mca::resource_pressure,
   perf::mca::bottleneck,
-  perf::mca::source,              // requires debug symbols (-g)
+  perf::mca::source,             // requires debug symbols (-g)
 };
 ```
 <!-- .element: style="font-size:22px" -->
@@ -1164,20 +1194,22 @@ perf::analyzer analyzer{          // https://github.com/llvm/llvm-project/lib/Ta
 ----
 
 ```cpp
-auto invoke(auto fn, auto... ts) {        // auto label(const auto label)
-  perf::code::label("begin");             //   asm volatile goto(
-  perf::prevent_elision(fn(ts...));       //     ".pushsection labels, \"aw\" \n"
-  perf::code::label("end");               //     ".quad %c0, %l[L]\n"
-}                                         //     ".popsection \n"
-                                          //     : : "i"(label) : "memory" : L
-perf::prevent_elision(                    //   ); L:;
-  &invoke<decltype(fizz_buzz), int>       // }
-);
+// Machine Code Analyzer (MCA)
 
-analyzer << perf::mca::region{
-  perf::code::labels["begin"],
-  perf::code::labels["end"],
-};
+ auto invoke(auto fn, auto... ts) {        // auto label(const auto label)
+   perf::code::label("begin");             //   asm volatile goto(
+   perf::prevent_elision(fn(ts...));       //     ".pushsection labels, \"aw\" \n"
+   perf::code::label("end");               //     ".quad %c0, %l[L]\n"
+ }                                         //     ".popsection \n"
+                                           //     : : "i"(label) : "memory" : L
+ perf::prevent_elision(                    //   ); L:;
+   &invoke<decltype(fizz_buzz), int>       // }
+ );
+
+ analyzer << perf::mca::region{
+   perf::code::labels["begin"],
+   perf::code::labels["end"],
+ };
 ```
 <!-- .element: style="font-size:18px" -->
 
@@ -1328,7 +1360,7 @@ perf::annotate(analyzer[
 
 ----
 
-#### Disassemble vs. Trace
+#### disassemble vs. trace
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1347,9 +1379,10 @@ profiler[perf::trace::instructions / perf::trace::cycles];
 
 ----
 
-```cpp
-// Profiler/Analyzer -> Runner
+#### profiler/analyzer -> bench
+<!-- .element: style="text-align:left" -->
 
+```cpp
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
@@ -1478,7 +1511,7 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
 
 ----
 
-#### Control-Flow-Graph
+#### control-flow-graph (CFG)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1494,7 +1527,7 @@ perf::plot::flowgraph(analyzer[perf::mca::assembly]);
 
 ----
 
-#### Flamegraph - https://github.com/brendangregg/FlameGraph
+#### flamegraph - https://github.com/brendangregg/FlameGraph
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1539,7 +1572,8 @@ int main() {
 ```
 
 ```sh
-valgrind --tool=callgrind --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes --instr-atstart=no ...
+valgrind --tool=callgrind --instr-atstart=no \
+  --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes ...
 ```
 <!-- .element: style="font-size:18px;" -->
 
@@ -1556,7 +1590,7 @@ valgrind --tool=callgrind --cache-sim=yes --branch-sim=yes --collect-jumps=yes -
 
 ----
 
-#### Baseline
+#### baseline
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1565,11 +1599,12 @@ int main() {
 
   auto _ = unpredictable<int>;
 
-  bench(baseline(fizz_buzz), _); // baseline
+  bench(baseline(fizz_buzz), _);
   bench(fizz_buzz_fast_mod,  _);
   bench(fizz_buzz_lut,       _);
 
-  // ...
+  perf::report(bench[perf::stat::tsc / perf::bench::operations], p50);
+  perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
 <!-- .element: style="font-size:21px;" -->
@@ -1577,33 +1612,23 @@ int main() {
 ----
 
 ```cpp
-perf::report<relative>(bench[perf::stat::tsc / perf::bench::operations],
-  p25, p50, p75, p99
-);
-```
-<!-- .element: style="font-size:16px;" -->
+benchmark                                           [1]           [2]
+-----------------------------------------  ------------  ------------
+fiz_buzz(unpredictable)/latency*           (1.00x) 8.16  (1.00x) 9.19
+fizz_buzz_fast_mod(unpredictable)/latency  (1.45x) 5.64  (1.50x) 6.13
+fizz_buzz_lut(unpredictable)/latency       (0.89x) 9.15  (1.00x) 9.22
 
-```cpp
-benchmark (with baseline)                      [1]      [2]      [3]      [4]
------------------------------------------  -------  -------  -------  -------
-baseline/fizz_buz(unpredictable)/latency   (1.00x)  (1.00x)  (1.00x)  (1.00x)
-fizz_buzz_fast_mod(unpredictable)/latency  (1.44x)  (1.43x)  (1.47x)  (1.53x)
-fizz_buzz_lut(unpredictable)/latency       (0.87x)  (0.88x)  (0.92x)  (1.02x)
+[*] baseline
+(0) speedup(slowest:1.00x) // no baseline against the slowest
+[1] p50((stat.tsc[ns]/bench.operations))
+[2] p99((stat.tsc[ns]/bench.operations))
 
-(0) speedup(slowest:1.00x) // relative speedup against the baseline
 ```
-<!-- .element: style="font-size:14px;" -->
+<!-- .element: style="font-size:20px;" -->
 
-```cpp
-// benchmark (without baseline)                   [1]      [2]      [3]      [4]
-// -----------------------------------------  -------  -------  -------  -------
-// fizz_buzz(unpredictable)/latency           (1.15x)  (1.11x)  (1.10x)  (1.03x)
-// fizz_buzz_fast_mod(unpredictable)/latency  (1.65x)  (1.63x)  (1.60x)  (1.53x)
-// fizz_buzz_lut(unpredictable)/latency       (1.00x)  (1.00x)  (1.00x)  (1.00x)
-//
-// (0) speedup(slowest:1.00x) // relative speedup against the slowest
-```
-<!-- .element: style="font-size:14px;" -->
+<p align="left">
+<img src="images/baseline.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
@@ -1638,10 +1663,10 @@ Approaches
 <tr>
 <td>
 <p align="left">
-<img src="images/td.png" style="width: 900px; height:350px; background:none; border:none; box-shadow:none;" />
+<img src="images/td.png" style="width: 900px; height:350px; background:none; border:none; box-shadow:none;margin: 0 0;" />
 </p>
 <td>
-<pre style="font-size:14px"><code>
+<pre style="font-size:14px;margin: 0 0;"><code>
 [Level] Category     Desktop  Server      HPC
 -------------------- -------  ------   ------
 [1] Retiring          20–50%  10–30%   30–70%
@@ -1652,6 +1677,11 @@ Approaches
 </td>
 </tr>
 </table>
+
+```cpp
+// toplev - https://github.com/andikleen/pmu-tools
+```
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -1736,21 +1766,16 @@ int main() {
   bench(fizz_buzz, range<int>{.start = 0, .stop = 15});
   bench(fizz_buzz, unpredictable<int>);
 
-  // ...
+  perf::report(bench[
+    perf::stat::retiring,
+    perf::stat::bad_speculation,
+    perf::stat::frontend_bound,
+    perf::stat::backend_bound
+  ], median);
 }
 ```
 
 ----
-
-```cpp
-perf::report(bench[
-  perf::stat::retiring,
-  perf::stat::bad_speculation,
-  perf::stat::frontend_bound,
-  perf::stat::backend_bound
-], median);
-```
-<!-- .element: style="font-size:15px" -->
 
 ```
 benchmark                                   [1]   [2]   [3]   [4]
@@ -1785,7 +1810,6 @@ auto ipc = instructions / cycles;
 auto cpi = cycles / instructions;
 auto upc = uops / cycles;
 
-// toplev - https://github.com/andikleen/pmu-tools
 ```
 
 ----
@@ -1801,7 +1825,7 @@ auto upc = uops / cycles;
 
 ----
 
-#### Verification
+#### verification
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1828,7 +1852,7 @@ int main() {
 
 ----
 
-#### Testing
+#### testing
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1840,10 +1864,11 @@ auto disassemble = [](auto fn, auto... ts) {
     perf::code::label(End);
   };
   perf::prevent_elision(&decltype(invoke)::operator());
-  return analyzer << perf::mca::region{
+  analyzer << perf::mca::region{
     perf::code::labels[Begin],
     perf::code::labels[End],
   };
+  return analyzer[];
 };
 
 auto trace = [](auto fn, auto... ts) {
@@ -1852,7 +1877,8 @@ auto trace = [](auto fn, auto... ts) {
   profiler.start();
   perf::prevent_elision(fn(ts...));
   profiler.stop();
-  return analyzer << profiler[perf::trace::instructions];
+  analyzer << profiler[perf::trace::instructions];
+  return analyzer[];
 };
 
 auto analyze = [](auto fn, auto... ts) {
@@ -1861,16 +1887,17 @@ auto analyze = [](auto fn, auto... ts) {
   profiler.start();
   perf::prevent_elision(fn(ts...));
   profiler.stop();
-  return analyzer << profiler[perf::trace::instructions];
+  analyzer << profiler[perf::trace::instructions];
+  return analyzer[];
 };
 ```
-<!-- .element: style="font-size:14px;" -->
+<!-- .element: style="font-size:13px;" -->
 
 ----
 
 ```cpp
 "disassemble"_test = [] {
-  auto&& instructions = disassemble(fizz_buzz, int{});
+  const auto& instructions = disassemble(fizz_buzz, int{});
 
   perf::verify(19u == instructions.size());
   perf::verify(instructions[0].contains("imul"));
@@ -1882,7 +1909,7 @@ auto analyze = [](auto fn, auto... ts) {
 
 ```cpp
 "trace"_test = [] {
-  auto&& instructions = trace(fizz_buzz, 15);
+  const auto& instructions = trace(fizz_buzz, 15);
 
   perf::verify(8u == instructions.size());
   perf::verify(instructions[0].contains("imul"));
@@ -1905,7 +1932,7 @@ auto analyze = [](auto fn, auto... ts) {
 
 ```cpp
 "analyze"_test = [] {
-  auto&& timeline = analyze(fizz_buzz, 15);
+  const auto& timeline = analyze(fizz_buzz, 15);
 
   perf::verify(8u == timeline.size());
   perf::verify(6u == timeline[0].dispatch_width);
@@ -1938,7 +1965,7 @@ auto analyze = [](auto fn, auto... ts) {
 
 ----
 
-#### Validation
+#### validation
 <!-- .element: style="text-align:left" -->
 
 ```sh
@@ -1958,6 +1985,22 @@ auto analyze = [](auto fn, auto... ts) {
 
 ----
 
+### Performance Is Not a Number!
+<!-- .element: style="text-align:left" -->
+
+```cpp
+└─ [0] Always measure
+     Avoiding Microbenchmarking Pitfalls
+        ├─ [1] The Noise  // Operating System
+        ├─ [2] The Bias   // Measurements bias
+        ├─ [3] The Faith  // Profiling/Analyzing
+        ├─ [4] The Chaos  // Top-down Method
+        ├─ [5] The Truth  // Testing/Validation
+        └─ ...
+```
+
+----
+
 #### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 <!-- .element: style="text-align:left" -->
 
@@ -1969,28 +2012,12 @@ auto analyze = [](auto fn, auto... ts) {
 ```cpp
  user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
 ```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left;font-size:11px;" -->
+<!-- .element: style="text-align:left;font-size:11px;" -->
 
 <p align="left">
 &nbsp; <img src="images/gh_html.png" style="width: 85%; background:none; border:none; box-shadow:none;" />
 </p>
-<!-- .element: class="fragment" data-fragment-index="1" style="margin: -30px 0;" -->
-
-----
-
-### Performance Is Not a Number!
-<!-- .element: style="text-align:left" -->
-
-```cpp
-└─ [0] Always measure
-     Avoiding Microbenchmarking Pitfalls
-        ├─ [1] The Noise
-        ├─ [2] The Bias
-        ├─ [3] The Faith
-        ├─ [4] The Chaos
-        ├─ [5] The Truth
-        └─ ...
-```
+<!-- .element: style="margin: -30px 0;" -->
 
 ----
 
@@ -2014,21 +2041,21 @@ auto analyze = [](auto fn, auto... ts) {
 ### Further reading
 <!-- .element: style="text-align:left" -->
 
-##### Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+##### - Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
+##### - AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### ARM - https://developer.arm.com/documentation/ddi0487/latest
+##### - ARM - https://developer.arm.com/documentation/ddi0487/latest
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-##### Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
+##### - Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
 ---
 
-##### Resources - [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
+##### - Resources - [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
-##### Studies - [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+##### - Studies - [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
 <!-- .element: style="text-align:left; margin: 0 0;" -->
           </script>
         </section>
