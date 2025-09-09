@@ -361,7 +361,7 @@
   ├─ [2] The Bias
   ├─ [3] The Faith
   ├─ [4] The Chaos
-  ├─ [5] The Truth
+  ├─ [5] The Illusion
   └─ ...
 ```
 
@@ -552,9 +552,9 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 
 
 ```cpp
-// Measurements are not following normal distribution
-// Measurements are not independent
-// Latency vs. Throughput / Cold vs. Warm / ...
+// Latency vs. Throughput
+// Cold vs. Warm
+// Code layout / Memory layout
 // Statistically sound conclusions
 ```
 
@@ -703,9 +703,11 @@ perf::bench::throughput::par;
 ----
 
 ```cpp
+import perf;
+
 int main() {
   perf::runner bench{
-    perf::bench::latency{.samples = 1}; // iterations deduced
+    perf::bench::latency{.iterations = 1, .samples = 1};
   };
 
   bench(fizz_buzz, 15);
@@ -714,8 +716,27 @@ int main() {
   bench(fizz_buzz, 0);
 
   perf::report(bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::bar(bench[perf::stat::tsc / perf::bench::operations]);
+}
+```
+<!-- .element: style="font-size:19px;" -->
 
-  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
+----
+
+----
+
+```cpp
+int main() {
+  perf::runner bench{
+    perf::bench::latency{.iterations = {}, .samples = 1};
+  };
+
+  bench(fizz_buzz, 15);
+  bench(fizz_buzz, 3);
+  bench(fizz_buzz, 5);
+  bench(fizz_buzz, 0);
+
+  perf::report(bench[perf::stat::tsc / perf::bench::operations]);
   perf::plot::bar(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
@@ -734,14 +755,10 @@ fizz_buzz(0)/latency   (2.46x) 1.31
 (0) speedup(slowest:1.00x)
 [1] (stat.tsc[ns]/bench.operations)
 ```
-<!-- .element: style="font-size:14px;" -->
+<!-- .element: style="font-size:15px;" -->
 
 <p align="left">
-<img src="images/fb1.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-</p>
-
-<p align="left">
-<img src="images/fb2.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/fb2.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
@@ -749,7 +766,7 @@ fizz_buzz(0)/latency   (2.46x) 1.31
 ```cpp
 int main() {
   perf::runner bench{
-    perf::bench::latency{}; // iterations deduced, samples deduced
+    perf::bench::latency{.iterations = {}, .samples = {}}; // both deduced (default)
   }
 
   bench(fizz_buzz, 15);
@@ -762,8 +779,8 @@ int main() {
     min, median, p90, p99
   );
 
-  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
   perf::plot::bar (bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
   perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
@@ -784,18 +801,25 @@ fizz_buzz(0)/latency   (1.82x) 1.22  (2.34x) 1.39  (2.20x) 1.53  (2.07x) 1.64
 [2] median((stat.tsc[ns]/bench.operations))
 [3] p90((stat.tsc[ns]/bench.operations))
 [4] p99((stat.tsc[ns]/bench.operations))
+
+// Measurements are not following normal distribution
+// Measurements are not independent
 ```
 <!-- .element: style="font-size:12px;" -->
-
-<p align="left">
-<img src="images/fb3.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-</p>
 
 <p align="left">
 <img src="images/fb4.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
+
+
+<p align="left">
+<img src="images/fb3.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+----
+
 
 #### Empirical distribution function (ecdf)
 <!-- .element: style="text-align:left" -->
@@ -815,6 +839,10 @@ perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 /**
  * Branch Predictor can learn 10'000 1/0 branches
  * First-time backward branches -> taken
+ *
+ * @pseudo-code
+ * cpu[0].branch_predictor[ip].history = {1, 1, 1, 0, 0, ...};
+ * @end-pseudo-code
  */
 ```
 
@@ -826,8 +854,7 @@ perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 
 ```cpp
 /**
- * pseudo.cpu[0].
- *   branch_predictor[ip].history = {1, 1, 1, 0, 0, ...};
+ * shuffle(measure(repeat(fn)) -> measure(repeat(shuffle(fn));
  */
 auto bench(auto fn, auto... ts) -> nanoseconds {
   // ...
@@ -837,10 +864,6 @@ auto bench(auto fn, auto... ts) -> nanoseconds {
   }
   // ...
 }
-```
-
-```cpp
-// shuffle(measure(repeat(fn)) -> measure(repeat(shuffle(fn));
 ```
 
 ----
@@ -1023,7 +1046,6 @@ perf::bench::latency{.iterations = 1, .samples = 1};
 
 ----
 
-
 #### Box / Errorbar
 <!-- .element: style="text-align:left" -->
 
@@ -1045,21 +1067,8 @@ perf::plot::box(bench[perf::time::tsc / perf::bench::operations],
 
 ----
 
-#### empirical distribution function (ecdf)
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::plot::ecdf(bench[perf::time::tsc / perf::bench::operations]);
-```
-
-<p align="left">
-<img src="images/ecdf1.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
-
-----
-
-```cpp
-user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz
+user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./fizz_buzz # tty
 ```
 
 <table>
@@ -1814,7 +1823,7 @@ auto upc = uops / cycles;
 
 ----
 
-### [5] The Truth
+### [5] The Illusion
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1862,36 +1871,29 @@ auto disassemble = [](auto fn, auto... ts) {
     perf::code::label(Begin);
     perf::prevent_elision(fn(ts...));
     perf::code::label(End);
-  };
-  perf::prevent_elision(&decltype(invoke)::operator());
-  analyzer << perf::mca::region{
-    perf::code::labels[Begin],
-    perf::code::labels[End],
-  };
-  return analyzer[];
+  };                                     auto trace = [](auto fn, auto... ts) {
+  perf::prevent_elision(                   perf::profiler profiler{perf::trace::instructions};
+    &decltype(invoke)::operator()          perf::analyzer analyzer{perf::mca::assembly};
+  );                                       profiler.start();
+  analyzer << perf::mca::region{           perf::prevent_elision(fn(ts...));
+    perf::code::labels[Begin],             profiler.stop();
+    perf::code::labels[End],               analyzer << profiler[perf::trace::instructions];
+  };                                       return analyzer[];
+  return analyzer[];                     };
 };
 
-auto trace = [](auto fn, auto... ts) {
-  perf::profiler profiler{perf::trace::instructions};
-  perf::analyzer analyzer{perf::mca::assembly};
-  profiler.start();
-  perf::prevent_elision(fn(ts...));
-  profiler.stop();
-  analyzer << profiler[perf::trace::instructions];
-  return analyzer[];
-};
 
-auto analyze = [](auto fn, auto... ts) {
-  perf::profiler profiler{perf::trace::instructions};
-  perf::analyzer analyzer{perf::mca::timeline};
-  profiler.start();
-  perf::prevent_elision(fn(ts...));
-  profiler.stop();
-  analyzer << profiler[perf::trace::instructions];
-  return analyzer[];
-};
+           auto analyze = [](auto fn, auto... ts) {
+             perf::profiler profiler{perf::trace::instructions};
+             perf::analyzer analyzer{perf::mca::timeline};
+             profiler.start();
+             perf::prevent_elision(fn(ts...));
+             profiler.stop();
+             analyzer << profiler[perf::trace::instructions];
+             return analyzer[];
+           };
 ```
-<!-- .element: style="font-size:13px;" -->
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -1991,11 +1993,11 @@ auto analyze = [](auto fn, auto... ts) {
 ```cpp
 └─ [0] Always measure
      Avoiding Microbenchmarking Pitfalls
-        ├─ [1] The Noise  // Operating System
-        ├─ [2] The Bias   // Measurements bias
-        ├─ [3] The Faith  // Profiling/Analyzing
-        ├─ [4] The Chaos  // Top-down Method
-        ├─ [5] The Truth  // Testing/Validation
+        ├─ [1] The Noise    // Operating System
+        ├─ [2] The Bias     // Measurements bias
+        ├─ [3] The Faith    // Profiling/Analyzing
+        ├─ [4] The Chaos    // Top-down Method
+        ├─ [5] The Illusion // Testing/Validation
         └─ ...
 ```
 
