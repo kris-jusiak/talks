@@ -626,49 +626,49 @@ Throughput
 
 ----
 
-##### [[gnu::section("latency")]]
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-auto latency(auto fn, auto... ts) {
-  perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
-    checksum ^= fn(checksum ^ ts...); // data dependency
+#pragma clang section text = "latency"
+
+  auto latency(auto fn, auto... ts) {
+    for (auto i = 0u; i < iterations; ++i) {
+      checksum ^= fn(checksum ^ ts...); // data dependency
+    }
   }
-}
 ```
 
-##### https://uops.info/table.html
-<!-- .element: style="text-align:left" -->
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
 ```cpp
-template<auto N>
-auto latency(auto fn) { // https://github.com/andreas-abel/nanoBench
-  return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
-}
+  /**
+  * https://uops.info/table.html
+  * https://github.com/andreas-abel/nanoBench
+  */
+  namespace uops_info {
+    template<auto N>
+    auto latency(auto fn) {
+      return perf::unroll<2*N>(fn) - perf::unroll<N>(fn);
+    }
+  }
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
-##### [[gnu::section("throughput")]]
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-auto throughput(auto fn, auto... ts) {
-  perf::code::align(alignment) for (auto i = 0u; i < iterations; ++i) {
-    fn(ts...);
-  } // ?
-}
+#pragma clang section text = "throughput"
+
+  auto throughput(auto fn, auto... ts) {
+    for (auto i = 0u; i < iterations; ++i) {
+      fn(ts...);
+    } // ?
+  }
 ```
 
 ```cpp
-// policies
-perf::bench::throughput::seq;
-perf::bench::throughput::unseq;
-perf::bench::throughput::unroll;
-perf::bench::throughput::par;
-...
+  // policies
+  perf::bench::throughput::seq;
+  perf::bench::throughput::unseq;
+  perf::bench::throughput::unroll;
+  perf::bench::throughput::par;
+  ...
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
