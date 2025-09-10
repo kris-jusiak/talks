@@ -528,6 +528,11 @@ div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
 <img src="images/self2.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
 </p>
 
+```cpp
+// max_ipc == dispatch_width, branch_missprediction_penalty, cache load/store, ...
+```
+<!-- .element: style="text-align:left;font-size:14px" -->
+
 ----
 
 ### [2] The Bias
@@ -714,7 +719,7 @@ latency vs throughput for add/sub/... (need at least one example)
  */
 int main() {
   perf::runner bench{
-    perf::bench::latency{.iterations = ITERATIONS, .samples = SAMPLES}
+    perf::bench::latency{.iterations = ..., .samples = ...}
   };
 
   bench(fizz_buzz, 15);
@@ -722,57 +727,10 @@ int main() {
   bench(fizz_buzz, 5);
   bench(fizz_buzz, 0);
 
-  perf::report(bench[perf::stat::tsc / perf::bench::operations,
-    /*perf::bench::operations, perf::bench::samples*/], /*mean*/
-  );
   perf::plot::bar(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
 <!-- .element: style="font-size:17px;" -->
-
-----
-
-```cpp
-// iterations=1, samples=1                 // iterations=1, samples=100
-benchmark                        [1]       benchmark                       [1]
----------------------  -------------       ---------------------  ------------
-fizz_buzz(15)/latency  (8.67x)  4.46       fizz_buzz(15)/latency  (1.41x) 2.40
-fizz_buzz(3)/latency   (1.00x) 38.69       fizz_buzz(3)/latency   (3.76x) 0.90
-fizz_buzz(5)/latency   (1.02x) 37.95       fizz_buzz(5)/latency   (1.00x) 3.39
-fizz_buzz(0)/latency   (2.74x) 14.14       fizz_buzz(0)/latency   (1.95x) 1.73
-
-(0) speedup(slowest:1.00x)                 (0) speedup(slowest:1.00x)
-[1] (stat.tsc[ns]/bench.operations)        [1] mean((stat.tsc[ns]/bench.operations))
-
-
-
-// iterations=10'000, samples=1            // iterations=10'000, samples=100
-benchmark                       [1]        benchmark                       [1]
----------------------  ------------        ---------------------  ------------
-fizz_buzz(15)/latency  (2.45x) 1.30        fizz_buzz(15)/latency  (2.34x) 1.42
-fizz_buzz(3)/latency   (1.89x) 1.69        fizz_buzz(3)/latency   (1.97x) 1.66
-fizz_buzz(5)/latency   (1.00x) 3.20        fizz_buzz(5)/latency   (1.00x) 3.27
-fizz_buzz(0)/latency   (2.09x) 1.53        fizz_buzz(0)/latency   (2.28x) 1.40
-
-(0) speedup(slowest:1.00x)                 (0) speedup(slowest:1.00x)
-[1] (stat.tsc[ns]/bench.operations))       [1] mean((stat.tsc[ns]/bench.operations))
-
-
-
-// iterations=deduced, samples=deduced
-benchmark                       [1]            [2]         [3]
----------------------  ------------  -------------  ----------
-fizz_buzz(15)/latency  (2.29x) 1.42  (1.00x) 40845  (1.00x) 30
-fizz_buzz(3)/latency   (1.97x) 1.65  (1.02x) 39884  (1.00x) 29
-fizz_buzz(5)/latency   (1.00x) 3.25  (1.08x) 37722  (1.01x) 32
-fizz_buzz(0)/latency   (2.33x) 1.40  (1.01x) 40534  (1.00x) 28
-
-(0) speedup(slowest:1.00x)
-[1] mean((stat.tsc[ns]/bench.operations))
-[2] mean(bench.operations)
-[3] mean(bench.samples)
-```
-<!-- .element: style="font-size:12px;" -->
 
 ----
 
