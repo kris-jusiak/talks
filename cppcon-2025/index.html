@@ -707,9 +707,14 @@ latency vs throughput for add/sub/... (need at least one example)
 ----
 
 ```cpp
+/**
+ * - iterations
+ * - operations
+ * - samples
+ */
 int main() {
   perf::runner bench{
-    perf::bench::latency{.iterations = 1, .samples = 1};
+    perf::bench::latency{.iterations = ITERATIONS, .samples = SAMPLES}
   };
 
   bench(fizz_buzz, 15);
@@ -717,105 +722,107 @@ int main() {
   bench(fizz_buzz, 5);
   bench(fizz_buzz, 0);
 
-  perf::report(bench[perf::stat::tsc / perf::bench::operations]);
-  perf::plot::bar(bench[perf::stat::tsc / perf::bench::operations]);
-}
-```
-<!-- .element: style="font-size:19px;" -->
-
-----
-
-```cpp
-int main() {
-  perf::runner bench{
-    perf::bench::latency{.iterations = {}, .samples = 1};
-  };
-
-  bench(fizz_buzz, 15);
-  bench(fizz_buzz, 3);
-  bench(fizz_buzz, 5);
-  bench(fizz_buzz, 0);
-
-  perf::report(bench[perf::stat::tsc / perf::bench::operations]);
-  perf::plot::bar(bench[perf::stat::tsc / perf::bench::operations]);
-}
-```
-<!-- .element: style="font-size:19px;" -->
-
-----
-
-```cpp
-benchmark                       [1]
----------------------  ------------
-fizz_buzz(15)/latency  (1.38x) 2.32
-fizz_buzz(3)/latency   (1.78x) 1.81
-fizz_buzz(5)/latency   (1.00x) 3.21
-fizz_buzz(0)/latency   (2.46x) 1.31
-
-(0) speedup(slowest:1.00x)
-[1] (stat.tsc[ns]/bench.operations)
-```
-<!-- .element: style="font-size:15px;" -->
-
-<p align="left">
-<img src="images/fb2.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-</p>
-
-----
-
-```cpp
-int main() {
-  perf::runner bench{
-    perf::bench::latency{.iterations = {}, .samples = {}}; // both deduced (default)
-  }
-
-  bench(fizz_buzz, 15);
-  bench(fizz_buzz, 3);
-  bench(fizz_buzz, 5);
-  bench(fizz_buzz, 0);
-
-  perf::report(
-    bench[perf::stat::tsc / perf::bench::operations],
-    min, median, p90, p99
+  perf::report(bench[perf::stat::tsc / perf::bench::operations,
+    /*perf::bench::operations, perf::bench::samples*/], /*mean*/
   );
-
-  perf::plot::bar (bench[perf::stat::tsc / perf::bench::operations]);
-  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
-  perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
+  perf::plot::bar(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
-<!-- .element: style="font-size:18px;" -->
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
 ```cpp
-benchmark                       [1]           [2]           [3]           [4]
----------------------  ------------  ------------  ------------  ------------
-fizz_buzz(15)/latency  (1.79x) 1.23  (2.40x) 1.36  (2.20x) 1.53  (2.16x) 1.57
-fizz_buzz(3)/latency   (4.24x) 0.52  (1.95x) 1.67  (1.85x) 1.82  (1.82x) 1.86
-fizz_buzz(5)/latency   (1.00x) 2.21  (1.00x) 3.26  (1.00x) 3.35  (1.00x) 3.39
-fizz_buzz(0)/latency   (1.82x) 1.22  (2.34x) 1.39  (2.20x) 1.53  (2.07x) 1.64
+// iterations=1, samples=1                 // iterations=1, samples=100
+benchmark                        [1]       benchmark                       [1]
+---------------------  -------------       ---------------------  ------------
+fizz_buzz(15)/latency  (8.67x)  4.46       fizz_buzz(15)/latency  (1.41x) 2.40
+fizz_buzz(3)/latency   (1.00x) 38.69       fizz_buzz(3)/latency   (3.76x) 0.90
+fizz_buzz(5)/latency   (1.02x) 37.95       fizz_buzz(5)/latency   (1.00x) 3.39
+fizz_buzz(0)/latency   (2.74x) 14.14       fizz_buzz(0)/latency   (1.95x) 1.73
+
+(0) speedup(slowest:1.00x)                 (0) speedup(slowest:1.00x)
+[1] (stat.tsc[ns]/bench.operations)        [1] mean((stat.tsc[ns]/bench.operations))
+
+
+
+// iterations=10'000, samples=1            // iterations=10'000, samples=100
+benchmark                       [1]        benchmark                       [1]
+---------------------  ------------        ---------------------  ------------
+fizz_buzz(15)/latency  (2.45x) 1.30        fizz_buzz(15)/latency  (2.34x) 1.42
+fizz_buzz(3)/latency   (1.89x) 1.69        fizz_buzz(3)/latency   (1.97x) 1.66
+fizz_buzz(5)/latency   (1.00x) 3.20        fizz_buzz(5)/latency   (1.00x) 3.27
+fizz_buzz(0)/latency   (2.09x) 1.53        fizz_buzz(0)/latency   (2.28x) 1.40
+
+(0) speedup(slowest:1.00x)                 (0) speedup(slowest:1.00x)
+[1] (stat.tsc[ns]/bench.operations))       [1] mean((stat.tsc[ns]/bench.operations))
+
+
+
+// iterations=deduced, samples=deduced
+benchmark                       [1]            [2]         [3]
+---------------------  ------------  -------------  ----------
+fizz_buzz(15)/latency  (2.29x) 1.42  (1.00x) 40845  (1.00x) 30
+fizz_buzz(3)/latency   (1.97x) 1.65  (1.02x) 39884  (1.00x) 29
+fizz_buzz(5)/latency   (1.00x) 3.25  (1.08x) 37722  (1.01x) 32
+fizz_buzz(0)/latency   (2.33x) 1.40  (1.01x) 40534  (1.00x) 28
 
 (0) speedup(slowest:1.00x)
-[1] min((stat.tsc[ns]/bench.operations))
-[2] median((stat.tsc[ns]/bench.operations))
-[3] p90((stat.tsc[ns]/bench.operations))
-[4] p99((stat.tsc[ns]/bench.operations))
-
-// Measurements are not following normal distribution
-// Measurements are not independent
+[1] mean((stat.tsc[ns]/bench.operations))
+[2] mean(bench.operations)
+[3] mean(bench.samples)
 ```
 <!-- .element: style="font-size:12px;" -->
 
-<p align="left">
-<img src="images/fb4.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-</p>
+----
+
+<table>
+<tr>
+  <td>
+    <pre style="font-size:10px">// iterations=1, samples=1</pre>
+    <img src="images/b1.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+
+  <td>
+    <pre style="font-size:10px">// iterations=1, samples=100</pre>
+    <img src="images/b3.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+</tr>
+</table>
+
+<table>
+<tr>
+  <td>
+    <pre style="font-size:10px">// iterations=10'000, samples=1</pre>
+    <img src="images/b2.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+
+  <td>
+    <pre style="font-size:10px">// iterations=10'000, samples=100</pre>
+    <img src="images/b4.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+</tr>
+</table>
+
+<table>
+<tr>
+  <td>
+    <pre style="font-size:10px">// iterations=deduced, samples=deduced</pre>
+    <img src="images/b5.png" style="width: 60%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+</tr>
+</table>
 
 ----
 
-<p align="left">
-<img src="images/fb3.png" style="width: 65%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-</p>
+```cpp
+// work towards normal distrubtion -> no mean for sounds statitscs
+// Measurements are not following normal distribution
+// Measurements are not independent
+
+bench[], min, median, p90, p99
+```
+<!-- .element: style="font-size:12px;" -->
 
 ----
 
@@ -830,10 +837,6 @@ perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 <p align="left">
 <img src="images/fb5.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
 </p>
-
-```cpp
-// work towards normal distrubtion -> no mean for sounds statitscs
-```
 
 ----
 
