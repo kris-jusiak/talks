@@ -397,33 +397,73 @@ int main();
 #### Linux 6.x - https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left" -->
 
-<p align="left">
-<img src="images/linux.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: -10px 0;" />
-</p>
+<table>
+<tr>
+  <td>
+ <pre><code>int main() {
+  // ...
+}</code></pre>
+  </td>
+  <td>
+  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  </td>
+  </tr>
+</table>
 
 ----
 
-#### Linux 6.x (ring 2)
+#### Linux 6.x
 <!-- .element: style="text-align:left" -->
 
 ```sh
 # Kernel Mode Task-Isolation - https://lwn.net/articles/816298
 isolcpus=<cpu number>,...,<cpu number> # bootloader
-```
 
-```sh
 
 # Disable CPU Frequency Scaling, ...
 pyperf system tune # pip install pyperf
-```
 
-
-```sh
 
 # Affinity / Priority
 taskset -c <cpu number> ... # perf::thread::set_affinity(self, <cpu number>)
 nice -n -20  ...            # perf::thread::set_priority(self, max)
 ```
+<!-- .element: style="text-align:left;font-size:20px" -->
+
+----
+
+#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+/**
+ * No kernel (ring 0)
+ */
+int efi_main(perf::uefi::sys* sys) {
+  perf::scoped _{
+     // DCACHE - Data Cache
+     // IBRS   - Indirect Branch Restricted Speculation
+     // ...
+    .setup    = [] { perf::cpu::disable(DCACHE, IBRS); },
+    .teardown = [] { perf::cpu::enable (DCACHE, IBRS); },
+  };
+
+  // ...
+
+  perf::report(
+    sys->stdout,
+    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    min, median, p90, p99
+  );
+}
+```
+<!-- .element: style="text-align:left;font-size:20px" -->
+
+```sh
+$CXX -DPERF_UEFI -target x86_64 \              # test: qemu-system-x86_64
+  -ffreestanding -fno-exceptions -fno-rtti ... # live: boot/USB
+```
+<!-- .element: style="text-align:left;font-size:18px" -->
 
 ----
 
@@ -447,7 +487,7 @@ int main() {
   // ...
 }
 ```
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left;font-size:17px" -->
+<!-- .element: style="text-align:left;font-size:17px" -->
 
 ```sh
 name  info
@@ -458,10 +498,10 @@ cxx   gcc-15.0.0
 cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
 cache iL1: 32Kb/64b, dL1: 48Kb/64b
 ```
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left;font-size:16px" -->
+<!-- .element: style="text-align:left;font-size:16px" -->
 
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: class="fragment" data-fragment-index="2" style="text-align:left; margin: 0px 5px;" -->
+<!-- .element: style="text-align:left; margin: 0px 5px;" -->
 
 ----
 
@@ -471,25 +511,26 @@ cache iL1: 32Kb/64b, dL1: 48Kb/64b
 ```cpp
 import perf; // compile-time checks
 ```
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ```cpp
 int main() {
-  // measured vs. documented
-  // max µops/cycle vs. dispatch width
-  // branch misprediction penalty
-  // dL1/dL2/dL3 load/store latency
-  // ...
   perf::self::test({.verbose = true}); // run-time checks
 }
+
+// measured vs. documented
+//  dL1/dL2/dL3 load/store latency
+//  branch misprediction penalty
+//  max µops/cycle vs. dispatch width
+//  ...
 ```
 <!-- .element: class="fragment" data-fragment-index="2" -->
 
 ----
 
-<p align="left">
-<code style="font-size:13px;text-align:left;">user@perf:~# taskset -c 2 nice -n -20 ./a.out</code> <span class="fragment" data-fragment-index="2"><code style="font-size:13px;text-align:left;"> # xterm -ti 340</code></span>
-</p>
+```
+user@perf:~# taskset -c 2 nice -n -20 ./a.out # xterm -ti 340
+```
+<!-- .element: style="text-align:left;font-size:13px; margin: 15px -5px;" -->
 
 ```
 benchmark                         [1]            [2]
@@ -503,51 +544,24 @@ div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
 [1] (stat.cycles/bench.operations)                    // https://github.com/andreas-abel/nanoBench
 [2] (stat.mca_cycles/bench.operations)                // https://github.com/travisdowns/uarch-bench
 ```
-<!-- .element: style="text-align:left;font-size:14px" -->
+<!-- .element: style="text-align:left;font-size:12px; margin: -10px 0;" -->
 
 <p align="left">
-<img src="images/self2.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
+<img src="images/self2.png" style="width: 85%; background:none; border:none; box-shadow:none;" />
 </p>
-<!-- .element: class="fragment" data-fragment-index="2" -->
 
-----
+```java
+add(reg,reg)/latency:      sub(reg,reg)/latency:      mult(reg,reg)/latency:     div(reg,reg)/latency:
+ [0] [1]                    [0] [1]                    [0] [1]                    [0] [1]
+ --- ------------           --- ------------           --- -------------          --- ------------
+  1. add esi, edi            1. sub edi, esi            1. imul esi, edi           1. mov eax, edi
+                                                                                   2. cdq
+                                                                                   3. idiv esi
 
-#### [Unified Extensible Firmware Interface](https://en.wikipedia.org/wiki/UEFI) (UEFI)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-/**
- * No kernel (ring 0)
-*/
-int efi_main(perf::uefi::sys* sys) {
+ [0] index                  [0] index                  [0] index                  [0] index
+ [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel
 ```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-```cpp
-  perf::cpu::disable(features...);
-  // ...
-  perf::cpu::enable (features...);
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-```cpp
-}
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-```cpp
-// features
-//  DCACHE - Data Cache
-//  IBRS   - Indirect Branch Restricted Speculation
-//   ...
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-```sh
-$CXX -DPERF_UEFI -target x86_64 \              # test: qemu-system-x86_64
-  -ffreestanding -fno-exceptions -fno-rtti ... # live: boot/USB
-```
-<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left;font-size:18px" -->
+<!-- .element: style="text-align:left;font-size:11px; margin: -35px 0;" -->
 
 ----
 
@@ -1838,6 +1852,11 @@ fizz_buzz(unpredictable)/latency           0.12  0.18  0.14  0.56
 ----
 
 ```cpp
+evens
+
+technique
+SWAR, SIMD, LUT, CTA, PARgg/s
+
 // Retiring
 
 // Bad Speculation
