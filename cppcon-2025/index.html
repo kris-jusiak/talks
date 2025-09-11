@@ -663,6 +663,7 @@ int main() {
   };
 
   benchmark(fizz_buzz, {});
+
   perf::plot::bar(benchmark[perf::stat::tsc / perf::bench::operations]);
 }
 ```
@@ -720,6 +721,26 @@ for (auto i = 0u; i < iterations; ++i) {  // - throughput::unseq
 // - https://arxiv.org/abs/1911.03282
 ```
 <!-- .element: style="text-align:left; font-size:15px; " -->
+
+----
+
+```cpp
+
+int main() {
+  perf::runner bench{
+    perf::bench::latency{},
+    perf::bench::throughput{.policy = seq},
+  };
+
+  bench(fizz_buzz, {});
+
+  perf::plot::bar(bench[time::tsc]);                                    // total
+  perf::plot::bar(bench[time::tsc / perf::bench::operations]);          // latency    [ns/op]
+  perf::plot::bar(bench[perf::bench::operations / seconds(time::tsc)]); // throughput [op/s]
+  // ...
+}
+```
+<!-- .element: style="text-align:left; font-size:17px; " -->
 
 ----
 
@@ -781,18 +802,15 @@ for (auto i = 0u; i < iterations; ++i) {  // - throughput::unseq
 <img src="images/cpu2.png" style="width: 60%; background:none; border:none; box-shadow:none;" />
 </p>
 
-
 ```cpp
+/**
+ * vary(measure(repeat(fn)) -> measure(repeat(vary(fn))
+ */
 for (auto i = 0u; i < iterations; ++i) {
   // fn(ts...);
   fn(ts[i]...); // vary inputs per iteration based on the distribution
 }
 ```
-
-```cpp
-// vary(measure(repeat(fn)) -> measure(repeat(vary(fn))
-```
-<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -922,7 +940,7 @@ perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 
 ----
 
-#### sixel - https://www.arewesixelyet.com
+#### gnuplot/sixel - https://www.arewesixelyet.com
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -998,7 +1016,7 @@ $CXX -Wl,--shuffle-sections=0 -fuse-ld=lld ...
 ```
 
 ```cpp
-// Fixed during execution
+// Fixed during execution!
 ```
 
 ----
@@ -1359,7 +1377,7 @@ profiler[perf::trace::instructions / perf::trace::cycles];
 // IPC per IP
 ```
 
-```
+```cpp
 // https://compiler-explorer.com
 ```
 
@@ -1497,7 +1515,7 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
 
 ----
 
-#### control-flow-graph (CFG)
+#### control-flow-graph (cfg)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1632,7 +1650,7 @@ Approaches
      perf::record::instructions
      perf::trace::instructions
 
- - Increasing instruction per cycle (IPC) # max_ipc <= dispatch_width
+ - Increasing instruction per cycle (IPC)
      perf::stat::ipc    # stat::instructions   / stat::cycles
      perf::record::ipc  # record::instructions / record::cycles
      perf::trace::ipc   # trace::instructions  / trace::cycles
