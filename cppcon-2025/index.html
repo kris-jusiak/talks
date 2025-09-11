@@ -374,17 +374,14 @@ Focused on x86-64-linux-gnu
  ├─ IBS   - Instruction Based Sampling            // AMD
  ├─ LBR   - Last Branch Record                    // Intel, AMD
  └─ IPT   - Intel Processor Trace                 // Intel
-```
-<!-- .element: class="fragment" data-fragment-index="1" style="margin: 2% 2%; font-size:21px;" -->
 
-```cpp
 Powered by perf # https://github.com/qlibs/perf
  ├─ c++2x
  ├─ linux/perf                                    // perf_event_open/ipt-dev
  ├─ llvm/mca                                      // llvm-dev
  └─ gnuplot/sixel                                 // terminal
 ```
-<!-- .element: class="fragment" data-fragment-index="2" style="margin: 2% 2%; font-size:21px;" -->
+<!-- .element: style="margin: 2% 2%; font-size:21px;" -->
 
 ----
 
@@ -403,7 +400,6 @@ int main();
 <p align="left">
 <img src="images/linux.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: -10px 0;" />
 </p>
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
@@ -414,14 +410,12 @@ int main();
 # Kernel Mode Task-Isolation - https://lwn.net/articles/816298
 isolcpus=<cpu number>,...,<cpu number> # bootloader
 ```
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ```sh
 
 # Disable CPU Frequency Scaling, ...
 pyperf system tune # pip install pyperf
 ```
-<!-- .element: class="fragment" data-fragment-index="2" -->
 
 
 ```sh
@@ -430,7 +424,6 @@ pyperf system tune # pip install pyperf
 taskset -c <cpu number> ... # perf::thread::set_affinity(self, <cpu number>)
 nice -n -20  ...            # perf::thread::set_priority(self, max)
 ```
-<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left;font-size:21px" -->
 
 ----
 
@@ -482,6 +475,11 @@ import perf; // compile-time checks
 
 ```cpp
 int main() {
+  // measured vs. documented
+  // max µops/cycle vs. dispatch width
+  // branch misprediction penalty
+  // dL1/dL2/dL3 load/store latency
+  // ...
   perf::self::test({.verbose = true}); // run-time checks
 }
 ```
@@ -511,14 +509,6 @@ div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
 <img src="images/self2.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
 </p>
 <!-- .element: class="fragment" data-fragment-index="2" -->
-
-```cpp
-// max µops/cycle vs. dispatch width
-// branch misprediction penalty
-// dL1/dL2/dL3 load/store latency
-// ...
-```
-<!-- .element: class="fragment" data-fragment-index="3" style="text-align:left;font-size:14px; margin: -35px 0;" -->
 
 ----
 
@@ -787,7 +777,6 @@ auto throughput(auto fn, auto... ts) {      // policies
  0x1000: lookup_table:                      // data layout
           ...
 ```
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ---
 
@@ -804,7 +793,6 @@ auto throughput(auto fn, auto... ts) {      // policies
 <p align="left">
 <img src="images/cpu.png" style="width: 85%; background:none; border:none; box-shadow:none; margin: -15px 0;" />
 </p>
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
@@ -815,7 +803,6 @@ auto throughput(auto fn, auto... ts) {      // policies
 // Modern Branch Predictor can learn ~10'000 1/0 branches
 // First-time backward branches are always taken
 ```
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 <p align="left">
 <img src="images/btb.png" style="width: 77%; background:none; border:none; box-shadow:none; margin: -15px 0;" />
