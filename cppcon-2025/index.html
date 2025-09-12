@@ -115,8 +115,6 @@
       └── µArch     // hardware effects
 ```
 
-<!--// Low-Level: SIMD, SWAR, DOD, CTE, Par, ...-->
-
 ----
 
 ### [0] Always measure
@@ -154,8 +152,8 @@
  └─ System
     └── Application
 
-          vtune -collect hotspots -- ...
-          AMDuProfCLI --profile -t cpu -- ...
+          vtune -collect hotspots -- ...      # Intel
+          AMDuProfCLI --profile -t cpu -- ... # AMD
 
           perf probe -x /usr/lib/libc.so malloc
           perf record -g probe_libc:malloc ...
@@ -227,7 +225,6 @@
 ```
 <!-- .element: style="font-size:18px;" -->
 
-
 ----
 
 #### Always measure - https://docs.kernel.org/staging/static-keys.html
@@ -253,9 +250,9 @@
             profile = true;    // code-patching
 
             {
-              start(profiler); // jmp &profiler.start
+              start(profiler); // jmp &profiler::start
               // ...
-              stop(profiler);  // jmp &profiler.stop
+              stop(profiler);  // jmp &profiler::stop
             }
           }
 ```
@@ -277,10 +274,10 @@
 
     └── Application
 
-          linux-perf  # https://perf.wiki.kernel.org
-          dtrace      # https://github.com/opendtrace
           intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
           amd-uprof   # https://www.amd.com/en/developer/uprof.html
+          linux-perf  # https://perf.wiki.kernel.org
+          dtrace      # https://github.com/opendtrace
           tracy       # https://github.com/wolfpld/tracy
           gperftools  # https://github.com/gperftools/gperftools
           magic-trace # https://github.com/janestreet/magic-trace
@@ -417,7 +414,7 @@ int main();
 
 ```sh
 # Kernel Mode Task-Isolation - https://lwn.net/articles/816298
-isolcpus=<cpu number>,...,<cpu number> # bootloader
+isolcpus=<cpu numbers> # bootloader
 
 
 # Disable CPU Frequency Scaling, ...
@@ -425,8 +422,12 @@ pyperf system tune # pip install pyperf
 
 
 # Affinity / Priority
-taskset -c <cpu number> ... # perf::thread::set_affinity(self, <cpu number>)
-nice -n -20  ...            # perf::thread::set_priority(self, max)
+taskset -c <cpu numbers> ...
+nice -n -20 ...
+
+
+# Non-uniform memory access (NUMA) # lstopo
+numactl --cpunodebind=<node ids> --membind=<node ids> ...
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
@@ -521,16 +522,16 @@ int main() {
 
 ```cpp
 // measured vs. documented
-// - dL1/dL2/dL3 load/store latency
+// - dL1/dL2/dL3 load/store latency/bandwidth
 // - branch misprediction penalty
-// - max µops/cycle vs. dispatch width
+// - max(µops/cycle) vs. dispatch width
 //  ...
 ```
 <!-- .element: class="fragment" data-fragment-index="2" style="font-size:17px;" -->
 
 ----
 
-```
+```asm
 user@perf:~# taskset -c 2 nice -n -20 ./a.out
 ```
 <!-- .element: style="text-align:left;font-size:13px; margin: 15px -5px;" -->
@@ -554,7 +555,7 @@ div(reg,reg)/latency    (1.00x) 13.00  (1.00x) 13.00
 </p>
 
 ```java
-add(reg,reg)/latency:      sub(reg,reg)/latency:      mult(reg,reg)/latency:     div(reg,reg)/latency:
+add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:      div(reg,reg)/latency:
  [0] [1]                    [0] [1]                    [0] [1]                    [0] [1]
  --- ------------           --- ------------           --- -------------          --- ------------
   1. add esi, edi            1. sub edi, esi            1. imul esi, edi           1. mov eax, edi
@@ -613,40 +614,30 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mult(reg,reg)/latency:    
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// Not normally distributed*
-// Not independent*
+// NOT independent* / NOT normally distributed*
 ```
 <!-- .element: style="font-size:18px;" -->
 
 ```cpp
-struct bench {
-  std::size_t iterations{}; // set/estimated: time_budget, median_abolute_error, ...
-  std::size_t samples{};    // set/estimated: t_score, margin_of_error, coefficient_of_variation, ...
+struct measure {
+  size_t iterations{}; // estimate - time_budget, median_abolute_error, ...
+  size_t samples{};    // estimate - margin_of_error, coefficient_of_variation, ...
 
-  auto operator()(auto fn, auto... ts) {              // Time        Desc               now()
-    // ...                                            // ----------- ------------------ --------------------
-                                                      // tsc         Time-Stamp-Counter rdtsc{p} / freq
-    for (auto s = 0u; s < samples; ++s) {             // real_time   Wall clock         chrono::system_clock
-      auto start = now();                             // cpu_time    Process CPU        clock_gettime
-      for (auto i = 0u; i < iterations; ++i) {        // thread_time Thread CPU         clock_gettime
-        fn(ts...);                                    // steady_time Monotonic clock    chrono::steady_clock
-      }
-      auto end = now();
-
-      auto measurement = (end - now) / iterations; // ?
-
+  auto operator()(auto fn, auto... ts) {
+    // ...
+                                                  //  Time               now()
+    for (auto s = 0u; s < samples; ++s) {         //  ------------------ --------------------
+      auto start = now();                         //  Time-Stamp-Counter rdtsc{p} / freq
+      for (auto i = 0u; i < iterations; ++i) {    //  Wall clock         chrono::system_clock
+        fn(ts...);                                //  Process CPU        clock_gettime
+      }                                           //  Thread CPU         clock_gettime
+      auto stop = now();                          //  Monotonic clock    chrono::steady_clock
       // ...
     }
 
-    return stats(measurement...); // min, median, percentiles, stddev, ...
+    return stats; // min, median, percentiles, stddev, ...
   }
 };
-```
-<!-- .element: style="font-size:15px; margin: 0 0;" -->
-
-```cpp
-
-// * - usually due to the noise and the bias
 ```
 <!-- .element: style="font-size:17px; margin: 0 0;" -->
 
@@ -654,20 +645,37 @@ struct bench {
 
 ```cpp
 int main() {
-  perf::runner benchmark{
-    bench{.iterations = 1u,     .samples = 1u},
-    bench{.iterations = 10'000, .samples = 1u},
-    bench{.iterations = 1,      .samples = 100},
-    bench{.iterations = 10'000, .samples = 100},
-    bench{}, // estimated
-  };
-
-  benchmark(fizz_buzz, {});
-
-  perf::plot::bar(benchmark[perf::stat::tsc / perf::bench::operations]);
+  perf::runner bench{measure{}}; // estimated
+  bench(fizz_buzz, {});
+  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
-<!-- .element: style="font-size:20px;" -->
+
+<p align="left">
+<img src="images/normal2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+```cpp
+int main() {
+  perf::runner bench{
+    measure{.iterations = 1u,     .samples = 1u},
+    measure{.iterations = 10'000, .samples = 1u},
+    measure{.iterations = 1,      .samples = 100},
+    measure{.iterations = 10'000, .samples = 100},
+    measure{}, // estimated
+  };
+
+  bench(fizz_buzz, {});
+
+  perf::plot::bar(bench[
+    perf::stat::tsc / perf::bench::operations,
+    perf::stat::cpu_time / perf::bench::operations
+  ]);
+}
+```
+<!-- .element: style="font-size:15px;" -->
 
 <p align="left">
 <img src="images/is.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
@@ -675,7 +683,7 @@ int main() {
 
 ----
 
-#### Measurements <s>Confidence</s> ?
+#### Variability
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
@@ -703,16 +711,16 @@ int main() {
 
 ```cpp
 // Latency
-for (auto i = 0u; i < iterations; ++i) {
-  checksum ^= fn(checksum ^ ts...);       // data dependency
-  // std::atomic_thread_fence             // if mem-stores
+for (auto i = 0u; i < n; ++i) {
+  checksum ^= fn(checksum ^ ts...);   // data dependency
+  // memory fence                     // if mem-stores
 }
 
-// Throughput                             // - throughput::seq
-for (auto i = 0u; i < iterations; ++i) {  // - throughput::unseq
-  fn(ts...);                              // - throughput::unroll
-} // ?                                    // - throughput::par
-                                          // - ...
+// Throughput                         // - throughput::seq
+for (auto i = 0u; i < n; ++i) {       // - throughput::unseq
+  fn(ts...);                          // - throughput::unroll
+} // ?                                // - throughput::par
+                                      // - ...
 ```
 
 ```cpp
@@ -725,7 +733,6 @@ for (auto i = 0u; i < iterations; ++i) {  // - throughput::unseq
 ----
 
 ```cpp
-
 int main() {
   perf::runner bench{
     perf::bench::latency{},
@@ -739,6 +746,7 @@ int main() {
   perf::plot::bar(bench[perf::bench::operations / seconds(time::tsc)]); // throughput [op/s]
   // ...
 }
+// what and how to run is deduced based on the usage at compile-time
 ```
 <!-- .element: style="text-align:left; font-size:17px; " -->
 
@@ -776,7 +784,7 @@ int main() {
 // 0x0100: void unused();                     // code layout
 //
 // 0x0110: void fn(value) {
-// 0x0110:   push                             // stack setup
+// 0x0110:   push                             // stack
 //
 // 0x0114:   for (...) {
 // 0x0118:     auto i = lookup_table[value];  // memory access
@@ -785,7 +793,7 @@ int main() {
 // 0x0124:     }
 // 0x0128:   }
 //
-// 0x012C:   pop                              // stack cleanup
+// 0x012C:   pop                              // stack
 //         }
 //
 // 0x1000: lookup_table:                      // data layout
@@ -818,19 +826,18 @@ for (auto i = 0u; i < iterations; ++i) {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
-  // predictable
-  bench(fizz_buzz, 0);                                          // 0, 0, 0, ...
+  bench(fizz_buzz, std::integral_constant<int, 0>{});           // 0, 0, 0, ...
+  bench(fizz_buzz, 3);                                          // 3, 3, 3, ...
   bench(fizz_buzz, 15);                                         // 15, 15, 15, ...
 
-  // likely-predictable
   bench(fizz_buzz, sequence<int>{3, 5, 15, 0});                 // 3, 5, 15, 0, 3, 5, ...
   bench(fizz_buzz, range<int>{.start = 0, .stop = 15});         // 0, 1, ..., 15, 0, ...
   bench(fizz_buzz, range<int>{.start = 1, .stop = 1'000'000});  // 0, 1, ..., 1'000'000, ...
 
-  // likely-unpredictable
   bench(fizz_buzz, unpredictable<int>);                         // (-min<int>, max<int>), ...
   bench(fizz_buzz, choice<int>{                                 // 15,5,5,5,3,3,5,5,...
    .values = {3, 5, 15}
@@ -840,7 +847,7 @@ int main() {
   // ...
 }
 ```
-<!-- .element: style="font-size:17px;" -->
+<!-- .element: style="font-size:15px;" -->
 
 ----
 
@@ -870,17 +877,15 @@ fizz_buzz(unpredictable)/latency              (1.29x) 5.42  (1.33x) 5.66  (1.34x
 [4] p90((stat.tsc[ns]/bench.operations))
 [5] p99((stat.tsc[ns]/bench.operations))
 ```
-<!-- .element: style="font-size:12px;" -->
+<!-- .element: style="font-size:13px;" -->
 
 ```cpp
-// min*                                         // variance
-// max                                          // stddev     # standard deviation (variability), degrees_of_freedom = 1
-// mean*                                        // sem        # standard error (precision)
-// geomean*                                     // mae        # median absolute error
-// median                                       // mad        # median absolute deviation
-// percentile (p10, p25, p50, p75, p90*, p99*)  // cv         # coefficient of variation
+// min, max, mean, geomean, median, percentile(p10, p25, p50, p75, p90, p99)
+// variance, standar deviation (stddev), standard error (sem),
+// median absolute error (mae), median absolute deviation (mad), coefficient of variation (cv)
+// ...
 ```
-<!-- .element: style="font-size:12px;" -->
+<!-- .element: style="font-size:13px;" -->
 
 ----
 
@@ -944,29 +949,18 @@ perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-# printf '\033Pq#1@\033\\' # pixel
-```
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-
-```cpp
-user@perf:~# PERF_IO_PLOT_TERM="sixel"     ./a.out # term
-user@perf:~# PERF_IO_PLOT_TERM="wxt"       ./a.out # window
 user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
-// ...
 ```
+<!-- .element: style="font-size:15px;" -->
 
-<table>
-<tr>
-  <td>
-    <img src="images/bar2.png" style="width: 900px; height: 275px; background:none; border:none; box-shadow:none;" />
-  </td>
-  <td>
-    <img src="images/ecdf2.png" style="width: 900px; height: 275px; background:none; border:none; box-shadow:none;" />
-  </td>
-</tr>
-</table>
+<p align="left">
+<img src="images/bar2.png" style="width: 60%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ```cpp
+user@perf:~# PERF_IO_PLOT_TERM="sixel"     ./a.out # term  // printf "pixel: \033Pq#1@\033\\"
+user@perf:~# PERF_IO_PLOT_TERM="wxt"       ./a.out # window
+
 // jupyter notebook / matplotlib # https://jupyter.org
 ```
 <!-- .element: style="font-size:15px;" -->
@@ -980,7 +974,7 @@ user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
    0x0100: void unused();                     // code layout
 
    0x0110: void fn(value) {
-// 0x0110:   push                             // stack setup
+// 0x0110:   push                             // stack
 //
    0x0114:   for (...) {
 // 0x0118:     auto i = lookup_table[value];  // memory access
@@ -989,7 +983,7 @@ user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 // 0x0124:     }
    0x0128:   }
 
-// 0x012C:   pop                              // stack cleanup
+// 0x012C:   pop                              // stack
            }
 //
 // 0x1000: lookup_table:                      // data layout
@@ -1002,70 +996,84 @@ user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 <!-- .element: style="text-align:left" -->
 
 ```sh
-# Address Space Layout Randomization
+# Address Space Layout Randomization (ASLR)
 # - 0: none
 # - 1: stack, mmap, shared libs
-# - 2: everything above, heap, main binary (-fPIE)
+# - 2: 1, heap, main binary (-fPIE)
 echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
 ```
+<!-- .element: style="font-size:18px;" -->
 
 ```sh
+
 # Code Layout Randomization
-$CXX -ffunction-sections -fdata-sections -falign-functions=16 ...
-$CXX -Wl,--shuffle-sections=0 -fuse-ld=lld ...
+$CXX -ffunction-sections -falign-functions=16 -fdata-sections ...
+$CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
 ```
+<!-- .element: style="font-size:18px;" -->
 
 ```cpp
-// Fixed during execution!
-```
 
-----
-
-```cpp
-// TODO
-  auto fractal = [](size_t size, auto n) {
-    for (auto i =0 ; i < size; ++i) {
-        if (i % x) {
-        }
-    }
-  };
-
-  auto fractal = []<auto config>  [[gnu::noinlie, gnu::aligned(config.alignment)]] (size_t size, auto n) {
-    for (auto i =0 ; i < size; ++i) {
-        if (i % x) {
-        }
-
-        perf::compiler::nops<config.alignmemnt>(); // insert nop, ....
-    }
-  };
-
-  bench(foo, 100, unpredictable<int>); // both size and unpredictable (use it for alignment)
+// stablizer - https://github.com/ccurtsinger/stabilizer
+//  -Rcode -Rstack -Rheap
 ```
 <!-- .element: style="font-size:18px;" -->
 
 ----
 
 ```cpp
-// mph example
-// clflush
+auto fn_v1 = [] [[gnu::noinline]] (size_t size, int n) {
+  for (auto i =0 ; i < size; ++i) {
+      if (i % x) {
+      }
+  }
+};
 ```
+
+```cpp
+auto fn_v2 = []<auto... cfgs> [[gnu::noinlie, gnu::aligned(perf::align(cfgs...))]] (size_t size, int n) {
+  int stack[perf::align(cfgs)...];
+
+  perf::code::align(perf::align(cfgs...)) for (auto i = 0; i < size; ++i) {
+    if (i % n) {
+
+    }
+    perf::code::align(perf::align(cfgs...)); // asm { nop, nop, ... }; or .align
+  }
+};
+```
+<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
 ```cpp
-// pollute_heap - prevents continuous allocation
-// pre_fault
-// operator_new
+int main() {
+  perf::runner bench{perf::bench::latency{}};
+
+  for (auto i = 0; i < 16; ++i) {
+    bench(fn_v1, n, unpredictable<int>);
+    bench(fn_v2, n, unpredictable<int>);
+  }
+
+  perf::report(bench[perf::stat::tsc / perf::bench::opeartions]);
+}
+
 ```
+<!-- .element: style="font-size:18px;" -->
+
+----
+
+#### Hardware effects - memory layout
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-bench(sort, unpredicttabl | to<vector<int>(10)); // vs fds and move that complexity
-```
+// perf::cpu::cache::flush(addr);
+// perf::cpu::memory::prefetch();       # prefetch
+// perf::cpu::heap::pollute();          # prevents continuous allocation
+// perf::cpu::memory::pre_fault();      # touches faluts pages
+// ...
 
-```cpp
-perf::plot::box(bench[perf::time::tsc / perf::bench::operations],
-  perf::plot::complexity::n2
-);
+// mph example (cacheflush)
 ```
 
 ----
@@ -1103,7 +1111,8 @@ perf::profiler stat{            // perf stat -e
 
 static_assert(stat.is_syscall_free);
 
-start():  stop():               // simplified
+start():  stop():
+  // shr
   rdpmc     rdtscp
   rdpmc     rdpmc
   rdtsc     rdpmc
@@ -1165,6 +1174,10 @@ auto invoke = [&](auto fn, auto... ts) {
 perf::log(profiler[]); // [] - all elements
 ```
 
+```cpp
+//todo
+```
+
 ----
 
 ```cpp
@@ -1216,31 +1229,31 @@ perf::annotate(analyzer[]);
 <!-- .element: style="font-size:16px" -->
 
 ```
- [0] [1]  [2]                   [3]                              [4] [5] [6] [7] [8]                      [9]                                                                            [10]
- --- ---- --------------------- -------------------------------- --- --- --- --- ------------------------ ------------------------------------------------------------------------------ --------------
+ [0] [1]  [2]                   [3]                              [4] [5] [6] [7] [8]                                                                            [9]                  [10]
+ --- ---- --------------------- -------------------------------- --- --- --- --- ------------------------------------------------------------------------------ -------------------- --------------
                                 if (n % 15 == 0) {
-  1. 0100 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef        6  1   3  1.0 DeeeER.     .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     - {ADLPort1:50%}
-  2. 0106 05 88 88 88 08          add eax, 0x8888888               5  1   1  0.2 D===eER     .     .           -     -     -     -     -  0.50     -     -     -     -  0.50     -     -
-  3. 010b 3d 11 11 11 11          cmp eax, 0x11111111              5  1   1  0.2 D====eER    .     .        0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     -
-  4. 0110 72 36                   jb 0x36                          2  1   1  0.5 D=====eER   .     .        0.50     -     -     -     -     -  0.50     -     -     -     -     -     -
+  1. 0100 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef        6  1   3  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - DeeeER.     .     .  {ADLPort1:50%}
+  2. 0106 05 88 88 88 08          add eax, 0x8888888               5  1   1  0.2      -     -     -     -     -  0.50     -     -     -     -  0.50     -     - D===eER     .     .
+  3. 010b 3d 11 11 11 11          cmp eax, 0x11111111              5  1   1  0.2   0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - D====eER    .     .
+  4. 0110 72 36                   jb 0x36                          2  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - D=====eER   .     .
                                 } else if (n % 3 == 0) {
-  5. 0112 69 c7 ab aa aa aa       imul eax, edi, 0xaaaaaaab        6  1   3  1.0 D=eeeE--R   .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
-  6. 0118 05 aa aa aa 2a          add eax, 0x2aaaaaaa              5  1   1  0.2 D====eE-R   .     .        0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     -
-  7. 011d 3d 55 55 55 55          cmp eax, 0x55555555              5  1   1  0.2 .D====eER   .     .           -     -     -     -     -  0.50     -     -     -     -  0.50     -     -
-  8. 0122 72 2d                   jb 0x2d                          2  1   1  0.5 .D=====eER  .     .        0.50     -     -     -     -     -  0.50     -     -     -     -     -     -
+  5. 0112 69 c7 ab aa aa aa       imul eax, edi, 0xaaaaaaab        6  1   3  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - D=eeeE--R   .     .
+  6. 0118 05 aa aa aa 2a          add eax, 0x2aaaaaaa              5  1   1  0.2   0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - D====eE-R   .     .
+  7. 011d 3d 55 55 55 55          cmp eax, 0x55555555              5  1   1  0.2      -     -     -     -     -  0.50     -     -     -     -  0.50     -     - .D====eER   .     .
+  8. 0122 72 2d                   jb 0x2d                          2  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - .D=====eER  .     .
                                 } else if (n % 5 == 0) {
-  9. 0124 69 c7 cd cc cc cc       imul eax, edi, 0xcccccccd        6  1   3  1.0 .D=eeeE--R  .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
- 10. 012a 05 99 99 99 19          add eax, 0x19999999              5  1   1  0.2 .D====eE-R  .     .        0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     -
- 11. 012f 3d 33 33 33 33          cmp eax, 0x33333333              5  1   1  0.2 .D=====eER  .     .           -     -     -     -     -  0.50     -     -     -     -  0.50     -     -
- 12. 0134 48 8d 0d 2e 1d 00 00    lea rcx, [rip + 0x1d2e]          7  1   1  1.0 .D==eE---R  .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
- 13. 013b 48 8d 05 31 1d 00 00    lea rax, [rip + 0x1d31]          7  1   1  1.0 . D==eE--R  .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
- 14. 0142 48 0f 42 c1             cmovb rax, rcx                   4  1   1  0.5 . D=====eER .     .        0.50     -     -     -     -     -  0.50     -     -     -     -     -     -
- 15. 0146 eb 10                   jmp 0x10                         2  0   0  0.0 . D-------R .     .           -     -     -     -     -     -     -     -     -     -     -     -     -
+  9. 0124 69 c7 cd cc cc cc       imul eax, edi, 0xcccccccd        6  1   3  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - .D=eeeE--R  .     .
+ 10. 012a 05 99 99 99 19          add eax, 0x19999999              5  1   1  0.2   0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - .D====eE-R  .     .
+ 11. 012f 3d 33 33 33 33          cmp eax, 0x33333333              5  1   1  0.2      -     -     -     -     -  0.50     -     -     -     -  0.50     -     - .D=====eER  .     .
+ 12. 0134 48 8d 0d 2e 1d 00 00    lea rcx, [rip + 0x1d2e]          7  1   1  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - .D==eE---R  .     .
+ 13. 013b 48 8d 05 31 1d 00 00    lea rax, [rip + 0x1d31]          7  1   1  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - . D==eE--R  .     .
+ 14. 0142 48 0f 42 c1             cmovb rax, rcx                   4  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - . D=====eER .     .
+ 15. 0146 eb 10                   jmp 0x10                         2  0   0  0.0      -     -     -     -     -     -     -     -     -     -     -     -     - . D-------R .     .
                                 } else {
- 16. 0148 48 8d 05 16 1d 00 00    lea rax, [rip + 0x1d16]          7  1   1  1.0 . D===eE--R .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
- 17. 014f eb 07                   jmp 0x7                          2  0   0  0.0 . D-------R .     .           -     -     -     -     -     -     -     -     -     -     -     -     -
- 18. 0151 48 8d 05 16 1d 00 00    lea rax, [rip + 0x1d16]          7  1   1  1.0 . D====eE-R .     .           -  1.00     -     -     -     -     -     -     -     -     -     -     -
- 19. 0158 48 89 44 24 f8          mov qword ptr [rsp - 0x8], rax   5  2  12  0.5 . D=====eeeeeeeeeeeeER        -     -     -     -  0.50     -     -  0.50  0.50  0.50     -     -     -
+ 16. 0148 48 8d 05 16 1d 00 00    lea rax, [rip + 0x1d16]          7  1   1  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - . D===eE--R .     .
+ 17. 014f eb 07                   jmp 0x7                          2  0   0  0.0      -     -     -     -     -     -     -     -     -     -     -     -     - . D-------R .     .
+ 18. 0151 48 8d 05 16 1d 00 00    lea rax, [rip + 0x1d16]          7  1   1  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - . D====eE-R .     .
+ 19. 0158 48 89 44 24 f8          mov qword ptr [rsp - 0x8], rax   5  2  12  0.5      -     -     -     -  0.50     -     -  0.50  0.50  0.50     -     -     - . D=====eeeeeeeeeeeeER
                                 }
 
  [0] index
@@ -1251,21 +1264,21 @@ perf::annotate(analyzer[]);
  [5] mca.uops
  [6] mca.latency
  [7] mca.rthroughput
- [8] mca.timeline
+ [8] mca.resource_pressure
+	- ADLPPort00-11
+ [9] mca.timeline
   - 'D': instruction dispatched
   - 'e': instruction executing
   - 'E': instruction executed
   - 'R': instruction retired
   - '=': instruction waiting
   - '-': instruction executed
- [9] mca.resource_pressure
-	- ADLPPort00-11
  [10] mca.bottleneck
   - <register>
   - [memory]
   - {resource:probability}
 ```
-<!-- .element: style="font-size:8px" -->
+<!-- .element: style="font-size:9px" -->
 
 ----
 
@@ -1273,24 +1286,25 @@ perf::annotate(analyzer[]);
 perf::annotate(analyzer[
   perf::mca::address, perf::mca::encoding, perf::mca::assembly,
   perf::mca::size, perf::mca::uops, perf::mca::latency, perf::mca::rthroughput,
+  perf::record::branch_misses,
   perf::mca::source
 ]);
 ```
 <!-- .element: style="font-size:15px" -->
 
 ```
- [0] [1]  [2]                   [3]                              [4] [5] [6] [7]
- --- ---- --------------------- ------------------------------   --- --- --- ---
+ [0] [1]  [2]                   [3]                              [4] [5] [6] [7] [8]
+ --- ---- --------------------- ------------------------------   --- --- --- --- ---
                                 if (n % 15 == 0) {
   1. f400 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef        6   3 1.0   1
   2. f406 05 88 88 88 08          add eax, 0x8888888               5   1 0.2   1
   3. f40b 3d 11 11 11 11          cmp eax, 0x11111111              5   1 0.2   1
-  4. f410 72 36                   jb 0x36                          2   1 0.5   1
+  4. f410 72 36                   jb 0x36                          2   1 0.5   1 32%
                                 } else if (n % 3 == 0) {
   5. f412 69 c7 ab aa aa aa       imul eax, edi, 0xaaaaaaab        6   3 1.0   1
   6. f418 05 aa aa aa 2a          add eax, 0x2aaaaaaa              5   1 0.2   1
   7. f41d 3d 55 55 55 55          cmp eax, 0x55555555              5   1 0.2   1
-  8. f422 72 2d                   jb 0x2d                          2   1 0.5   1
+  8. f422 72 2d                   jb 0x2d                          2   1 0.5   1 22%
   9. f424 69 c7 cd cc cc cc       imul eax, edi, 0xcccccccd        6   3 1.0   1
  10. f42a 05 99 99 99 19          add eax, 0x19999999              5   1 0.2   1
  11. f42f 3d 33 33 33 33          cmp eax, 0x33333333              5   1 0.2   1
@@ -1310,9 +1324,10 @@ perf::annotate(analyzer[
  [2] mca.encoding
  [3] mca.assembly # intel
  [4] mca.size
- [6] mca.uops         // instructions may decode into multiple micro-operations # https://uops.info/table.html
- [5] mca.latency      // instructions have different latency
- [7] mca.rthroughput  // instructions have different throughput
+ [6] mca.uops               // instructions may decode into multiple micro-operations
+ [5] mca.latency            // instructions have different latency
+ [7] mca.rthroughput        // instructions have different throughput
+ [8] record.branch_misses
 ```
 <!-- .element: style="font-size:12px" -->
 
@@ -1360,25 +1375,46 @@ perf::annotate(analyzer[
 
 ----
 
+```cpp
+perf::analyzer analyzer{perf::mca::assembly, perf::mca::timeline}
+analyzer << perf::mca::region{...};
+analyzer << perf::mca::region{...};
+analyzer << perf::mca::region{...};
+
+perf::log(analyzer[])
+```
+
+----
+
 #### disassemble vs. trace
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// TODO
-// duplicate
-analyzer << profiler[trace::instructions];
-analyzer << profiler[trace::instructions];
-analyzer << profiler[trace::instructions];
+perf::analyzer analyzer{perf::mca::assembly};
+analyzer << perf::mca::region{&&a, &&b};
+perf::log(analyzer[])
 ```
 
-```cpp
-// TODO
-profiler[perf::trace::instructions / perf::trace::cycles];
-// IPC per IP
-```
+----
 
 ```cpp
-// https://compiler-explorer.com
+perf::profiler profiler{perf::trace::instructions};
+perf::analyzer analyzer{perf::mca::assembly};
+invoke(profiler, fizz_buzz, 5);
+analyzer << profiler[perf::trace::instructions];
+perf::log(analyzer[]);
+```
+
+----
+
+```cpp
+perf::profiler profiler{perf::trace::instructions, perf::trace::cycles, perf::record::mem_loads};
+perf::analyzer analyzer{perf::mca::assembly};
+invoke(profiler, fizz_buzz, 5);
+analyzer << profiler[perf::trace::instructions];
+
+auto data = tuple(analyzer[], profiler[]);
+perf::annotate(data[perf::mca::assembly, perf::trace::instructions / perf::trace::cycles, perf::record::mem_loads]);
 ```
 
 ----
@@ -1519,11 +1555,15 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::plot::flowgraph(analyzer[perf::mca::assembly]);
+perf::plot::flowgraph(analyzer[perf::mca::assembly]); // mca
+perf::plot::flowgraph(analyzer[perf::mca::assembly]); // trace
 ```
 
+<p align="left">
+<img src="images/flowgraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
 ```cpp
-// TODO
 // basic block - is a straight-line sequence of instructions
 //               with a single entry point and a single exit point
 ```
@@ -1576,7 +1616,7 @@ int main() {
 ```
 
 ```sh
-valgrind --tool=callgrind --instr-atstart=no \
+valgrind --tool=callgrind --instr-atstart=no \ # 4x+ overhead
   --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes ...
 ```
 <!-- .element: style="font-size:18px;" -->
@@ -1588,27 +1628,27 @@ valgrind --tool=callgrind --instr-atstart=no \
 
 ```cpp
 // Establishing the baseline
-// Reducing Instruction Count / Increasing Instruction Per Cycle
+// Reducing instruction count / Increasing instruction/µops per cycle
 // Top down Microarchitecture Analysis Method
 ```
 
 ----
 
-#### baseline
+#### Baseline
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
-  auto _ = unpredictable<int>;
+  bench(baseline(fizz_buzz), unpredictable<int>);
+  bench(fizz_buzz_fast_mod,  unpredictable<int>);
+  bench(fizz_buzz_lut,       unpredictable<int>);
 
-  bench(baseline(fizz_buzz), _);
-  bench(fizz_buzz_fast_mod,  _);
-  bench(fizz_buzz_lut,       _);
+  auto ops = perf::bench::operations;
 
-  perf::report(bench[perf::stat::tsc / perf::bench::operations], p50);
-  perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
+  perf::report(bench[perf::stat::tsc / ops], p50, p99);
+  perf::plot::ecdf(bench[perf::stat::tsc / ops]);
 }
 ```
 <!-- .element: style="font-size:21px;" -->
@@ -1623,7 +1663,7 @@ fizz_buzz_fast_mod(unpredictable)/latency  (1.45x) 5.64  (1.50x) 6.13
 fizz_buzz_lut(unpredictable)/latency       (0.89x) 9.15  (1.00x) 9.22
 
 [*] baseline
-(0) speedup(slowest:1.00x)
+(0) speedup(slowest:1.00x) // against the baseline
 [1] p50((stat.tsc[ns]/bench.operations))
 [2] p99((stat.tsc[ns]/bench.operations))
 
@@ -1644,19 +1684,24 @@ Modern CPUs are primarily bottlenecked by
 ```
 
 ```sh
-Approaches
- - Reducing instruction count
-     perf::stat::instructions
-     perf::record::instructions
-     perf::trace::instructions
+  Approaches
+   - Reducing instruction count
+       perf::stat::instructions
+       perf::record::instructions
+       perf::trace::instructions
 
- - Increasing instruction per cycle (IPC)
-     perf::stat::ipc    # stat::instructions   / stat::cycles
-     perf::record::ipc  # record::instructions / record::cycles
-     perf::trace::ipc   # trace::instructions  / trace::cycles
+   - Increasing instruction per cycle (ipc) / µops per cycle (upc)
+       perf::stat::ipc     # stat::instructions   / stat::cycles
+       perf::record::ipc   # record::instructions / record::cycles
+       perf::trace::ipc    # trace::instructions  / trace::cycles
 
- - Top down Microarchitecture Analysis Method
+       perf::stat::mca_upc # perf::stat::mca_uops / perf::stat::mca_cycles
+                           # max(µops / cycle) <= dispatch_width
+
+   - Top down Microarchitecture Analysis Method
+      ...
 ```
+<!-- .element: style="font-size:18px;" -->
 
 ----
 
@@ -1671,18 +1716,18 @@ Approaches
 </p>
 <td>
 <pre style="font-size:14px;margin: 0 0;"><code>
-[Level] Category     Desktop  Server      HPC
--------------------- -------  ------   ------
-[1] Retiring          20–50%  10–30%   30–70%
-[1] Bad Speculation   05–10%  05–10%   01–05%
-[1] Front-End Bound   05–10%  10–25%   05–10%
-[1] Back-End Bound    20–40%  20–60%   20–40%
+[Level] Category    Desktop Server HPC
+------------------- ------- ------ ------
+[1] Retiring         20–50% 10–30% 30–70%
+[1] Bad Speculation  05–10% 05–10% 01–05%
+[1] Front-End Bound  05–10% 10–25% 05–10%
+[1] Back-End Bound   20–40% 20–60% 20–40%
 </code></pre>
 </td>
 </tr>
 </table>
 
-```sh
+```cpp
 // Measuring Workloads With TopLev # https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 ```
 <!-- .element: style="font-size:15px;" -->
@@ -1776,6 +1821,11 @@ int main() {
     perf::stat::frontend_bound,
     perf::stat::backend_bound
   ], median);
+
+  perf::plot::bar(bench[
+    perf::stat::branch_misses / perf::stat::branches,
+    perf::stat::instructions  / perf::stat::cycles
+  ]);
 }
 ```
 
@@ -1784,15 +1834,9 @@ int main() {
 ```
 benchmark                                   [1]   [2]   [3]   [4]
 -----------------------------------------  ----  ----  ----  ----
-fizz_buzz(0)/latency                       0.20  0.00  0.00  0.80
-fizz_buzz(15)/latency                      0.20  0.00  0.00  0.80
-fizz_buzz(3)/latency                       0.23  0.00  0.00  0.77
-fizz_buzz(5)/latency                       0.25  0.00  0.00  0.75
-fizz_buzz(sequence{1,3,5})/latency         0.24  0.00  0.00  0.76
-fizz_buzz(sequence{3,1,5})/latency         0.24  0.00  0.00  0.76
-fizz_buzz(sequence{0,1,5,3,15,0})/latency  0.25  0.00  0.00  0.75
-fizz_buzz(range{0,15,1})/latency           0.24  0.00  0.00  0.76
-fizz_buzz(unpredictable)/latency           0.12  0.18  0.14  0.56
+fizz_buzz(sequence{0,1,5,3,15,0})/latency  0.65  0.00  0.00  0.45
+fizz_buzz(range{0,15,1})/latency           0.64  0.00  0.00  0.46
+fizz_buzz(unpredictable)/latency           0.12  0.38  0.14  0.36
 
 (0) speedup(slowest:1.00x)
 [1] median((stat.top_down.retiring/stat.slots))
@@ -1800,30 +1844,40 @@ fizz_buzz(unpredictable)/latency           0.12  0.18  0.14  0.56
 [3] median((stat.top_down.fronted_bound/stat.slots))
 [4] median((stat.top_down.backend_bound/stat.slots))
 ```
-<!-- .element: style="font-size:17px" -->
+<!-- .element: style="font-size:20px; margin: 30px 0px;" -->
+
+<p align="left">
+<img src="images/ipc.png" style="width: 83%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+</p>
 
 ----
 
 ```cpp
-evens
-
-technique
-SWAR, SIMD, LUT, CTA, PARgg/s
-
-// Retiring
-
-// Bad Speculation
-
-// Front-End Bound
-auto cache_miss_rate = cache_misses / cache_references;
-auto branch_miss_rate = branch_misses / branches;
-
-// Back-End Bound
-// Core Bound
+// Retiring -> ILP, SWAR, SIMD
 auto ipc = instructions / cycles;
 auto cpi = cycles / instructions;
-auto upc = uops / cycles;
+using mca::timeline;
+
+
+// Bad Speculation -> branchless (cmov), CTE
+auto branch_miss_rate = branch_misses / branches;
+using perf::trace::cycles;
+
+
+// Front-End Bound -> hot/cold path, unroll, TMP
+auto stalled_cycles_frontend_rate = stalled_cycles_frontend / cycles;
+auto iL1_miss_rate = iL1_load_misses / iL1_loads;
+auto itlb_miss_rate = itlb_load_misses / itlb_loads;
+
+
+// Back-End Bound -> align, prefetch, DOD, LUT, SWAR
+auto l1_dcache_miss_rate = l1_dcache_load_misses / l1_dcache_loads;
+auto llc_miss_rate = llc_loads_misses / llc_loads
+using mca::resource_pressure;
+using mca::timeline;
+using mca::bottleneck;
 ```
+<!-- .element: style="text-align:left;font-size:20px;" -->
 
 ----
 
@@ -1843,33 +1897,61 @@ auto upc = uops / cycles;
 
 ```cpp
 int main() {
-  perf::runner bench{perf::bench::throughput{.policy = seq}};
+  perf::runner bench{perf::bench::latency{}};
 
-  auto sort = [](std::vector<int>& v) {
+  auto sort_v1 = [](std::vector<int>& v) {
     std::ranges::sort(v);
   };
 
-  auto sort_debug = []<auto... cfg>(std::vector<int>& v) {
+  auto sort_v2 = []<auto cfg>(std::vector<int>& v) {
     std::ranges::sort(v);
-    if constexpr (perf::is_debug(cfg...)) { // doesn't affect benchmarking
+    if constexpr (cfg.debug) {
       perf::verify(is_sorted(v));
     }
   };
 
-  for (auto i = 0; i < 1024; ++i) {
-    bench(sort,       unpredictable<int> | to<std::vector>(i));
-    bench(sort_debug, unpredictable<int> | to<std::vector>(i));
+  for (auto i = 1; i <= 1024; i *= 2) {
+    bench(sort_v1, unpredictable<int> | to<std::vector>(i));
+    bench(sort_v2, unpredictable<int> | to<std::vector>(i));
   }
 
-  perf::report(bench[perf::stat::tsc], min);
+  // ...
 }
 ```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
 ```cpp
-report
+perf::report<split>(bench[perf::stat::tsc / perf::bench::operations, perf::bench::operations], min);
+perf::plot::errorbar(bench[perf::stat::tsc / perf::bench::operations]); // , perf::complexity::...
 ```
+<!-- .element: style="text-align:left; font-size:14px;" -->
+
+```cpp
+benchmark                                 [1]              [2]     benchmark                                 [1]              [2]
+------------------------  -------------------  ---------------     ------------------------  -------------------  ---------------
+sort_v1(v(1))/latency     (1111.15x)     9.16    (1.05x) 28480     sort_v2(v(1))/latency     (1097.21x)     9.28    (1.01x) 29584
+sort_v1(v(2))/latency      (975.52x)    10.44    (1.00x) 29820     sort_v2(v(2))/latency      (926.80x)    10.98    (1.04x) 28718
+sort_v1(v(4))/latency      (816.24x)    12.47    (1.08x) 27699     sort_v2(v(4))/latency      (872.65x)    11.67    (1.09x) 27328
+sort_v1(v(8))/latency      (399.79x)    25.46    (1.50x) 19814     sort_v2(v(8))/latency      (377.16x)    26.99    (1.56x) 19134
+sort_v1(v(16))/latency     (131.17x)    77.61    (3.19x)  9353     sort_v2(v(16))/latency     (132.18x)    77.02    (3.17x)  9414
+sort_v1(v(32))/latency      (76.22x)   133.56    (5.39x)  5528     sort_v2(v(32))/latency      (80.41x)   126.60    (5.15x)  5786
+sort_v1(v(64))/latency      (30.76x)   330.98   (11.53x)  2586     sort_v2(v(64))/latency      (30.61x)   332.55   (12.01x)  2483
+sort_v1(v(128))/latency     (12.18x)   835.59   (28.65x)  1041     sort_v2(v(128))/latency     (11.91x)   854.95   (28.98x)  1029
+sort_v1(v(256))/latency      (5.38x)  1891.72   (64.27x)   464     sort_v2(v(256))/latency      (5.36x)  1899.39   (61.48x)   485
+sort_v1(v(512))/latency      (2.24x)  4554.20  (149.85x)   199     sort_v2(v(512))/latency      (2.22x)  4589.61  (144.06x)   207
+sort_v1(v(1024))/latency     (1.00x) 10180.22  (298.20x)   100     sort_v2(v(1024))/latency     (1.00x) 10143.13  (298.20x)   100
+
+(0) speedup(slowest:1.00x)                                         (0) speedup(slowest:1.00x)
+[1] min((stat.tsc[ns]/bench.operations))                           [1] min((stat.tsc[ns]/bench.operations))
+[2] min(bench.operations)                                          [2] min(bench.operations)
+```
+<!-- .element: style="text-align:left; font-size:11px;" -->
+
+<p align="left">
+<img src="images/sort.png" style="width: 93%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
@@ -1882,28 +1964,27 @@ auto disassemble = [](auto fn, auto... ts) {
   auto invoke = [&] {
     perf::code::label(Begin);
     perf::prevent_elision(fn(ts...));
-    perf::code::label(End);
-  };                                     auto trace = [](auto fn, auto... ts) {
-  perf::prevent_elision(                   perf::profiler profiler{perf::trace::instructions};
-    &decltype(invoke)::operator()          perf::analyzer analyzer{perf::mca::assembly};
-  );                                       profiler.start();
-  analyzer << perf::mca::region{           perf::prevent_elision(fn(ts...));
-    perf::code::labels[Begin],             profiler.stop();
-    perf::code::labels[End],               analyzer << profiler[perf::trace::instructions];
-  };                                       return analyzer[];
-  return analyzer[];                     };
+    perf::code::label(End);              auto trace = [](auto fn, auto... ts) {
+  };                                       perf::profiler profiler{perf::trace::instructions};
+  perf::prevent_elision(                   perf::analyzer analyzer{perf::mca::assembly};
+    &decltype(invoke)::operator()          profiler.start();
+  );                                       perf::prevent_elision(fn(ts...));
+  analyzer << perf::mca::region{           profiler.stop();
+    perf::code::labels[Begin],             analyzer << profiler[perf::trace::instructions];
+    perf::code::labels[End],               return analyzer[];
+  };                                     };
+  return analyzer[];
 };
 
-
-           auto analyze = [](auto fn, auto... ts) {
-             perf::profiler profiler{perf::trace::instructions};
-             perf::analyzer analyzer{perf::mca::timeline};
-             profiler.start();
-             perf::prevent_elision(fn(ts...));
-             profiler.stop();
-             analyzer << profiler[perf::trace::instructions];
-             return analyzer[];
-           };
+auto analyze = [](auto fn, auto... ts) {
+ perf::profiler profiler{perf::trace::instructions};
+ perf::analyzer analyzer{perf::mca::timeline};
+ profiler.start();
+ perf::prevent_elision(fn(ts...));
+ profiler.stop();
+ analyzer << profiler[perf::trace::instructions];
+ return analyzer[];
+};
 ```
 <!-- .element: style="font-size:17px;" -->
 
@@ -1941,12 +2022,18 @@ auto disassemble = [](auto fn, auto... ts) {
 ----
 
 ```cpp
-"compare"_test = [] {
-  auto ub  = [](int x) { return x + 1 > x; };
-  auto opt = [](int x) { return true; };
+"optimized?"_test = [] {
+  auto ub  = [](int x) { return x + 1 > x; }; // undefined behavior
+  auto opt = [](int x) { return true; };      // expected optimization
 
-  perf::verify(disassemble(ub) == disassemble(opt));
-  perf::verify(trace(ub)       == trace(opt));
+  perf::verify(disassemble(ub,  int{}) ==
+               disassemble(opt, int{}));
+
+  perf::verify(trace(ub,  std::numeric_limits<int>::min()) ==
+               trace(opt, std::numeric_limits<int>::min()));
+
+  perf::verify(trace(ub,  std::numeric_limits<int>::max()) ==
+               trace(opt, std::numeric_limits<int>::max()));
 };
 ```
 
@@ -1971,13 +2058,14 @@ auto disassemble = [](auto fn, auto... ts) {
 ```cpp
 "bench.coverage"_test = [] {
   // ...
-  for (const auto& [name, data] : bench[perf::trace::instructions, perf::mca::instructions]) {
-    perf::verify(unique(data[perf::trace::instructions]).size() ==
-                        data[perf::mca::instructions].size());
+  auto&& results = bench[perf::trace::instructions, perf::mca::instructions];
+  for (const auto& [name, data] : results) {
+    perf::verify(data[perf::trace::instructions].size() ==
+                 data[perf::mca::instructions].size());
   }
 };
 ```
-<!-- .element: style="text-align:left;font-size:16px;" -->
+<!-- .element: style="text-align:left;font-size:20px;" -->
 
 ----
 
@@ -1993,7 +2081,7 @@ auto disassemble = [](auto fn, auto... ts) {
 ```
 
 ```
-"benchmarks slower, app faster" - what to do?
+"benchmarks slower, app faster" - next steps?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
@@ -2126,7 +2214,7 @@ auto disassemble = [](auto fn, auto... ts) {
 
         // Flags if we should show a help overlay when the questionmark
         // key is pressed
-        help: true,
+        help: false,
 
         // Flags if speaker notes should be visible to all viewers
         showNotes: false,
