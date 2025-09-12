@@ -92,14 +92,21 @@
 ```cpp
  // 4Ghz CPU from 2005 != 4Ghz CPU from 2025
 
-  1 cycle execution    ▏
-  dL1 hit              █░
-  dL2 hit              ███░░
-  branch mispredict    ███░░░
-  dL3 hit              █████████░░░
-  DRAM access          ████████████████████████████████████████████░░░░░
+  benchmark                [0]        [1]                                               [2]
+  -------------------- -------  --------- -------------------------------------------------
+  1 cycle execution      1 ± 0   0.25 ± 0 ▏
+  dL1                    3 ± 1   0.50 ± 1 █░
+  branch misprediction  14 ± 5   3.00 ± 5 ███░░
+  dL2                   12 ± 3   3.00 ± 3 ███░░░
+  dL3                   50 ± 8  10.00 ± 8 █████████░░░
+  DRAM                 350 ± 8  70.00 ± 8 ████████████████████████████████████████████░░░░░
   ...
+
+ [0]: cycles
+ [1]: cycles/4Ghz [ns]
+ [2]: ratio [cycles], (░) variability
 ```
+<!-- .element: style="text-align:left; font-size:17px;" -->
 
 ----
 
@@ -576,12 +583,10 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 // Statistically sound conclusions
 ```
 
----
-
-##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left; font-size:28px; margin: 3px 12px;" -->
-##### [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
-<!-- .element: style="text-align:left; font-size:28px; margin: 3px 12px;" -->
+##### - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left; font-size:28px; margin: 3px 12px;" -->
+##### - [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
+<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left; font-size:28px; margin: 3px 12px;" -->
 
 ----
 
@@ -941,7 +946,7 @@ user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 <!-- .element: style="font-size:14px;" -->
 
 <p align="left">
-<img src="images/bar2.png" style="width: 55%; background:none; border:none; box-shadow:none;" />
+<img src="images/ecdf2.png" style="width: 55%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ```cpp
@@ -1081,6 +1086,11 @@ using perf::memory::pre_fault;      // touches all pages used by data
 ```
 <!-- .element: style="font-size:16px" -->
 
+```sh
+BENCHMARK_FILTER=fizz_buzz perf record -g ./a.out # Bias?
+```
+<!-- .element: style="font-size:16px" -->
+
 ----
 
 ```cpp
@@ -1144,7 +1154,8 @@ perf::profiler profiler{
   perf::stat::tsc,
   perf::stat::branches, perf::stat::branch_misses,
   perf::trace::instructions, perf::trace::cycles,
-  perf::record::mem_loads, perf::record::mem_stores
+  perf::record::mem_loads, perf::record::mem_stores,
+  // ...
 };
 ```
 
@@ -1179,6 +1190,7 @@ perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
   perf::mca::resource_pressure,
   perf::mca::bottleneck,
   perf::mca::source,             // requires debug symbols (-g)
+  // ...
 };
 ```
 <!-- .element: style="font-size:22px" -->
@@ -1262,7 +1274,7 @@ perf::annotate(analyzer[]);
   - [memory]
   - {resource:probability}
 ```
-<!-- .element: style="font-size:9px" -->
+<!-- .element: style="font-size:8px" -->
 
 ----
 
@@ -1418,7 +1430,7 @@ perf::annotate(analyzer[]);
 ----
 
 ```cpp
-for (auto i = 0 ; i < 4; ++i) {
+for (auto i = 0 ; i < 4; ++i) { // throughput simulation
   analyzer << perf::mca::region{perf::code::labels["begin"], perf::code::labels["end"]};
 }
 perf::annotate(analyzer[]);
@@ -1428,7 +1440,7 @@ perf::annotate(analyzer[]);
 ```cpp
  [0] [1]                               [2]
  --- --------------------------------- -------------------------------------
-  1. sub dword ptr [rsp + 0x44], 0x1   DeeeeeeeeeeeeER   .     .     .     .
+  1. sub dword ptr [rsp + 0x44], 0x1   DeeeeeeeeeeeeER   .     .     .     . // i = 0
   2. jb 0x18                           D============eER  .     .     .     .
   3. nop dword ptr [rax]               DeE------------R  .     .     .     .
   4. mov eax, dword ptr [rsp + 0x44]   DeeeeeE--------R  .     .     .     .
@@ -1436,7 +1448,7 @@ perf::annotate(analyzer[]);
   6. mov dword ptr [rsp + 0x54], eax   .D========eeeeeeeeeeeeER.     .     .
   7. sub dword ptr [rsp + 0x44], 0x1   . D=======eeeeeeeeeeeeER.     .     .
   8. jae -0x14                         . D===================eER     .     .
-  9. sub dword ptr [rsp + 0x44], 0x1   .  D=======eeeeeeeeeeeeER     .     .
+  9. sub dword ptr [rsp + 0x44], 0x1   .  D=======eeeeeeeeeeeeER     .     . // i = 1
  10. jb 0x18                           .  D===================eER    .     .
  11. nop dword ptr [rax]               .  D======eE-------------R    .     .
  12. mov eax, dword ptr [rsp + 0x44]   .  DeeeeeE---------------R    .     .
@@ -1444,14 +1456,14 @@ perf::annotate(analyzer[]);
  14. mov dword ptr [rsp + 0x54], eax   .   D========eeeeeeeeeeeeER   .     .
  15. sub dword ptr [rsp + 0x44], 0x1   .    D=======eeeeeeeeeeeeER   .     .
  16. jae -0x14                         .    D===================eER  .     .
- 17. sub dword ptr [rsp + 0x44], 0x1   .     D=======eeeeeeeeeeeeER  .     .
+ 17. sub dword ptr [rsp + 0x44], 0x1   .     D=======eeeeeeeeeeeeER  .     . // i = 2
  18. jb 0x18                           .     D===================eER .     .
  19. nop dword ptr [rax]               .     D======eE-------------R .     .
  20. mov eax, dword ptr [rsp + 0x44]   .     DeeeeeE---------------R .     .
  21. imul eax, dword ptr [rsp + 0x54]  .     .DeeeeeeeeE-----------R .     .
  22. mov dword ptr [rsp + 0x54], eax   .     .D========eeeeeeeeeeeeER.     .
  23. sub dword ptr [rsp + 0x44], 0x1   .     . D=======eeeeeeeeeeeeER.     .
- 24. jae -0x14                         .     . D===================eER     .
+ 24. jae -0x14                         .     . D===================eER     . // i = 3
  25. sub dword ptr [rsp + 0x44], 0x1   .     .  D=======eeeeeeeeeeeeER     .
  26. jb 0x18                           .     .  D===================eER    .
  27. nop dword ptr [rax]               .     .  D======eE-------------R    .
@@ -1491,6 +1503,10 @@ analyzer << profiler[perf::trace::instructions];
 
 auto data = tuple(analyzer[], profiler[]);
 perf::annotate(data[perf::mca::assembly, perf::trace::instructions / perf::trace::cycles, perf::record::mem_loads]);
+```
+
+```cpp
+ipc per cycle
 ```
 
 ----
@@ -1630,29 +1646,10 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
 perf::record::branch_misses,
  [8]
  ---
-
-
-
-
  32%
-
-
-
-
  22%
 
-
-
-
-
-
-
-
-
-
-
-
-
+fizz_buzz_lut vs fizz_buzz
 
 ----
 
@@ -2134,11 +2131,11 @@ auto analyze = [](auto fn, auto... ts) {
   perf::verify(disassemble(ub,  int{}) ==
                disassemble(opt, int{}));
 
-  perf::verify(trace(ub,  std::numeric_limits<int>::min()) ==
-               trace(opt, std::numeric_limits<int>::min()));
+  perf::verify(trace(ub,  numeric_limits<int>::min()) ==
+               trace(opt, numeric_limits<int>::min()));
 
-  perf::verify(trace(ub,  std::numeric_limits<int>::max()) ==
-               trace(opt, std::numeric_limits<int>::max()));
+  perf::verify(trace(ub,  numeric_limits<int>::max()) ==
+               trace(opt, numeric_limits<int>::max()));
 };
 ```
 
