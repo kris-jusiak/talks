@@ -2029,7 +2029,7 @@ int main() {
 
 ```cpp
 perf::report<split>(bench[perf::stat::tsc / perf::bench::operations, perf::bench::operations], min);
-perf::plot::errorbar(bench[perf::stat::tsc / perf::bench::operations]); // , perf::complexity::...
+perf::plot::errorbar(bench[perf::stat::tsc / perf::bench::operations]);
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
