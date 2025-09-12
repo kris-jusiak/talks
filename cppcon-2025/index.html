@@ -90,18 +90,15 @@
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
+ // 4Ghz CPU from 2005 != 4Ghz CPU from 2025
 
-  benchmark            [1]
-  -------------------- -------------------------------------------------
   1 cycle execution    ▏
   dL1 hit              █░
   dL2 hit              ███░░
   branch mispredict    ███░░░
   dL3 hit              █████████░░░
   DRAM access          ████████████████████████████████████████████░░░░░
-
-  [1]: (▉) cost        [cycles]
-       (░) variability [cycles]
+  ...
 ```
 
 ----
@@ -678,12 +675,12 @@ int main() {
 <!-- .element: style="font-size:15px;" -->
 
 <p align="left">
-<img src="images/is.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
+<img src="images/is.png" style="width: 90%; background:none; border:none; box-shadow:none;  margin: 0 0;" />
 </p>
 
 ----
 
-#### Variability
+#### Noise or Bias?
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
@@ -741,39 +738,29 @@ int main() {
 
   bench(fizz_buzz, {});
 
-  perf::plot::bar(bench[time::tsc]);                                    // total
-  perf::plot::bar(bench[time::tsc / perf::bench::operations]);          // latency    [ns/op]
-  perf::plot::bar(bench[perf::bench::operations / seconds(time::tsc)]); // throughput [op/s]
-  // ...
+  perf::plot::bar(
+    bench[time::tsc / perf::bench::operations],         // ns/op
+    bench[perf::bench::operations / seconds(time::tsc)] // op/s
+  );
 }
-// what and how to run is deduced based on the usage at compile-time
 ```
-<!-- .element: style="text-align:left; font-size:17px; " -->
+<!-- .element: style="text-align:left; font-size:20px; " -->
 
 ----
 
 ##### CPU vs. FPGA vs. GPU
 <!-- .element: style="text-align:left" -->
 
-<br />
-<div style="transform: scale(1.4); transform-origin: left;">
-<table>
-<tr>
-<td>
-<img src="images/fpga.gif" style="width: 100%; background:none; border:none; box-shadow:none;" />
-</td>
-<td>
-<img src="images/gpu.gif" style="width: 60%; background:none; border:none; box-shadow:none;" />
-</td>
-</tr>
-</table>
-</div>
+<p align="left" style="margin: 0 0;">
+<img src="images/fpga.gif" style="width: 52%; background:none; border:none; box-shadow:none;" />
+
+<img src="images/gpu.gif" style="width: 52%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ```cpp
-
-// source: http://www.qbaylogic.com
+// http://www.qbaylogic.com
 ```
-<!-- .element: style="text-align:left; font-size:15px; " -->
+<!-- .element: style="text-align:left; font-size:12px; margin: -10px 0;" -->
 
 ----
 
@@ -951,10 +938,10 @@ perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
 ```cpp
 user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 ```
-<!-- .element: style="font-size:15px;" -->
+<!-- .element: style="font-size:14px;" -->
 
 <p align="left">
-<img src="images/bar2.png" style="width: 60%; background:none; border:none; box-shadow:none;" />
+<img src="images/bar2.png" style="width: 55%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ```cpp
@@ -963,7 +950,7 @@ user@perf:~# PERF_IO_PLOT_TERM="wxt"       ./a.out # window
 
 // jupyter notebook / matplotlib # https://jupyter.org
 ```
-<!-- .element: style="font-size:15px;" -->
+<!-- .element: style="font-size:14px;" -->
 
 ----
 
@@ -1012,10 +999,10 @@ $CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
 ```
 <!-- .element: style="font-size:18px;" -->
 
-```cpp
+```sh
 
-// stablizer - https://github.com/ccurtsinger/stabilizer
-//  -Rcode -Rstack -Rheap
+# -Rcode -Rstack -Rheap
+# stablizer - https://github.com/ccurtsinger/stabilizer
 ```
 <!-- .element: style="font-size:18px;" -->
 
@@ -1063,17 +1050,14 @@ int main() {
 
 ----
 
-#### Hardware effects - memory layout
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// perf::cpu::cache::flush(addr);
-// perf::cpu::memory::prefetch();       # prefetch
-// perf::cpu::heap::pollute();          # prevents continuous allocation
-// perf::cpu::memory::pre_fault();      # touches faluts pages
+using perf::memory::cache::flush;   // clears cache lines
+using perf::memory::pollute;        // prevents continuous allocation
+using perf::memory::pre_fault;      // touches all pages used by data
 // ...
-
-// mph example (cacheflush)
 ```
 
 ----
@@ -1376,12 +1360,19 @@ perf::annotate(analyzer[
 ----
 
 ```cpp
-perf::analyzer analyzer{perf::mca::assembly, perf::mca::timeline}
-analyzer << perf::mca::region{...};
-analyzer << perf::mca::region{...};
-analyzer << perf::mca::region{...};
+perf::analyzer analyzer{perf::mca::assembly, perf::mca::timeline};
 
-perf::log(analyzer[])
+int n = 4;
+
+begin:
+  for (auto i = 0; i < n; ++i) {
+
+  }
+end:
+
+analyzer << perf::mca::region{&&begin, &&end}; // gnu-extension
+
+perf::annotate(analyzer[]); // [] - all elements
 ```
 
 ----
