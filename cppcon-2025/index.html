@@ -1,3 +1,18 @@
+<!--
+ecdf - for gnuplto remove fizz_buzz/range
+fix cpu_time to process_time
+update studies picture to ecdf
+fix idiv latency
+tune vs non-tuned
+warm vs cold
+lut vs pext -> clflush
+timeline
+latency vs throughput
+cachee and nops studies
+flamepgrahp and flowgraph examples
+random order
+ -->
+
 <!doctype html>
 <html>
   <head>
@@ -90,7 +105,8 @@
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
- // 4Ghz CPU from 2005 != 4Ghz CPU from 2025
+
+ // [perf] 4Ghz CPU from 2005 != 4Ghz CPU from 2025
 
   benchmark                [0]        [1]                                               [2]
   -------------------- -------  --------- -------------------------------------------------
@@ -158,6 +174,7 @@
 
           vtune -collect hotspots -- ...      # Intel
           AMDuProfCLI --profile -t cpu -- ... # AMD
+          xctrace record --template ...       # Apple
 
           perf probe -x /usr/lib/libc.so malloc
           perf record -g probe_libc:malloc ...
@@ -380,7 +397,7 @@ Powered by perf # https://github.com/qlibs/perf
  ├─ c++2x
  ├─ linux/perf                                    // perf_event_open/ipt-dev
  ├─ llvm/mca                                      // llvm-dev
- └─ gnuplot/sixel                                 // terminal
+ └─ gnuplot/sixel                                 // term/tty
 ```
 <!-- .element: style="margin: 2% 2%; font-size:21px;" -->
 
@@ -492,7 +509,7 @@ int main() {
   // ...
 }
 ```
-<!-- .element: style="text-align:left;font-size:17px" -->
+<!-- .element: style="text-align:left;font-size:16px" -->
 
 ```sh
 name  info
@@ -503,10 +520,10 @@ cxx   gcc-15.0.0
 cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
 cache iL1: 32Kb/64b, dL1: 48Kb/64b
 ```
-<!-- .element: style="text-align:left;font-size:16px" -->
+<!-- .element: style="text-align:left;font-size:14px" -->
 
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="text-align:left; margin: 0px 5px;" -->
+<!-- .element: style="font-size:21px; text-align:left; margin: 0px 5px;" -->
 
 ----
 
@@ -526,6 +543,7 @@ int main() {
 
 ```cpp
 // measured vs. documented
+// - instructions latency/rthroughput/...
 // - dL1/dL2/dL3 load/store latency/bandwidth
 // - branch misprediction penalty
 // - max(µops/cycle) vs. dispatch width
@@ -573,6 +591,10 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 
 ----
 
+tune vs non-tuned
+
+----
+
 ### [2] The Bias
 <!-- .element: style="text-align:left" -->
 
@@ -583,10 +605,12 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 // Statistically sound conclusions
 ```
 
-##### - [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left; font-size:28px; margin: 3px 12px;" -->
-##### - [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
-<!-- .element: class="fragment" data-fragment-index="1" style="text-align:left; font-size:28px; margin: 3px 12px;" -->
+---
+
+##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left; font-size:25px; margin: 3px 12px;" -->
+##### [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
+<!-- .element: style="text-align:left; font-size:25px; margin: 3px 12px;" -->
 
 ----
 
@@ -616,24 +640,24 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// NOT independent* / NOT normally distributed*
+// NOT* independent / NOT* normally distributed
 ```
 <!-- .element: style="font-size:18px;" -->
 
 ```cpp
-struct measure {
+struct timeit {
   size_t iterations{}; // estimate - time_budget, median_abolute_error, ...
   size_t samples{};    // estimate - margin_of_error, coefficient_of_variation, ...
 
   auto operator()(auto fn, auto... ts) {
     // ...
-                                                  //  Time               now()
-    for (auto s = 0u; s < samples; ++s) {         //  ------------------ --------------------
-      auto start = now();                         //  Time-Stamp-Counter rdtsc{p} / freq
-      for (auto i = 0u; i < iterations; ++i) {    //  Wall clock         chrono::system_clock
-        fn(ts...);                                //  Process CPU        clock_gettime
-      }                                           //  Thread CPU         clock_gettime
-      auto stop = now();                          //  Monotonic clock    chrono::steady_clock
+
+    for (auto s = 0u; s < samples; ++s) {         //  Time                     now() [ns]
+      auto start = now();                         //  ------------------------ ---------------
+      for (auto i = 0u; i < iterations; ++i) {    //  Time-Stamp-Counter (TSC) rdtsc{p} / freq
+        fn(ts...);                                //  Steady time              steady_clock
+      }                                           //  Process time             clock_gettime
+      auto stop = now();                          //  Thread time              clock_gettime
       // ...
     }
 
@@ -647,7 +671,7 @@ struct measure {
 
 ```cpp
 int main() {
-  perf::runner bench{measure{}}; // estimated
+  perf::runner bench{timeit{}};
   bench(fizz_buzz, {});
   perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]);
 }
@@ -657,23 +681,34 @@ int main() {
 <img src="images/normal2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
+```cpp
+// stats
+// - min, max, mean, geomean, median, p10, p25, p50, p75, p90, p99 (percentiles)
+// - variance, stddev (standar deviation), sem (standard errorsem),
+// - mae (median absolute error), mad (median absolute deviation), cv (coefficient of variation)
+// - ...
+```
+<!-- .element: style="font-size:13px;" -->
+
+```
+
 ----
 
 ```cpp
 int main() {
   perf::runner bench{
-    measure{.iterations = 1u,     .samples = 1u},
-    measure{.iterations = 10'000, .samples = 1u},
-    measure{.iterations = 1,      .samples = 100},
-    measure{.iterations = 10'000, .samples = 100},
-    measure{}, // estimated
+    timeit{.iterations = 1u,     .samples = 1u},
+    timeit{.iterations = 10'000, .samples = 1u},
+    timeit{.iterations = 1,      .samples = 100},
+    timeit{.iterations = 10'000, .samples = 100},
+    timeit{}, // estimated
   };
 
   bench(fizz_buzz, {});
 
   perf::plot::bar(bench[
     perf::stat::tsc / perf::bench::operations,
-    perf::stat::cpu_time / perf::bench::operations
+    perf::stat::steady_time / perf::bench::operations
   ]);
 }
 ```
@@ -685,12 +720,19 @@ int main() {
 
 ----
 
-#### Noise or Bias?
+#### Noise vs. Bias vs. Optimization / use-case specific
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
 <img src="images/bar3.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
+
+```cpp
+// Noise        - external part of the measerument (ex. pinning)
+// Bias         - implicit part of the measerument (ex. hardware effects)
+// Optimization - explicit part of the measerument (ex. SWAR ) # can introduce bias
+```
+<!-- .element: style="text-align:left; font-size:20px; " -->
 
 ----
 
@@ -730,7 +772,7 @@ for (auto i = 0u; i < n; ++i) {       // - throughput::unseq
 // - https://uops.info/table.html
 // - https://arxiv.org/abs/1911.03282
 ```
-<!-- .element: style="text-align:left; font-size:15px; " -->
+<!-- .element: style="text-align:left; font-size:16px; " -->
 
 ----
 
@@ -763,13 +805,13 @@ int main() {
 </p>
 
 ```cpp
-// http://www.qbaylogic.com
+// source: http://www.qbaylogic.com
 ```
 <!-- .element: style="text-align:left; font-size:12px; margin: -10px 0;" -->
 
 ----
 
-#### Hardware effects - branch prediction
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -839,7 +881,7 @@ int main() {
   // ...
 }
 ```
-<!-- .element: style="font-size:15px;" -->
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -848,7 +890,7 @@ perf::report(bench[perf::stat::tsc / perf::bench::operations],
   min, mean, median, p90, p99
 );
 ```
-<!-- .element: style="font-size:15px;" -->
+<!-- .element: style="font-size:18px;" -->
 
 ```cpp
 benchmark                                              [1]           [2]           [3]           [4]           [5]
@@ -869,97 +911,112 @@ fizz_buzz(unpredictable)/latency              (1.29x) 5.42  (1.33x) 5.66  (1.34x
 [4] p90((stat.tsc[ns]/bench.operations))
 [5] p99((stat.tsc[ns]/bench.operations))
 ```
-<!-- .element: style="font-size:13px;" -->
-
-```cpp
-// min, max, mean, geomean, median, percentile(p10, p25, p50, p75, p90, p99)
-// variance, standar deviation (stddev), standard error (sem),
-// median absolute error (mae), median absolute deviation (mad), coefficient of variation (cv)
-// ...
-```
-<!-- .element: style="font-size:13px;" -->
+<!-- .element: style="font-size:14px;" -->
 
 ----
 
-#### Bar
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::plot::bar(bench[perf::time::tsc / perf::bench::operations]);
+perf::plot::bar(
+  bench[perf::time::tsc / perf::bench::operations]
+);
 ```
-<!-- .element: style="font-size:16px;" -->
+<!-- .element: style="font-size:19px;" -->
 
 <p align="left">
 <img src="images/study1.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
+```cpp
+// Bar: Compares categories (lower is better*)
+```
+<!-- .element: style="font-size:19px;" -->
+
 ----
 
-#### Histogram
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::plot::hist(bench[perf::time::tsc / perf::bench::operations]);
+perf::plot::hist(
+  bench[perf::time::tsc / perf::bench::operations]
+);
 ```
-<!-- .element: style="font-size:16px;" -->
+<!-- .element: style="font-size:19px;" -->
 
 <p align="left">
 <img src="images/study3.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
+```cpp
+// Histogram: Shows data distrubution (normal, skewed, non-symetric, multi-modal, ...)
+```
+<!-- .element: style="font-size:19px;" -->
+
 ----
 
-#### Box / Errorbar
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::plot::box(bench[perf::time::tsc / perf::bench::operations]);
+perf::plot::box(
+  bench[perf::time::tsc / perf::bench::operations]
+);
 ```
-<!-- .element: style="font-size:16px;" -->
+<!-- .element: style="font-size:19px;" -->
 
 <p align="left">
 <img src="images/study2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
+```cpp
+// Box: Shows data distrubution, central tendency and variability
+```
+<!-- .element: style="font-size:19px;" -->
+
 ----
 
-#### Empirical distribution function (ecdf)
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-perf::plot::ecdf(bench[perf::stat::tsc / perf::bench::operations]);
+perf::plot::ecdf(
+  bench[perf::stat::tsc / perf::bench::operations]
+);
 ```
-<!-- .element: style="font-size:16px;" -->
+<!-- .element: style="font-size:17px;" -->
 
 <p align="left">
 <img src="images/study4.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
+```cpp
+// Empirical cumulative distribution function: Shows cumulative data proportion
+```
+<!-- .element: style="font-size:19px;" -->
+
 ----
 
-#### gnuplot/sixel - https://www.arewesixelyet.com
+#### term vs. tty
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-user@perf:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
+// https://www.arewesixelyet.com # printf "pixel: \033Pq#1@\033\\"
+user@localhost:~# PERF_IO_PLOT_TERM="sixel" ./a.out # term
 ```
-<!-- .element: style="font-size:14px;" -->
+<!-- .element: style="font-size:14px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/ecdf2.png" style="width: 55%; background:none; border:none; box-shadow:none;" />
+<img src="images/ecdf1.png" style="height: 200px; width: 420px; background:none; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ```cpp
-user@perf:~# PERF_IO_PLOT_TERM="sixel"     ./a.out # term  // printf "pixel: \033Pq#1@\033\\"
-user@perf:~# PERF_IO_PLOT_TERM="wxt"       ./a.out # window
+user@server:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
+```
+<!-- .element: style="font-size:14px; margin: 0 0;" -->
 
+<p align="left">
+<img src="images/ecdf2.png" style="width: 45%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+```cpp
 // jupyter notebook / matplotlib # https://jupyter.org
 ```
 <!-- .element: style="font-size:14px;" -->
 
 ----
 
-#### Hardware effects - memory layout
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -984,57 +1041,41 @@ user@perf:~# PERF_IO_PLOT_TERM="wxt"       ./a.out # window
 
 ----
 
-#### Hardware effects - memory layout
-<!-- .element: style="text-align:left" -->
-
-```sh
-# Address Space Layout Randomization (ASLR)
-# - 0: none
-# - 1: stack, mmap, shared libs
-# - 2: 1, heap, main binary (-fPIE)
-echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
-```
-<!-- .element: style="font-size:18px;" -->
-
-```sh
-
-# Code Layout Randomization
-$CXX -ffunction-sections -falign-functions=16 -fdata-sections ...
-$CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
-```
-<!-- .element: style="font-size:18px;" -->
-
-```sh
-
-# -Rcode -Rstack -Rheap
-# stablizer - https://github.com/ccurtsinger/stabilizer
-```
-<!-- .element: style="font-size:18px;" -->
-
-----
-
 ```cpp
-auto fn_v1 = [] [[gnu::noinline]] (size_t size, int n) {
-  for (auto i =0 ; i < size; ++i) {
+auto fn_v1 = [] (size_t size, int n) {
+  size_t sum{};
+  for (size_t i = {}; i < size; ++i) {
       if (i % x) {
+        sum += i;
       }
   }
+  return sum;
 };
-```
 
-```cpp
-auto fn_v2 = []<auto... cfgs> [[gnu::noinlie, gnu::aligned(perf::align(cfgs...))]] (size_t size, int n) {
-  int stack[perf::align(cfgs)...];
-
-  perf::code::align(perf::align(cfgs...)) for (auto i = 0; i < size; ++i) {
-    if (i % n) {
-
-    }
-    perf::code::align(perf::align(cfgs...)); // asm { nop, nop, ... }; or .align
+template<auto Alignment>
+auto fn_v2 = [] [[gnu::noinline, gnu:aligned(Alignemnt)]] (size_t size, int n) {
+  size_t sum{};
+  for (size_t i = {}; i < size; ++i) {
+      if (i % x) {
+        sum += i;
+      }
   }
+  return sum;
+};
+
+template<auto Alignment>
+auto fn_v2 = []<auto cfg> [[gnu::aligned(Alignment)]] (size_t size, int n) {
+  volatile int stack[cfg];
+  size_t sum{};
+  perf::code::align(cfg) for (auto i =0 ; i < size; ++i) {
+      if (i % x) {
+        sum += i;
+      }
+      perf::code::align(cfg);
+  }
+  return sum;
 };
 ```
-<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
@@ -1047,7 +1088,7 @@ int main() {
     bench(fn_v2, n, unpredictable<int>);
   }
 
-  perf::report(bench[perf::stat::tsc / perf::bench::opeartions]);
+  perf::report(bench[perf::stat::tsc / perf::bench::operations]);
 }
 
 ```
@@ -1058,10 +1099,59 @@ int main() {
 #### Hardware effects
 <!-- .element: style="text-align:left" -->
 
+```sh
+# Address Space Layout Randomization (ASLR) / Fixed per run
+# - 0: none
+# - 1: stack, mmap, shared libs
+# - 2: 1, heap, main binary (-fPIE)
+echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
+```
+<!-- .element: style="font-size:18px;" -->
+
+```sh
+# Code Layout Randomization / Fixed per build
+$CXX -ffunction-sections -falign-functions=16 -fdata-sections ...
+$CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
+```
+<!-- .element: style="font-size:18px;" -->
+
+```sh
+# Code/Stack/Heap Layout Ranomization (-Rcode -Rstack -Rheap) / Randomized every .5s
+# stablizer - https://github.com/ccurtsinger/stabilizer
+```
+<!-- .element: style="font-size:18px;" -->
+
+----
+
 ```cpp
+// Address Space Layout
+bench(fn, ts...);                   // runs in a new process
+using perf::memory::cache::fill;    // fills cache level
 using perf::memory::cache::flush;   // clears cache lines
 using perf::memory::pollute;        // prevents continuous allocation
 using perf::memory::pre_fault;      // touches all pages used by data
+using perf:::memory::stack;         // creates stack
+
+// Code Layout
+[[gnu::aligned]]                    // aligns function
+using perf::code::align;            // aligns code
+```
+
+----
+
+### Measurements bias...
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// Code layout
+// Cache level usage
+// Heap allocation
+// Branch prediction history
+// Stack size
+// ...
+// Basic block alignment
+// Execution port selection
+// Register selection
 // ...
 ```
 
@@ -1079,7 +1169,7 @@ using perf::memory::pre_fault;      // touches all pages used by data
 // - likwid      - https://github.com/RRZE-HPC/likwid
 // - callgrind   - https://valgrind.org/docs/manual/cl-manual.html
 
-// Analyzing
+// Analyzing (https://compiler-explorer.com)
 // - llvm-mca    - https://llvm.org/docs/CommandGuide/llvm-mca.html
 // - osaca       - https://github.com/RRZE-HPC/OSACA
 // - uica        - https://uica.uops.info
@@ -1087,7 +1177,7 @@ using perf::memory::pre_fault;      // touches all pages used by data
 <!-- .element: style="font-size:16px" -->
 
 ```sh
-BENCHMARK_FILTER=fizz_buzz perf record -g ./a.out # Bias?
+BENCHMARK_FILTER=fizz_buzz perf record -g ./a.out # introduces bias?
 ```
 <!-- .element: style="font-size:16px" -->
 
@@ -1104,12 +1194,16 @@ perf::profiler stat{            // perf stat -e
 };
 
 static_assert(stat.is_syscall_free);
+```
 
-start():  stop():
-  // shr
-  rdpmc     rdtscp
-  rdpmc     rdpmc
-  rdtsc     rdpmc
+```cpp
+// gcc-15 -O3
+start():     stop():       // ~100-200 cycles
+ lfence       ...
+ rdpmc [1]    rdtscp [0]   // [0]: time-stamp-counter
+ rdpmc [2]    rdpmc  [2]   // [1]: instructions
+ rdtsc [0]    rdpmc  [1]   // [2]: cycles
+ lfence       lfence
 ```
 
 ----
@@ -1129,7 +1223,7 @@ perf::profiler mem{             // perf mem record
 };
 
 static_assert(record.is_multiplexing_free);
-static_assert(mem.is_multiplexing_free)
+static_assert(mem.is_multiplexing_free);
 static_assert(not record.is_syscall_free);
 static_assert(not mem.is_syscall_free);
 ```
@@ -1185,7 +1279,7 @@ perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
   perf::mca::size,               //   let MispredictPenalty = 14;
   perf::mca::uops,               //   ...
   perf::mca::latency,            // }
-  perf::mca::rthroughput,        //
+  perf::mca::rthroughput,
   perf::mca::timeline,
   perf::mca::resource_pressure,
   perf::mca::bottleneck,
@@ -1200,14 +1294,14 @@ perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
 ```cpp
 // Machine Code Analyzer (MCA)
 
- auto invoke(auto fn, auto... ts) {       // auto label(const auto label)
-   perf::code::label("begin");            //   asm volatile goto(
-   perf::prevent_elision(fn(ts...));      //     ".pushsection labels, \"aw\" \n"
-   perf::code::label("end");              //     ".quad %c0, %l[L]\n"
- }                                        //     ".popsection \n"
-                                          //     : : "i"(label) : "memory" : L
- perf::prevent_elision(                   //   ); L:;
-   &invoke<decltype(fizz_buzz), int>      // }
+ auto invoke(auto fn, auto... ts) {     // auto label(const auto label)
+   perf::code::label("begin");          //   asm volatile goto(
+   perf::prevent_elision(fn(ts...));    //     ".pushsection labels, \"aw\" \n"
+   perf::code::label("end");            //     ".quad %c0, %l[L]\n"
+ }                                      //     ".popsection \n"
+                                        //     : : "i"(label) : "memory" : L
+ perf::prevent_elision(                 //   ); L:;
+   &invoke<decltype(fizz_buzz), int>    // }
  );
 
  analyzer << perf::mca::region{
@@ -1215,7 +1309,7 @@ perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
    perf::code::labels["end"],
  };
 ```
-<!-- .element: style="font-size:18px" -->
+<!-- .element: style="font-size:21px" -->
 
 ----
 
@@ -1294,32 +1388,32 @@ perf::annotate(analyzer[
  [0] [1]  [2]                   [3]                              [4] [5] [6] [7]
  --- ---- --------------------- ------------------------------   --- --- --- ---
                                 if (n % 15 == 0) {
-  1. f400 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef       6    3 1.0  1
-  2. f406 05 88 88 88 08          add eax, 0x8888888              5    1 0.2  1
-  3. f40b 3d 11 11 11 11          cmp eax, 0x11111111             5    1 0.2  1
-  4. f410 72 36                   jb 0x36                         2    1 0.5  1
+  1. f400 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef       6   1   3  1.0
+  2. f406 05 88 88 88 08          add eax, 0x8888888              5   1   1  0.2
+  3. f40b 3d 11 11 11 11          cmp eax, 0x11111111             5   1   1  0.2
+  4. f410 72 36                   jb 0x36                         2   1   1  0.5
                                 } else if (n % 3 == 0) {
-  5. f412 69 c7 ab aa aa aa       imul eax, edi, 0xaaaaaaab       6    3 1.0  1
-  6. f418 05 aa aa aa 2a          add eax, 0x2aaaaaaa             5    1 0.2  1
-  7. f41d 3d 55 55 55 55          cmp eax, 0x55555555             5    1 0.2  1
-  8. f422 72 2d                   jb 0x2d                         2    1 0.5  1
-  9. f424 69 c7 cd cc cc cc       imul eax, edi, 0xcccccccd       6    3 1.0  1
- 10. f42a 05 99 99 99 19          add eax, 0x19999999             5    1 0.2  1
- 11. f42f 3d 33 33 33 33          cmp eax, 0x33333333             5    1 0.2  1
- 12. f434 48 8d 0d 2e 1a 00 00    lea rcx, [rip + 0x1a2e]         7    1 1.0  1
- 13. f43b 48 8d 05 31 1a 00 00    lea rax, [rip + 0x1a31]         7    1 1.0  1
- 14. f442 48 0f 42 c1             cmovb rax, rcx                  4    1 0.5  1
- 15. f446 eb 10                   jmp 0x10                        2    0 0.0  0
+  5. f412 69 c7 ab aa aa aa       imul eax, edi, 0xaaaaaaab       6   1   3  1.0
+  6. f418 05 aa aa aa 2a          add eax, 0x2aaaaaaa             5   1   1  0.2
+  7. f41d 3d 55 55 55 55          cmp eax, 0x55555555             5   1   1  0.2
+  8. f422 72 2d                   jb 0x2d                         2   1   1  0.5
+  9. f424 69 c7 cd cc cc cc       imul eax, edi, 0xcccccccd       6   1   3  1.0
+ 10. f42a 05 99 99 99 19          add eax, 0x19999999             5   1   1  0.2
+ 11. f42f 3d 33 33 33 33          cmp eax, 0x33333333             5   1   1  0.2
+ 12. f434 48 8d 0d 2e 1a 00 00    lea rcx, [rip + 0x1a2e]         7   1   1  1.0
+ 13. f43b 48 8d 05 31 1a 00 00    lea rax, [rip + 0x1a31]         7   1   1  1.0
+ 14. f442 48 0f 42 c1             cmovb rax, rcx                  4   1   1  0.5
+ 15. f446 eb 10                   jmp 0x10                        2   0   0  0.0
                                 } else {
- 16. f448 48 8d 05 16 1a 00 00    lea rax, [rip + 0x1a16]         7    1 1.0  1
- 17. f44f eb 07                   jmp 0x7                         2    0 0.0  0
- 18. f451 48 8d 05 16 1a 00 00    lea rax, [rip + 0x1a16]         7    1 1.0  1
- 19. f458 48 89 44 24 f8          mov qword ptr [rsp - 0x8], rax  5   12 0.5  2
+ 16. f448 48 8d 05 16 1a 00 00    lea rax, [rip + 0x1a16]         7   1   1  1.0
+ 17. f44f eb 07                   jmp 0x7                         2   0   0  0.0
+ 18. f451 48 8d 05 16 1a 00 00    lea rax, [rip + 0x1a16]         7   1   1  1.0
+ 19. f458 48 89 44 24 f8          mov qword ptr [rsp - 0x8], rax  5   2  12  0.5
                                 }
 
  [0] index
  [1] mca.address
- [2] mca.encoding
+ [2] mca.encoding           // CISC vs. RISC
  [3] mca.assembly # intel
  [4] mca.size
  [6] mca.uops               // instructions may decode into multiple micro-operations
@@ -1342,7 +1436,7 @@ perf::annotate(analyzer[
 <!-- .element: style="font-size:15px" -->
 
 ```
- [0] [1]  [2]                   [3]  0     1     2     3     4     5     6     7     8     9    10    11 [4]
+ [0] [1]  [2]                   [3]                                                                      [4]
  --- ---- --------------------- ------------------------------------------------------------------------ ------------------------------
   1. f400 69 c7 ef ee ee ee          -  1.00     -     -     -     -     -     -     -     -     -     - imul eax, edi, 0xeeeeeeef
   2. f406 05 88 88 88 08             -     -     -     -     -  0.50     -     -     -     -  0.50     - add eax, 0x8888888
@@ -1368,7 +1462,7 @@ perf::annotate(analyzer[
  [1] mca.address
  [2] mca.encoding
  [3] mca.resource_pressure
-	- ADLPPort00-11
+	- ADLPPort                     00     01    02    03    04    05    06    07    08    09    10    11
  [4] mca.assembly # intel
 ```
 <!-- .element: style="font-size:11px" -->
@@ -1379,45 +1473,38 @@ perf::annotate(analyzer[
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf::analyzer analyzer{
-  perf::mca::assembly, perf::mca::timeline,
-};
-
-auto n = 3, s = 1;
-
-perf::code::label("begin");
-  while (n--) {
-    s *= n;
-  }
-perf::code::label("end");
-```
-
-----
-
-#### timeline
-<!-- .element: style="text-align:left" -->
-
-```cpp
-analyzer << perf::mca::region{perf::code::labels["begin"], perf::code::labels["end"]};
-perf::annotate(analyzer[]);
+perf::annotate(analyzer[
+  perf::mca::assembly, perf::mca::timeline
+]);
 ```
 <!-- .element: style="font-size:15px" -->
 
 ```cpp
- [0] [1]                               [2]
- --- --------------------------------- -------------------------
-  1.  sub dword ptr [rsp + 0x44], 0x1  DeeeeeeeeeeeeER   .     .
-  2.  jb 0x18                          D============eER  .     .
-  3.  nop dword ptr [rax]              DeE------------R  .     .
-  4.  mov eax, dword ptr [rsp + 0x44]  DeeeeeE--------R  .     .
-  5.  imul eax, dword ptr [rsp + 0x54] .DeeeeeeeeE----R  .     .
-  6.  mov dword ptr [rsp + 0x54], eax  .D========eeeeeeeeeeeeER.
-  7.  sub dword ptr [rsp + 0x44], 0x1  . D=======eeeeeeeeeeeeER.
-  8.  jae -0x14                        . D===================eER
+ [0] [1]                              [2]
+ --- -------------------------------- ----------------------
+  1.   imul eax, edi, 0xeeeeeeef      DeeeER.     .     .
+  2.   add eax, 0x8888888             D===eER     .     .
+  3.   cmp eax, 0x11111111            D====eER    .     .
+  4.   jb 0x36                        D=====eER   .     .
+  5.   imul eax, edi, 0xaaaaaaab      D=eeeE--R   .     .
+  6.   add eax, 0x2aaaaaaa            D====eE-R   .     .
+  7.   cmp eax, 0x55555555            .D====eER   .     .
+  8.   jb 0x2d                        .D=====eER  .     .
+  9.   imul eax, edi, 0xcccccccd      .D=eeeE--R  .     .
+ 10.   add eax, 0x19999999            .D====eE-R  .     .
+ 11.   cmp eax, 0x33333333            .D=====eER  .     .
+ 12.   lea rcx, [rip + 0x1d2e]        .D==eE---R  .     .
+ 13.   lea rax, [rip + 0x1d31]        . D==eE--R  .     .
+ 14.   cmovb rax, rcx                 . D=====eER .     .
+ 15.   jmp 0x10                       . D-------R .     .
+ 16.   lea rax, [rip + 0x1d16]        . D===eE--R .     .
+ 17.   jmp 0x7                        . D-------R .     .
+ 18.   lea rax, [rip + 0x1d16]        . D====eE-R .     .
+ 19.   mov qword ptr [rsp - 0x8], rax . D=====eeeeeeeeeeeeER
 
  [0] index
- [3] mca.assembly # intel
- [9] mca.timeline
+ [1] mca.assembly # intel
+ [2] mca.timeline
   - 'D': instruction dispatched
   - 'e': instruction executing
   - 'E': instruction executed
@@ -1425,7 +1512,27 @@ perf::annotate(analyzer[]);
   - '=': instruction waiting
   - '-': instruction executed
 ```
-<!-- .element: style="font-size:15px" -->
+<!-- .element: style="font-size:13px" -->
+
+----
+
+#### timeline & resource-pressure & bottleneck
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::analyzer analyzer{
+  perf::mca::assembly,
+  perf::mca::timeline,
+  perf::mca::resource_pressure,
+  perf::mca::bottleneck,
+};
+
+perf::code::label("begin");
+while (n--) {
+  s *= n;
+}
+perf::code::label("end");
+```
 
 ----
 
@@ -1472,22 +1579,42 @@ perf::annotate(analyzer[]);
  30. mov dword ptr [rsp + 0x54], eax   .     .   D========eeeeeeeeeeeeER   .
  31. sub dword ptr [rsp + 0x44], 0x1   .     .    D=======eeeeeeeeeeeeER   .
  32. jae -0x14                         .     .    D===================eER  .
+
+ [0] index
+ [1] mca.assembly # intel
+ [2] mca.timeline
+  - 'D': instruction dispatched
+  - 'e': instruction executing
+  - 'E': instruction executed
+  - 'R': instruction retired
+  - '=': instruction waiting
+  - '-': instruction executed
 ```
-<!-- .element: style="font-size:12px" -->
+<!-- .element: style="font-size:10px" -->
 
 ----
 
 #### disassemble vs. trace
 <!-- .element: style="text-align:left" -->
 
-```cpp
-perf::profiler profiler{perf::trace::instructions, perf::trace::cycles};
-perf::analyzer analyzer{perf::mca::assembly, perf::mca::timeline};
 
-auto n = 3, s = 1;
-while (n--) {
-  s *= n;
+```cpp
+perf::profiler profiler{
+  perf::trace::instructions, perf::trace::cycles,
+};
+perf::analyzer analyzer{
+  perf::mca::assembly, perf::mca::timeline,
+};
+
+profiler.start();
+for (auto n = 0; n < 4; ++n) {
+  // perf::code::label("begin");
+  while (n--) {
+    s *= n;
+  }
+  // perf::code::label("end");
 }
+profiler.stop();
 
 analyzer << profiler[perf::trace::instructions];
 perf::log(analyzer[]);
@@ -1495,10 +1622,21 @@ perf::log(analyzer[]);
 
 ----
 
+#### trace + record
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-perf::profiler profiler{perf::trace::instructions, perf::trace::cycles, perf::record::mem_loads};
+perf::profiler profiler{
+  perf::trace::instructions,
+  perf::trace::cycles,
+  perf::record::mem_loads,
+};
+
+profiler.start();
+perf::prevent_elision(fizz_buzz(not_elided(5)));
+profiler.stop();
+
 perf::analyzer analyzer{perf::mca::assembly};
-invoke(profiler, fizz_buzz, 5);
 analyzer << profiler[perf::trace::instructions];
 
 auto data = tuple(analyzer[], profiler[]);
@@ -1525,7 +1663,6 @@ int main() {
   perf::annotate<vsplit>(bench[perf::mca::assembly]);
 }
 ```
-<!-- .element: style="font-size:18px" -->
 
 ----
 
@@ -1604,9 +1741,9 @@ fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz
 ```cpp
 perf::annotate<vsplit>(bench[perf::mca::timeline] | filter(perf::trace::instructions));
 ```
-<!-- .element: style="font-size:15px" -->
+<!-- .element: style="font-size:14px" -->
 
-```
+```sh
 fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpredictable)/latency:
  [0] [1]                          [0] [1]                          [0] [1]
  -- ------------------            --- ------------------------     --- -----------------------
@@ -1639,7 +1776,7 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
   - '=': instruction waiting       - '=': instruction waiting       - '=': instruction waiting
   - '-': instruction executed      - '-': instruction executed      - '-': instruction executed
 ```
-<!-- .element: style="font-size:12px" -->
+<!-- .element: style="font-size:13px" -->
 
 ----
 
@@ -2066,26 +2203,26 @@ auto disassemble = [](auto fn, auto... ts) {
   auto invoke = [&] {
     perf::code::label(Begin);
     perf::prevent_elision(fn(ts...));
-    perf::code::label(End);              auto trace = [](auto fn, auto... ts) {
-  };                                       perf::profiler profiler{perf::trace::instructions};
-  perf::prevent_elision(                   perf::analyzer analyzer{perf::mca::assembly};
-    &decltype(invoke)::operator()          profiler.start();
-  );                                       perf::prevent_elision(fn(ts...));
-  analyzer << perf::mca::region{           profiler.stop();
-    perf::code::labels[Begin],             analyzer << profiler[perf::trace::instructions];
-    perf::code::labels[End],               return analyzer[];
-  };                                     };
-  return analyzer[];
+    perf::code::label(End);
+  };                                      auto trace = [](auto fn, auto... ts) {
+  perf::prevent_elision(                    perf::profiler profiler{perf::trace::instructions};
+    &decltype(invoke)::operator()           perf::analyzer analyzer{perf::mca::assembly};
+  );                                        profiler.start();
+  analyzer << perf::mca::region{            perf::prevent_elision(fn(ts...));
+    perf::code::labels[Begin],              profiler.stop();
+    perf::code::labels[End],                analyzer << profiler[perf::trace::instructions];
+  };                                        return analyzer[];
+  return analyzer[];                      };
 };
 
 auto analyze = [](auto fn, auto... ts) {
- perf::profiler profiler{perf::trace::instructions};
- perf::analyzer analyzer{perf::mca::timeline};
- profiler.start();
- perf::prevent_elision(fn(ts...));
- profiler.stop();
- analyzer << profiler[perf::trace::instructions];
- return analyzer[];
+  perf::profiler profiler{perf::trace::instructions};
+  perf::analyzer analyzer{perf::mca::timeline};
+  profiler.start();
+  perf::prevent_elision(fn(ts...));
+  profiler.stop();
+  analyzer << profiler[perf::trace::instructions];
+  return analyzer[];
 };
 ```
 <!-- .element: style="font-size:17px;" -->
