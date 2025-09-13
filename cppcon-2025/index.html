@@ -1,7 +1,6 @@
 <!--
 update studies picture to ecdf
 fix idiv latency
-tune vs non-tuned
 warm vs cold
 lut vs pext -> clflush
 timeline
@@ -589,7 +588,17 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 
 ----
 
-tune vs non-tuned
+#### Tuned vs. Non-tuned
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/tune.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+// rdtsc{p} # same scale
+```
+<!-- .element: style="text-align:left;font-size:14px;" -->
 
 ----
 
@@ -992,19 +1001,20 @@ perf::plot::ecdf(
 // https://www.arewesixelyet.com # printf "pixel: \033Pq#1@\033\\"
 user@localhost:~# PERF_IO_PLOT_TERM="sixel" ./a.out # term
 ```
-<!-- .element: style="font-size:14px; margin: 0 0;" -->
+<!-- .element: style="font-size:12px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/ecdf1.png" style="height: 200px; width: 420px; background:none; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/ecdf3.png" style="width: 60%; height: 220px; background:none; border:none; box-shadow:none; margin: -20px 0;" />
 </p>
 
 ```cpp
+
 user@server:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 ```
-<!-- .element: style="font-size:14px; margin: 0 0;" -->
+<!-- .element: style="font-size:12px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/ecdf3.png" style="width: 45%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/ecdf2.png" style="width: 63%; background:none; border:none; box-shadow:none; margin: -20px 0;" />
 </p>
 
 ```cpp
@@ -1302,9 +1312,9 @@ perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
    &invoke<decltype(fizz_buzz), int>    // }
  );
 
- analyzer << perf::mca::region{
-   perf::code::labels["begin"],
-   perf::code::labels["end"],
+ analyzer << perf::mca::region{         // perf::verify(perf::is_elided([] {
+   perf::code::labels["begin"],         //  invoke(fizz_buzz({}));
+   perf::code::labels["end"],           // }));
  };
 ```
 <!-- .element: style="font-size:21px" -->
