@@ -1,6 +1,4 @@
 <!--
-ecdf - for gnuplto remove fizz_buzz/range
-fix cpu_time to process_time
 update studies picture to ecdf
 fix idiv latency
 tune vs non-tuned
@@ -444,7 +442,7 @@ pyperf system tune # pip install pyperf
 
 # Affinity / Priority
 taskset -c <cpu numbers> ...
-nice -n -20 ...
+nice -n -20 ... # chrt -f 99 ...
 
 
 # Non-uniform memory access (NUMA) # lstopo
@@ -1006,7 +1004,7 @@ user@server:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 <!-- .element: style="font-size:14px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/ecdf2.png" style="width: 45%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/ecdf3.png" style="width: 45%; background:none; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ```cpp
@@ -2358,7 +2356,7 @@ auto analyze = [](auto fn, auto... ts) {
 <!-- .element: style="text-align:left;font-size:13px;" -->
 
 <p align="left">
-&nbsp; <img src="images/gh_html.png" style="width: 85%; background:none; border:none; box-shadow:none;" />
+&nbsp; <img src="images/gh_html.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
 </p>
 <!-- .element: style="margin: -30px 0;" -->
 
