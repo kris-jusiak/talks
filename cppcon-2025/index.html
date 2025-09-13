@@ -115,9 +115,9 @@ random order
   DRAM                 350 ± 8  70.00 ± 8 ████████████████████████████████████████████░░░░░
   ...
 
- [0]: cycles
- [1]: cycles/4Ghz [ns]
- [2]: ratio [cycles], (░) variability
+  [0]: cycles
+  [1]: cycles/4Ghz [ns]
+  [2]: ratio [cycles], (░) variability
 ```
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
@@ -275,6 +275,39 @@ random order
           }
 ```
 <!-- .element: style="font-size:19px;" -->
+
+----
+
+#### Always measure - https://valgrind.org/docs/manual/cl-manual.html
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ └─ System
+    └── Application
+
+          int main() {
+            prof::callgrind profiler{"simulation"};
+
+            while (true) {
+              profiler.reset();
+              profiler.start();
+
+              if (trigger) { // hot-path
+                // action
+
+                profiler.stop();
+                profiler.flush();
+              }
+            }
+          }
+```
+
+```sh
+        valgrind --tool=callgrind --instr-atstart=no \ # 4x+ overhead
+          --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes ...
+```
+<!-- .element: style="font-size:18px;" -->
+
 
 ----
 
@@ -520,7 +553,7 @@ cache iL1: 32Kb/64b, dL1: 48Kb/64b
 <!-- .element: style="text-align:left;font-size:14px" -->
 
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="font-size:21px; text-align:left; margin: 0px 5px;" -->
+<!-- .element: style="font-size:25px; text-align:left; margin: 0px 5px;" -->
 
 ----
 
@@ -592,7 +625,7 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
-<img src="images/tune.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+<img src="images/tune.png" style="width: 100%; height: 210px; background:none; border:none; box-shadow:none;" />
 </p>
 
 ```cpp
@@ -611,8 +644,6 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 // Hardware effects
 // Statistically sound conclusions
 ```
-
----
 
 ##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
 <!-- .element: style="text-align:left; font-size:25px; margin: 3px 12px;" -->
@@ -659,12 +690,12 @@ struct timeit {
   auto operator()(auto fn, auto... ts) {
     // ...
 
-    for (auto s = 0u; s < samples; ++s) {         //  Time                     now() [ns]
-      auto start = now();                         //  ------------------------ ---------------
-      for (auto i = 0u; i < iterations; ++i) {    //  Time-Stamp-Counter (TSC) rdtsc{p} / freq
-        fn(ts...);                                //  Steady time              steady_clock
-      }                                           //  Process time             clock_gettime
-      auto stop = now();                          //  Thread time              clock_gettime
+    for (auto s = 0u; s < samples; ++s) {        //  Time                     now [ns]
+      auto start = now();                        //  ------------------------ ---------------
+      for (auto i = 0u; i < iterations; ++i) {   //  Time-Stamp-Counter (TSC) rdtsc{p} / freq
+        fn(ts...);                               //  Steady time              steady_clock
+      }                                          //  Process time             clock_gettime
+      auto stop = now();                         //  Thread time              clock_gettime
       // ...
     }
 
@@ -672,7 +703,7 @@ struct timeit {
   }
 };
 ```
-<!-- .element: style="font-size:17px; margin: 0 0;" -->
+<!-- .element: style="font-size:16px; margin: 0 0;" -->
 
 ----
 
@@ -735,11 +766,11 @@ int main() {
 </p>
 
 ```cpp
-// Noise        - external part of the measerument (ex. pinning)
-// Bias         - implicit part of the measerument (ex. hardware effects)
-// Optimization - explicit part of the measerument (ex. SWAR ) # can introduce bias
+// Noise        - external part of the measurement (ex. pinning)
+// Bias         - implicit part of the measurement (ex. hardware effects)
+// Optimization - explicit part of the measurement (ex. SWAR ) # can introduce bias
 ```
-<!-- .element: style="text-align:left; font-size:20px; " -->
+<!-- .element: style="text-align:left; font-size:17px; " -->
 
 ----
 
@@ -761,17 +792,17 @@ int main() {
 ----
 
 ```cpp
-// Latency
+// Latency # start(); fn(ts...); stop();
 for (auto i = 0u; i < n; ++i) {
   checksum ^= fn(checksum ^ ts...);   // data dependency
   // memory fence                     // if mem-stores
 }
 
-// Throughput                         // - throughput::seq
-for (auto i = 0u; i < n; ++i) {       // - throughput::unseq
-  fn(ts...);                          // - throughput::unroll
-} // ?                                // - throughput::par
-                                      // - ...
+// Throughput                         // throughput::seq
+for (auto i = 0u; i < n; ++i) {       // throughput::unseq
+  fn(ts...);                          // throughput::unroll
+} // ?                                // throughput::par
+                                      // ...
 ```
 
 ```cpp
@@ -918,7 +949,7 @@ fizz_buzz(unpredictable)/latency              (1.29x) 5.42  (1.33x) 5.66  (1.34x
 [4] p90((stat.tsc[ns]/bench.operations))
 [5] p99((stat.tsc[ns]/bench.operations))
 ```
-<!-- .element: style="font-size:14px;" -->
+<!-- .element: style="font-size:12px;" -->
 
 ----
 
@@ -952,9 +983,9 @@ perf::plot::hist(
 </p>
 
 ```cpp
-// Histogram: Shows data distrubution (normal, skewed, non-symetric, multi-modal, ...)
+// Histogram: Shows data distribution (normal, skewed, non-symmetric, multi-modal, ...)
 ```
-<!-- .element: style="font-size:19px;" -->
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -1117,6 +1148,7 @@ echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
 <!-- .element: style="font-size:18px;" -->
 
 ```sh
+
 # Code Layout Randomization / Fixed per build
 $CXX -ffunction-sections -falign-functions=16 -fdata-sections ...
 $CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
@@ -1124,10 +1156,11 @@ $CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
 <!-- .element: style="font-size:18px;" -->
 
 ```sh
+
 # Code/Stack/Heap Layout Ranomization (-Rcode -Rstack -Rheap) / Randomized every .5s
 # stablizer - https://github.com/ccurtsinger/stabilizer
 ```
-<!-- .element: style="font-size:18px;" -->
+<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -1152,12 +1185,13 @@ using perf::code::align;            // aligns code
 
 ```cpp
 // Code layout
-// Cache level usage
 // Heap allocation
+// Cache level
 // Branch prediction history
 // Stack size
 // ...
 // Basic block alignment
+// Cache coherence protocol
 // Execution port selection
 // Register selection
 // ...
@@ -1185,7 +1219,7 @@ using perf::code::align;            // aligns code
 <!-- .element: style="font-size:16px" -->
 
 ```sh
-BENCHMARK_FILTER=fizz_buzz perf record -g ./a.out # introduces bias?
+BENCHMARK_FILTER=fizz_buzz perf record -g ./a.out # bias?
 ```
 <!-- .element: style="font-size:16px" -->
 
@@ -1206,7 +1240,7 @@ static_assert(stat.is_syscall_free);
 
 ```cpp
 // gcc-15 -O3
-start():     stop():       // ~100-200 cycles
+start():     stop():
  lfence       ...
  rdpmc [1]    rdtscp [0]   // [0]: time-stamp-counter
  rdpmc [2]    rdpmc  [2]   // [1]: instructions
@@ -1302,20 +1336,20 @@ perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
 ```cpp
 // Machine Code Analyzer (MCA)
 
- auto invoke(auto fn, auto... ts) {     // auto label(const auto label)
-   perf::code::label("begin");          //   asm volatile goto(
-   perf::prevent_elision(fn(ts...));    //     ".pushsection labels, \"aw\" \n"
-   perf::code::label("end");            //     ".quad %c0, %l[L]\n"
- }                                      //     ".popsection \n"
-                                        //     : : "i"(label) : "memory" : L
- perf::prevent_elision(                 //   ); L:;
-   &invoke<decltype(fizz_buzz), int>    // }
+ auto invoke(auto fn, auto... ts) {    // auto label(const auto label)
+   perf::code::label("begin");         //   asm volatile goto(
+   perf::prevent_elision(fn(ts...));   //     ".pushsection labels, \"aw\" \n"
+   perf::code::label("end");           //     ".quad %c0, %l[L]\n"
+ }                                     //     ".popsection \n"
+                                       //     : : "i"(label) : "memory" : L
+ perf::prevent_elision(                //   ); L:;
+   &invoke<decltype(fizz_buzz), int>   // }
  );
 
- analyzer << perf::mca::region{         // perf::verify(perf::is_elided([] {
-   perf::code::labels["begin"],         //  invoke(fizz_buzz({}));
-   perf::code::labels["end"],           // }));
- };
+ analyzer << perf::mca::region{        // perf::verify(
+   perf::code::labels["begin"],        //   not perf::is_elided([] {
+   perf::code::labels["end"],          //     invoke(fizz_buzz, 15);
+ };                                    // }));
 ```
 <!-- .element: style="font-size:21px" -->
 
@@ -1324,7 +1358,7 @@ perf::analyzer analyzer{         // def AlderlakeP : SchedMachineModel {
 ```cpp
 perf::annotate(analyzer[]);
 ```
-<!-- .element: style="font-size:16px" -->
+<!-- .element: style="font-size:15px" -->
 
 ```
  [0] [1]  [2]                   [3]                              [4] [5] [6] [7] [8]                                                                            [9]                  [10]
@@ -1840,36 +1874,6 @@ main;render 7
 
 ----
 
-####  https://valgrind.org/docs/manual/cl-manual.html
-<!-- .element: style="text-align:left" -->
-
-```cpp
-import prof;
-import perf;
-
-int main() {
-  perf::runner bench{[](auto fn, auto... ts) {
-    prof::callgrind profiler{"simulation"};
-
-    profiler.start();
-    perf::prevent_elision(fn(ts...));
-    profiler.stop();
-
-    profiler.flush();
-  }};
-
-  bench(fizz_buzz, unpredictable<int>);
-}
-```
-
-```sh
-valgrind --tool=callgrind --instr-atstart=no \ # 4x+ overhead
-  --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes ...
-```
-<!-- .element: style="font-size:18px;" -->
-
-----
-
 ### [4] The Chaos
 <!-- .element: style="text-align:left" -->
 
@@ -2312,7 +2316,7 @@ auto analyze = [](auto fn, auto... ts) {
   }
 };
 ```
-<!-- .element: style="text-align:left;font-size:20px;" -->
+<!-- .element: style="text-align:left;font-size:19px;" -->
 
 ----
 
