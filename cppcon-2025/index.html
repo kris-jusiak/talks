@@ -567,7 +567,7 @@ int main() {
 ```cpp
 // measured vs. documented
 // - instructions latency/rthroughput/...
-// - dL1/dL2/dL3 load/store latency/bandwidth
+// - L1d/L2d/L3d load/store latency/bandwidth
 // - branch misprediction penalty
 // - max(µops/cycle) vs. dispatch width
 //  ...
@@ -1131,7 +1131,7 @@ $CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
 }
 
 template<auto cfg>
-[[gnu::noinline, gnu::aligned(cfg.function_alignment)]] 
+[[gnu::noinline, gnu::aligned(cfg.function_alignment)]]
 auto fn_v2(size_t size, int n) {
   perf::code::align(cfg.stack_alignment) std::byte _[cfg.stack_size];
   size_t sum{};
@@ -1760,7 +1760,7 @@ analyzer << profiler[perf::trace::instructions];
 perf::annotate(tuple(analyzer[], profiler[])[
   perf::mca::assembly,
   perf::trace::instructions / perf::trace::cycles, // IPC per IP
-  perf::record::mem_loads                          // dL1, dL2, dL3, iTLB hit/miss
+  perf::record::mem_loads                          // L1d, L2d, L3d, TLBi hit/miss
 ]);
 ```
 <!-- .element: style="font-size:17px" -->
@@ -1940,7 +1940,7 @@ fizz_buzz(15)/latency:                        fizz_buzz(5)/latency:             
  [0] index                                  [0] index                                       [0] index
  [1] mca.assembly # intel                   [1] mca.assembly # intel                        [1] mca.assembly # intel
  [2] record.branch_misses/record.branches   [2] record.branch_misses/record.branches        [2] record.branch_misses/record.branches
- [3] record.mem_loads // the lowest level hit # dL1, dL2, dL3, RAM
+ [3] record.mem_loads // the lowest level hit # L1d, L2d, L3d, RAM
 ```
 <!-- .element: style="font-size:11px" -->
 
@@ -2152,8 +2152,8 @@ Modern CPUs are primarily bottlenecked by
  │
  ├─ [1] Front-End Bound
  │   ├─ [2] Front-End Latency
- │   │   ├─ [3] iL1 Misses
- │   │   ├─ [3] iTLB Misses
+ │   │   ├─ [3] L1i Misses
+ │   │   ├─ [3] TLBi Misses
  │   │   └─ [3] Branch Resteers
  │   └─ [2] Front-End Bandwidth
  │
@@ -2162,9 +2162,9 @@ Modern CPUs are primarily bottlenecked by
      │   └─ [3] Execution ports utilization
      │   └─ [3] Divider
      └─ [2] Memory Bound
-         ├─ [3] dL1 Bound
-         ├─ [3] dL2 Bound
-         ├─ [3] dL3 Bound
+         ├─ [3] L1d Bound
+         ├─ [3] L2d Bound
+         ├─ [3] L3d Bound
          └─ [3] DRAM Bound
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -2233,12 +2233,12 @@ using perf::trace::cycles;
 
 // Front-End Bound -> hot/cold path, unroll, TMP
 auto stalled_cycles_frontend_rate = stalled_cycles_frontend / cycles;
-auto iL1_miss_rate = iL1_load_misses / iL1_loads;
-auto itlb_miss_rate = itlb_load_misses / itlb_loads;
+auto l1i_miss_rate = l1i_load_misses / l1i_loads;
+auto tlbi_miss_rate = tlbi_load_misses / tlbi_loads;
 
 
 // Back-End Bound -> align, prefetch, DOD, LUT, SWAR
-auto l1_dcache_miss_rate = l1_dcache_load_misses / l1_dcache_loads;
+auto l1d_cache_miss_rate = l1d_cache_load_misses / l1d_cache_loads;
 auto llc_miss_rate = llc_loads_misses / llc_loads
 using mca::resource_pressure;
 using mca::timeline;
