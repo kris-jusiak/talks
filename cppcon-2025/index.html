@@ -707,6 +707,12 @@ struct timeit {
 ```
 <!-- .element: style="font-size:16px; margin: 0 0;" -->
 
+```cpp
+// It's X% faster/slower with Y% confidence
+// - how certain is the measurement, not whether measuring the right thing!
+```
+<!-- .element: style="font-size:16px; margin: 0 0;" -->
+
 ----
 
 ```cpp
@@ -800,11 +806,10 @@ for (auto i = 0u; i < n; ++i) {
   // memory fence                     // if mem-stores
 }
 
-// Throughput                         // throughput::seq
-for (auto i = 0u; i < n; ++i) {       // throughput::unseq
-  fn(ts...);                          // throughput::unroll
-} // ?                                // throughput::par
-                                      // ...
+// Throughput
+for (auto i = 0u; i < n; ++i) {       // seq, unseq, unroll
+  fn(ts...);                          // par, omp, cuda, ...
+} // ?
 ```
 
 ```cpp
