@@ -937,8 +937,9 @@ int main() {
 <!-- .element: style="font-size:17px;" -->
 
 ```cpp
-// perf::memory::heap::pollute(); // prevents continuous allocation (list, ...)
+// perf::memory::heap::pollute(); // prevents continuous allocation # used with containers
 ```
+<!-- .element: style="font-size:15px;" -->
 
 ----
 
@@ -1214,20 +1215,16 @@ int main() {
         // pre-setup
         // profile to gather executed branches, addresses, instructions, ... [3]
 
+        perf::memory::pre_fault();      // touches specific pages
         for (auto i = 0; i < iterations; ++i) {
-          // setup
-          branch_history();
-          memory();
-          // pre_fault();    // touches specific pages
-          // evictor<L3>();  // L3 can be evicted from a different core
-          // flush_cache();  // clflush (L1d, L1i, L2d, L3d)
+          update_branch_history(ts...); // based on input distrubution
+          flush_cache();                // clflush (L1d, L1i, L2d, L3d)
+                                        // Ld3 only - different core can be used
 
-          auto args = tuple{ts[i...]};
-
-          // bench
           start();
-          perf::prevent_elision(fn(args...)); // may need to unroll
+          perf::prevent_elision(fn(ts...)); // may need to unroll
           stop();
+          // ...
         }
     }
   };
@@ -1235,7 +1232,7 @@ int main() {
   // ...
 }
 ```
-<!-- .element: style="font-size:20px" -->
+<!-- .element: style="font-size:19px" -->
 
 ----
 
