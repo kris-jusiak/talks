@@ -2,7 +2,6 @@
 warm vs cold
 lut vs pext -> clflush
 cachee and nops studies
-flowgraph examples
  -->
 
 <!doctype html>
@@ -1155,22 +1154,17 @@ auto fn_v2 = []<auto cfg> [[gnu::aligned(Alignment)]] (size_t size, int n) {
 ```
 <!-- .element: style="font-size:18px;" -->
 
-----
-
 ```cpp
 int main() {
-  perf::runner bench{perf::bench::latency{}};
-
+  // ...
   for (auto i = 0; i < 16; ++i) {
     bench(fn_v1, n, unpredictable<int>);
     bench(fn_v2, n, unpredictable<int>);
   }
-
-  perf::report(bench[perf::stat::tsc / perf::bench::operations]);
+  // ...
 }
-
 ```
-<!-- .element: style="font-size:18px;" -->
+<!-- .element: style="font-size:15px;" -->
 
 ----
 
@@ -1199,37 +1193,32 @@ int main() {
 
 ----
 
-```cpp
-// Address Space Layout
-bench(fn, ts...);                   // runs in a new process
-using perf::memory::cache::fill;    // fills cache level
-using perf::memory::cache::flush;   // clears cache lines
-using perf::memory::pollute;        // prevents continuous allocation
-using perf::memory::pre_fault;      // touches all pages used by data
-using perf::memory::stack;          // creates stack
-
-// Code Layout
-[[gnu::aligned]]                    // aligns function
-using perf::code::align;            // aligns code
-```
-
-----
-
 ```sh
-lstopo # hardware topology
+lstopo # hardware topology (alderlake:6.154.3)
 ```
 <!-- .element: style="font-size:17px;" -->
 
 <p align="left">
-&nbsp; <img src="images/lstopo.png" style="width:70%; margin: -15px 0;" />
+&nbsp; <img src="images/lstopo.png" style="width:90%; margin: -15px 0;" />
 </p>
 
 <!--//L3 cache can be crashed from different pinned proccess-->
 
 ```cpp
+
 // What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
 ```
-<!-- .element: style="font-size:15px;" -->
+<!-- .element: style="font-size:14px;" -->
+
+----
+
+```cpp
+bench(fn, ts...);                   // runs in a new process
+using perf::memory::cache::fill;    // fills cache level
+using perf::memory::cache::flush;   // clears cache lines
+using perf::memory::pollute;        // prevents continuous allocation
+using perf::memory::pre_fault;      // touches all pages used by data
+//...
 
 ----
 
@@ -1943,10 +1932,10 @@ fizz_buzz(15)/latency:                        fizz_buzz(5)/latency:             
 
 ```cpp
 perf::plot::flowgraph(
-  bench[perf::mca::assembly] | filter(perf::trace::instructions)
+  bench[perf::mca::assembly]
 );
 ```
-<!-- .element: style="font-size:18px" -->
+<!-- .element: style="font-size:19px" -->
 
 <p align="left">
 <img src="images/flowgraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
@@ -1956,7 +1945,6 @@ perf::plot::flowgraph(
 // basic block - is a straight-line sequence of instructions
 //               with a single entry point and a single exit point
 ```
-<!-- .element: style="font-size:15px" -->
 
 ----
 
