@@ -806,8 +806,8 @@ for (auto i = 0u; i < n; ++i) {       // seq, unseq, unroll
 ```cpp
 
 // [*] A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
-// - https://uops.info/table.html
 // - https://arxiv.org/abs/1911.03282
+// - https://uops.info/table.html
 ```
 <!-- .element: style="text-align:left; font-size:16px; " -->
 
@@ -935,6 +935,10 @@ int main() {
 }
 ```
 <!-- .element: style="font-size:17px;" -->
+
+```cpp
+// perf::memory::heap::pollute(); // prevents continuous allocation (list, ...)
+```
 
 ----
 
@@ -1207,18 +1211,24 @@ user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 int main() {
   perf::runner bench{
     [](auto fn, auto ... ts) {
-        // profile first to know branches, addresses [3]
+        // pre-setup
+        // profile to gather executed branches, addresses, instructions, ... [3]
 
-        setup_branch_predictor();
-        setup_memory();
-        // pre_fault(); touches all pages used by data
-        // pollute_heap(); prevents continuous allocation (also part of input data)
-        // evictor<L3>(); // L3 can be evictor from different core
-        // flush_cache();
+        for (auto i = 0; i < iterations; ++i) {
+          // setup
+          branch_history();
+          memory();
+          // pre_fault();    // touches specific pages
+          // evictor<L3>();  // L3 can be evicted from a different core
+          // flush_cache();  // clflush (L1d, L1i, L2d, L3d)
 
-        start();
-        perf::prevent_elision(fn(ts...));
-        stop();
+          auto args = tuple{ts[i...]};
+
+          // bench
+          start();
+          perf::prevent_elision(fn(args...)); // may need to unroll
+          stop();
+        }
     }
   };
 
