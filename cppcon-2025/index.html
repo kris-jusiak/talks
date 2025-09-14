@@ -285,7 +285,7 @@
               profiler.reset();
               profiler.start();
 
-              if (trigger) { // hot-path
+              if (trigger) { // fast-path
                 // action
 
                 profiler.stop();
@@ -638,7 +638,7 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 // Statistically sound conclusions
 ```
 
-##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+##### [Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
 <!-- .element: style="text-align:left; margin: 3px 12px;" -->
 ##### [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
 <!-- .element: style="text-align:left; margin: 3px 12px;" -->
@@ -765,9 +765,9 @@ int main() {
 </p>
 
 ```cpp
-// Noise        - external part of the measurement (ex. pinning)
+// Noise        - external part of the measurement (ex. frequency scaling)
 // Bias         - implicit part of the measurement (ex. hardware effects)
-// Optimization - explicit part of the measurement (ex. SWAR ) # can introduce bias
+// Optimization - explicit part of the measurement (ex. SWAR) # can introduce bias
 ```
 <!-- .element: style="text-align:left; font-size:17px; " -->
 
@@ -804,6 +804,7 @@ for (auto i = 0u; i < n; ++i) {       // seq, unseq, unroll
 ```
 
 ```cpp
+
 // [*] A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
 // - https://uops.info/table.html
 // - https://arxiv.org/abs/1911.03282
@@ -820,7 +821,7 @@ int main() {
     bench(fizz_buzz, {});
 
     perf::report(
-      bench[time::tsc / perf::bench::operations] // ns/op
+      bench[perf::stat::tsc / perf::bench::operations] // ns/op
     );
   }
 
@@ -834,8 +835,8 @@ int main() {
     bench(fizz_buzz, {});
 
     perf::report(
-      bench[perf::bench::operations / seconds(time::tsc)] // op/s
-      // bench[time::tsc / perf::bench::operations]       // ns/op (inverse throughput)
+      bench[perf::bench::operations / seconds(perf::stat::tsc)] // op/s
+      // bench[perf::stat::tsc / perf::bench::operations]       // ns/op (inverse throughput)
     );
   }
 }
@@ -968,7 +969,7 @@ fizz_buzz(unpredictable)/latency              (1.29x) 5.42  (1.34x) 5.62  (1.32x
 
 ```cpp
 perf::plot::bar(
-  bench[perf::time::tsc / perf::bench::operations]
+  bench[perf::stat::tsc / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -986,7 +987,7 @@ perf::plot::bar(
 
 ```cpp
 perf::plot::hist(
-  bench[perf::time::tsc / perf::bench::operations]
+  bench[perf::stat::tsc / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -1004,7 +1005,7 @@ perf::plot::hist(
 
 ```cpp
 perf::plot::box(
-  bench[perf::time::tsc / perf::bench::operations]
+  bench[perf::stat::tsc / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -1130,12 +1131,13 @@ $CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
 }
 
 template<auto cfg>
-[gnu::noinline, gnu::aligned(cfg.fn_alignment)]] auto fn_v2(size_t size, int n) {
-  perf::code::align(cflg.code_alignment) std::byte _[cfg.stack_size];
+[[gnu::noinline, gnu::aligned(cfg.function_alignment)]] 
+auto fn_v2(size_t size, int n) {
+  perf::code::align(cfg.stack_alignment) std::byte _[cfg.stack_size];
   size_t sum{};
-  perf::code::align(cfg) for (auto i = 0 ; i < size; ++i) {
+  perf::code::align(cfg.loop_alignment) for (auto i = 0 ; i < size; ++i) {
     if (i % x) sum += i;
-    perf::code::align(cfg.alignment); // may inject nops
+    perf::code::align(cfg.loop_boundry); // nops...
   }
   return sum;
 }
@@ -1144,6 +1146,7 @@ template<auto cfg>
 
 ```cpp
 int main() {
+  perf::runner bench{perf::bench::latency{.cfg = ...}}; // combinations
   // ...
   for (auto i = 0; i < 16; ++i) {
     bench(fn_v1, n, unpredictable<int>); // bench runs in a new process by default
@@ -1187,7 +1190,7 @@ user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 <!-- .element: style="font-size:17px;" -->
 
 <p align="left">
-&nbsp; <img src="images/lstopo.png" style="width:75%; margin: 0 0;" />
+&nbsp; <img src="images/lstopo.png" style="width:85%; margin: 0 0;" />
 </p>
 
 <!--//L3 cache can be crashed from different pinned proccess-->
@@ -1196,7 +1199,7 @@ user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 
 // What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
 ```
-<!-- .element: style="font-size:12px;" -->
+<!-- .element: style="font-size:13px;" -->
 
 ----
 
@@ -1782,9 +1785,11 @@ int main() {
 ----
 
 ```cpp
-perf::annotate<vsplit>(bench[perf::mca::assembly]); // disassemble
+perf::annotate<vsplit>(
+  bench[perf::mca::assembly] // disassemble
+);
 ```
-<!-- .element: style="font-size:15px" -->
+<!-- .element: style="font-size:17px" -->
 
 ```
 fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz_buzz(unpredictable)/latency:
@@ -1818,9 +1823,11 @@ fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz
 ----
 
 ```cpp
-perf::annotate<vsplit>(bench[perf::mca::assembly] | filter(perf::trace::instructions)); // IPT
+perf::annotate<vsplit>(
+  bench[perf::mca::assembly] | filter(perf::trace::instructions) // trace
+);
 ```
-<!-- .element: style="font-size:15px" -->
+<!-- .element: style="font-size:17px" -->
 
 ```
 fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz_buzz(unpredictable)/latency:
@@ -1854,9 +1861,11 @@ fizz_buzz(15)/latency:                fizz_buzz(5)/latency:                 fizz
 ----
 
 ```cpp
-perf::annotate<vsplit>(bench[perf::mca::timeline] | filter(perf::trace::instructions));
+perf::annotate<vsplit>(
+  bench[perf::mca::timeline] | filter(perf::trace::instructions)
+);
 ```
-<!-- .element: style="font-size:14px" -->
+<!-- .element: style="font-size:17px" -->
 
 ```cpp
 fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpredictable)/latency:
@@ -1977,7 +1986,7 @@ main;render 7
 ```cpp
 // https://github.com/brendangregg/FlameGraph
 ```
-<!-- .element: style="text-align:left" -->
+<!-- .element: style="font-size:15px" -->
 
 ----
 
