@@ -96,10 +96,10 @@
   benchmark                [0]            [1]                                               [2]
   -------------------- --------  ------------ -------------------------------------------------
   1 cycle execution      1 ± 00   0.25 ± 0.00 ▏
-  dL1 hit                3 ± 01   0.75 ± 0.25 █░
-  dL2 hit               12 ± 03   3.00 ± 0.75 ███░░
+  L1d hit                3 ± 01   0.75 ± 0.25 █░
+  L2d hit               12 ± 03   3.00 ± 0.75 ███░░
   branch misprediction  14 ± 10   3.50 ± 2.50 ███░░░
-  dL3 hit               50 ± 05  10.00 ± 1.25 █████████░░░
+  L3d hit               50 ± 05  10.00 ± 1.25 █████████░░░
   DRAM access          350 ± 20  70.00 ± 5.00 ████████████████████████████████████████████░░░░░
   ...
 
@@ -541,7 +541,7 @@ time  2025-09-15 11:15:00
 sys   x86_64-pc-linux-gnu
 cxx   gcc-15.0.0
 cpu   12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3) / 2.67Ghz
-cache iL1: 32Kb/64b, dL1: 48Kb/64b
+cache L1i: 32Kb/64b, L1d: 48Kb/64b, L2d: 1280Kb/64b, L3: 24Mb/64b
 ```
 <!-- .element: style="text-align:left;font-size:14px" -->
 
@@ -700,7 +700,7 @@ struct timeit {
 
 ```cpp
 // It's X% faster/slower with Y% confidence
-// - how certain is the measurement, not whether measuring the right thing!
+// - tells how certain is the measurement / doesn't tell whether the right thing is measured
 ```
 <!-- .element: style="font-size:16px; margin: 0 0;" -->
 
@@ -835,14 +835,12 @@ int main() {
 
     perf::report(
       bench[perf::bench::operations / seconds(time::tsc)] // op/s
-       # inverse throughput
-      // bench[time::tsc / perf::bench::operations]       // ns/op
+      // bench[time::tsc / perf::bench::operations]       // ns/op (inverse throughput)
     );
-
-  };
+  }
 }
 ```
-<!-- .element: style="text-align:left; font-size:18px; " -->
+<!-- .element: style="text-align:left; font-size:17px; " -->
 
 ----
 
@@ -1137,7 +1135,7 @@ template<auto cfg>
   size_t sum{};
   perf::code::align(cfg) for (auto i = 0 ; i < size; ++i) {
     if (i % x) sum += i;
-    perf::code::align(cfg.alignment); // may inject nops...
+    perf::code::align(cfg.alignment); // may inject nops
   }
   return sum;
 }
@@ -1148,7 +1146,7 @@ template<auto cfg>
 int main() {
   // ...
   for (auto i = 0; i < 16; ++i) {
-    bench(fn_v1, n, unpredictable<int>);
+    bench(fn_v1, n, unpredictable<int>); // bench runs in a new process by default
     bench(fn_v2, n, unpredictable<int>);
   }
   // ...
@@ -1184,12 +1182,12 @@ int main() {
 ----
 
 ```sh
-lstopo # hardware topology (alderlake:6.154.3)
+user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 ```
 <!-- .element: style="font-size:17px;" -->
 
 <p align="left">
-&nbsp; <img src="images/lstopo.png" style="width:90%; margin: -15px 0;" />
+&nbsp; <img src="images/lstopo.png" style="width:75%; margin: 0 0;" />
 </p>
 
 <!--//L3 cache can be crashed from different pinned proccess-->
@@ -1198,24 +1196,33 @@ lstopo # hardware topology (alderlake:6.154.3)
 
 // What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
 ```
-<!-- .element: style="font-size:14px;" -->
+<!-- .element: style="font-size:12px;" -->
 
 ----
 
 ```cpp
-bench(fn, ts...);                   // runs in a new process
-```
+int main() {
+  perf::runner bench{
+    [](auto fn, auto ... ts) {
+        // profile first to know branches, addresses [3]
 
-```cpp
-using perf::memory::cache::fill;    // fills cache level
-using perf::memory::cache::flush;   // clears cache lines
-using perf::memory::pollute;        // prevents continuous allocation
-using perf::memory::pre_fault;      // touches all pages used by data
-```
+        setup_branch_predictor();
+        setup_memory();
+        // pre_fault(); touches all pages used by data
+        // pollute_heap(); prevents continuous allocation (also part of input data)
+        // evictor<L3>(); // L3 can be evictor from different core
+        // flush_cache();
 
-```cpp
-//...
+        start();
+        perf::prevent_elision(fn(ts...));
+        stop();
+    }
+  };
+
+  // ...
+}
 ```
+<!-- .element: style="font-size:20px" -->
 
 ----
 
@@ -1701,8 +1708,11 @@ profiler.stop();
 ----
 
 ```cpp
-// disassemble                                      // trace
+// disassemble                         // trace
+```
+<!-- .element: style="font-size:20px" -->
 
+```
  analyzer << perf::mca::region{                      perf::verify(not (i % 2));
    perf::code::labels["begin"],                      analyzer << profiler[
    perf::code::labels["end"]                           perf::trace::instructions
@@ -1942,6 +1952,7 @@ perf::plot::flowgraph(
 // basic block - is a straight-line sequence of instructions
 //               with a single entry point and a single exit point
 ```
+<!-- .element: style="font-size:22px" -->
 
 ----
 
