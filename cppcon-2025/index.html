@@ -135,8 +135,13 @@ flamepgrahp and flowgraph examples
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-// "If you can't measure it, you can't improve it"
+// "If you can't measure [*] it, you can't improve it"
 ```
+
+```cpp
+ [*] trust, reason, understand, validate, ...
+```
+<!-- .element: class="fragment" data-fragment-index="1" -->
 
 ----
 
@@ -474,7 +479,7 @@ taskset -c <cpu numbers> ...
 nice -n -20 ... # chrt -f 99 ...
 
 
-# Non-uniform memory access (NUMA) # lstopo
+# Non-uniform memory access (NUMA)
 numactl --cpunodebind=<node ids> --membind=<node ids> ...
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
@@ -580,8 +585,8 @@ int main() {
 
 ----
 
-```asm
-user@perf:~# taskset -c 2 nice -n -20 ./a.out
+```sh
+user@perf:~$ taskset -c 2 nice -n -20 ./a.out
 ```
 <!-- .element: style="text-align:left;font-size:13px; margin: 15px -5px;" -->
 
@@ -643,9 +648,9 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 ```
 
 ##### [Producing Wrong Data Without Doing Anything Obviously Wrong!](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left; font-size:25px; margin: 3px 12px;" -->
+<!-- .element: style="text-align:left; margin: 3px 12px;" -->
 ##### [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
-<!-- .element: style="text-align:left; font-size:25px; margin: 3px 12px;" -->
+<!-- .element: style="text-align:left; margin: 3px 12px;" -->
 
 ----
 
@@ -1028,9 +1033,9 @@ perf::plot::ecdf(
 #### term vs. tty
 <!-- .element: style="text-align:left" -->
 
-```cpp
+```sh
 // https://www.arewesixelyet.com # printf "pixel: \033Pq#1@\033\\"
-user@localhost:~# PERF_IO_PLOT_TERM="sixel" ./a.out # term
+user@localhost:~$ PERF_IO_PLOT_TERM="sixel" ./a.out # term
 ```
 <!-- .element: style="font-size:12px; margin: 0 0;" -->
 
@@ -1038,9 +1043,9 @@ user@localhost:~# PERF_IO_PLOT_TERM="sixel" ./a.out # term
 <img src="images/ecdf3.png" style="width: 60%; height: 220px; background:none; border:none; box-shadow:none; margin: -20px 0;" />
 </p>
 
-```cpp
+```sh
 
-user@server:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
+user@server:~$ PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 ```
 <!-- .element: style="font-size:12px; margin: 0 0;" -->
 
@@ -1077,6 +1082,43 @@ user@server:~# PERF_IO_PLOT_TERM="dumb ansi" ./a.out # tty
 // 0x1000: lookup_table:                      // data layout
 //          ...
 ```
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+```sh
+# Address Space Layout Randomization (ASLR) / Fixed per run
+# - 0: none
+# - 1: stack, mmap, shared libs
+# - 2: 1, heap, main binary (-fPIE)
+echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
+```
+<!-- .element: style="font-size:18px;" -->
+
+```sh
+# Code Layout Randomization / Fixed per build
+$CXX -ffunction-sections -falign-functions=16 -fdata-sections ...
+$CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
+```
+<!-- .element: style="font-size:18px;" -->
+
+```sh
+# Code/Stack/Heap Layout Ranomization (-Rcode -Rstack -Rheap) / Randomized every .5s
+# stablizer - https://github.com/ccurtsinger/stabilizer
+```
+<!-- .element: style="font-size:17px;" -->
+
+```sh
+# Hardware topology
+lstopo
+```
+<!-- .element: style="font-size:17px;" -->
+
+<p align="left">
+&nbsp; <img src="images/lstopo.png" style="width:60%; margin: -15px 0;" />
+</p>
 
 ----
 
@@ -1132,35 +1174,6 @@ int main() {
 
 ```
 <!-- .element: style="font-size:18px;" -->
-
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-```sh
-# Address Space Layout Randomization (ASLR) / Fixed per run
-# - 0: none
-# - 1: stack, mmap, shared libs
-# - 2: 1, heap, main binary (-fPIE)
-echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
-```
-<!-- .element: style="font-size:18px;" -->
-
-```sh
-
-# Code Layout Randomization / Fixed per build
-$CXX -ffunction-sections -falign-functions=16 -fdata-sections ...
-$CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
-```
-<!-- .element: style="font-size:18px;" -->
-
-```sh
-
-# Code/Stack/Heap Layout Ranomization (-Rcode -Rstack -Rheap) / Randomized every .5s
-# stablizer - https://github.com/ccurtsinger/stabilizer
-```
-<!-- .element: style="font-size:17px;" -->
 
 ----
 
@@ -1310,25 +1323,24 @@ perf::log(profiler[]); // [] - all elements
 ```
 
 ```cpp
-// example output
-tsc: 332ns
-stat.branches: 132
-stat.branch_misses: 53
-trace.instructions:
-  0xf400 6 // ip size
-  0xf404 5
-  ...
-trace.cycles:
-  0xf400 11 // ip cycles
-  0xf404 15
-  ...
-record.mem_loads:
-  0xf510 0xf321 0xf612 L1 hit // ip dst src level access
-  ...
-...
+ tsc: 332ns
+ stat.branches: 132
+ stat.branch_misses: 53
+ trace.instructions:
+   0xf400 6 // ip size
+   0xf404 5
+   ...
+ trace.cycles:
+   0xf400 11 // ip cycles
+   0xf404 15
+   ...
+ record.mem_loads:
+   0xf510 0xf321 0xf612 L1 hit // ip dst src level access
+   ...
+ ...
 
 ```
-<!-- .element: style="font-size:19px" -->
+<!-- .element: style="font-size:16px" -->
 
 ----
 
@@ -1385,19 +1397,19 @@ perf::annotate(analyzer[]); // per instruction pointer (IP)
  [0] [1]  [2]                   [3]                              [4] [5] [6] [7] [8]                                                                            [9]                  [10]
  --- ---- --------------------- -------------------------------- --- --- --- --- ------------------------------------------------------------------------------ -------------------- --------------
                                 if (n % 15 == 0) {
-  1. 0100 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef        6  1   3  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - DeeeER.     .     .  {ADLPort1:50%}
+  1. 0100 69 c7 ef ee ee ee       imul eax, edi, 0xeeeeeeef        6  1   3  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - DeeeER.     .     .
   2. 0106 05 88 88 88 08          add eax, 0x8888888               5  1   1  0.2      -     -     -     -     -  0.50     -     -     -     -  0.50     -     - D===eER     .     .
   3. 010b 3d 11 11 11 11          cmp eax, 0x11111111              5  1   1  0.2   0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - D====eER    .     .
-  4. 0110 72 36                   jb 0x36                          2  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - D=====eER   .     .
+  4. 0110 72 36                   jb 0x36                          2  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - D=====eER   .     .  {ADLPort1:100%}
                                 } else if (n % 3 == 0) {
   5. 0112 69 c7 ab aa aa aa       imul eax, edi, 0xaaaaaaab        6  1   3  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - D=eeeE--R   .     .
   6. 0118 05 aa aa aa 2a          add eax, 0x2aaaaaaa              5  1   1  0.2   0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - D====eE-R   .     .
   7. 011d 3d 55 55 55 55          cmp eax, 0x55555555              5  1   1  0.2      -     -     -     -     -  0.50     -     -     -     -  0.50     -     - .D====eER   .     .
-  8. 0122 72 2d                   jb 0x2d                          2  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - .D=====eER  .     .
+  8. 0122 72 2d                   jb 0x2d                          2  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - .D=====eER  .     .  {ADLPort1:100%}
                                 } else if (n % 5 == 0) {
   9. 0124 69 c7 cd cc cc cc       imul eax, edi, 0xcccccccd        6  1   3  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - .D=eeeE--R  .     .
  10. 012a 05 99 99 99 19          add eax, 0x19999999              5  1   1  0.2   0.25     -     -     -     -  0.25  0.25     -     -     -  0.25     -     - .D====eE-R  .     .
- 11. 012f 3d 33 33 33 33          cmp eax, 0x33333333              5  1   1  0.2      -     -     -     -     -  0.50     -     -     -     -  0.50     -     - .D=====eER  .     .
+ 11. 012f 3d 33 33 33 33          cmp eax, 0x33333333              5  1   1  0.2      -     -     -     -     -  0.50     -     -     -     -  0.50     -     - .D=====eER  .     .  {ADLPort1:100%}
  12. 0134 48 8d 0d 2e 1d 00 00    lea rcx, [rip + 0x1d2e]          7  1   1  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - .D==eE---R  .     .
  13. 013b 48 8d 05 31 1d 00 00    lea rax, [rip + 0x1d31]          7  1   1  1.0      -  1.00     -     -     -     -     -     -     -     -     -     -     - . D==eE--R  .     .
  14. 0142 48 0f 42 c1             cmovb rax, rcx                   4  1   1  0.5   0.50     -     -     -     -     -  0.50     -     -     -     -     -     - . D=====eER .     .
@@ -1433,7 +1445,7 @@ perf::annotate(analyzer[]); // per instruction pointer (IP)
 ```
 <!-- .element: style="font-size:8px" -->
 
-<img src="images/cpu.png" style="width:35%; position:absolute; left:63%; top:60%;" />
+<img src="images/mca.png" style="width:40%; position:absolute; left:58%; top:60%;" />
 
 ----
 
@@ -1452,7 +1464,7 @@ perf::annotate(analyzer[
 </code></pre>
 </td>
 <td>
-<img src="images/uops.png" style="width: 100%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/uops.png" style="width: 100%; height: 35px; background:none; border:none; box-shadow:none;" />
 </td>
 </tr>
 </table>
@@ -1491,8 +1503,8 @@ perf::annotate(analyzer[
  [2] mca.encoding           // CISC vs. RISC
  [3] mca.assembly # intel
  [4] mca.uops               // instructions may decode into multiple micro-operations
- [5] mca.latency            // instructions have different latency
- [6] mca.rthroughput        // instructions have different throughput
+ [5] mca.latency            // instructions have different latencies (depend on parameters)
+ [6] mca.rthroughput        // instructions have different throughputs
 ```
 <!-- .element: style="font-size:11px; margin: 0px 0px;" -->
 
@@ -1512,7 +1524,7 @@ perf::annotate(analyzer[
 </code></pre>
 </td>
 <td>
-<img src="images/alu.png" style="width: 80%; height=600px; background:none; border:none; box-shadow:none;" />
+<img src="images/alu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </td>
 </tr>
 </table>
@@ -1543,58 +1555,11 @@ perf::annotate(analyzer[
  [0] index
  [1] mca.address
  [2] mca.encoding
- [3] mca.resource_pressure
+ [3] mca.resource_pressure       // CPU has multiple execution ports / multiple ALUs, multiple FPUs, ...
 	- ADLPPort                     00     01    02    03    04    05    06    07    08    09    10    11
  [4] mca.assembly # intel
 ```
 <!-- .element: style="font-size:11px" -->
-
-----
-
-#### timeline
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::annotate(analyzer[
-  perf::mca::assembly, perf::mca::timeline
-]);
-```
-<!-- .element: style="font-size:15px" -->
-
-```cpp
- [0] [1]                              [2]
- --- -------------------------------- ----------------------
-  1.   imul eax, edi, 0xeeeeeeef      DeeeER.     .     .
-  2.   add eax, 0x8888888             D===eER     .     .
-  3.   cmp eax, 0x11111111            D====eER    .     .
-  4.   jb 0x36                        D=====eER   .     .
-  5.   imul eax, edi, 0xaaaaaaab      D=eeeE--R   .     .
-  6.   add eax, 0x2aaaaaaa            D====eE-R   .     .
-  7.   cmp eax, 0x55555555            .D====eER   .     .
-  8.   jb 0x2d                        .D=====eER  .     .
-  9.   imul eax, edi, 0xcccccccd      .D=eeeE--R  .     .
- 10.   add eax, 0x19999999            .D====eE-R  .     .
- 11.   cmp eax, 0x33333333            .D=====eER  .     .
- 12.   lea rcx, [rip + 0x1d2e]        .D==eE---R  .     .
- 13.   lea rax, [rip + 0x1d31]        . D==eE--R  .     .
- 14.   cmovb rax, rcx                 . D=====eER .     .
- 15.   jmp 0x10                       . D-------R .     .
- 16.   lea rax, [rip + 0x1d16]        . D===eE--R .     .
- 17.   jmp 0x7                        . D-------R .     .
- 18.   lea rax, [rip + 0x1d16]        . D====eE-R .     .
- 19.   mov qword ptr [rsp - 0x8], rax . D=====eeeeeeeeeeeeER
-
- [0] index
- [1] mca.assembly # intel
- [2] mca.timeline
-  - 'D': instruction dispatched
-  - 'e': instruction executing
-  - 'E': instruction executed
-  - 'R': instruction retired
-  - '=': instruction waiting
-  - '-': instruction executed
-```
-<!-- .element: style="font-size:13px" -->
 
 ----
 
@@ -1610,12 +1575,12 @@ perf::analyzer analyzer{
 };
 
 // ...
+
 perf::code::label("begin");
 while (n--) {
   s *= n;
 }
 perf::code::label("end");
-// ...
 ```
 
 ----
@@ -1629,43 +1594,41 @@ perf::annotate(analyzer[]);
 <!-- .element: style="font-size:15px" -->
 
 ```cpp
- [0] [1]                               [2]
- --- --------------------------------- -------------------------------------
-  1. sub dword ptr [rsp + 0x44], 0x1   DeeeeeeeeeeeeER   .     .     .     . // i = 0
-  2. jb 0x18                           D============eER  .     .     .     .
-  3. nop dword ptr [rax]               DeE------------R  .     .     .     .
-  4. mov eax, dword ptr [rsp + 0x44]   DeeeeeE--------R  .     .     .     .
-  5. imul eax, dword ptr [rsp + 0x54]  .DeeeeeeeeE----R  .     .     .     .
-  6. mov dword ptr [rsp + 0x54], eax   .D========eeeeeeeeeeeeER.     .     .
-  7. sub dword ptr [rsp + 0x44], 0x1   . D=======eeeeeeeeeeeeER.     .     .
-  8. jae -0x14                         . D===================eER     .     .
-  9. sub dword ptr [rsp + 0x44], 0x1   .  D=======eeeeeeeeeeeeER     .     . // i = 1
- 10. jb 0x18                           .  D===================eER    .     .
- 11. nop dword ptr [rax]               .  D======eE-------------R    .     .
- 12. mov eax, dword ptr [rsp + 0x44]   .  DeeeeeE---------------R    .     .
- 13. imul eax, dword ptr [rsp + 0x54]  .   DeeeeeeeeE-----------R    .     .
- 14. mov dword ptr [rsp + 0x54], eax   .   D========eeeeeeeeeeeeER   .     .
- 15. sub dword ptr [rsp + 0x44], 0x1   .    D=======eeeeeeeeeeeeER   .     .
- 16. jae -0x14                         .    D===================eER  .     .
- 17. sub dword ptr [rsp + 0x44], 0x1   .     D=======eeeeeeeeeeeeER  .     . // i = 2
- 18. jb 0x18                           .     D===================eER .     .
- 19. nop dword ptr [rax]               .     D======eE-------------R .     .
- 20. mov eax, dword ptr [rsp + 0x44]   .     DeeeeeE---------------R .     .
- 21. imul eax, dword ptr [rsp + 0x54]  .     .DeeeeeeeeE-----------R .     .
- 22. mov dword ptr [rsp + 0x54], eax   .     .D========eeeeeeeeeeeeER.     .
- 23. sub dword ptr [rsp + 0x44], 0x1   .     . D=======eeeeeeeeeeeeER.     .
- 24. jae -0x14                         .     . D===================eER     . // i = 3
- 25. sub dword ptr [rsp + 0x44], 0x1   .     .  D=======eeeeeeeeeeeeER     .
- 26. jb 0x18                           .     .  D===================eER    .
- 27. nop dword ptr [rax]               .     .  D======eE-------------R    .
- 28. mov eax, dword ptr [rsp + 0x44]   .     .  DeeeeeE---------------R    .
- 29. imul eax, dword ptr [rsp + 0x54]  .     .   DeeeeeeeeE-----------R    .
- 30. mov dword ptr [rsp + 0x54], eax   .     .   D========eeeeeeeeeeeeER   .
- 31. sub dword ptr [rsp + 0x44], 0x1   .     .    D=======eeeeeeeeeeeeER   .
- 32. jae -0x14                         .     .    D===================eER  .
+ [0] [1]                             [2]                        [3]                                                                    [4]
+ --- ------------------------------- -------------------------  ---------------------------------------------------------------------- ---
+  1. sub dword ptr [rsp + 0x6c], 0x1 DeeeeeeeeeeeeER   .     .     -     -     -     -     -     -     -     -  1.00  1.00  1.00  1.00
+  2. jb 0x1a                         D============eER  .     .     -     -     -     -     -     -  1.00     -     -     -     -     -
+  3. nop word ptr cs:[rax + rax]     DeE------------R  .     .     -     -     -     -     -     -     -     -     -     -     -     -
+  4. mov eax, dword ptr [rsp + 0x6c] DeeeeeE--------R  .     .     -     -     -  1.00     -     -     -     -     -     -     -     -
+  5. sub dword ptr [rsp + 0x6c], 0x1 .DeeeeeeeeeeeeER  .     .     -     -  1.00     -  1.00     -  1.00  1.00     -     -     -     -
+  6. jae -0xb                        .D============eER .     .  1.00     -     -     -     -     -     -     -     -     -     -     -
+  7. sub dword ptr [rsp + 0x6c], 0x1 . DeeeeeeeeeeeeER .     .     -     -     -     -     -  1.00     -     -  1.00  1.00     -  1.00
+  8. jb 0x1a                         . D============eER.     .     -     -     -     -     -     -  1.00     -     -     -     -     -
+  9. nop word ptr cs:[rax + rax]     . D===eE---------R.     .     -     -     -     -     -     -     -     -     -     -     -     -
+ 10. mov eax, dword ptr [rsp + 0x6c] . DeeeeeE--------R.     .     -     -     -  1.00     -     -     -     -     -     -     -     -
+ 11. sub dword ptr [rsp + 0x6c], 0x1 .  DeeeeeeeeeeeeER.     .     -  1.00  1.00     -  1.00     -     -  1.00     -     -     -     -
+ 12. jae -0xb                        .  D============eER     .  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 13. sub dword ptr [rsp + 0x6c], 0x1 .   DeeeeeeeeeeeeER     .  1.00     -     -     -     -     -     -     -  1.00  1.00     -  1.00
+ 14. jb 0x1a                         .   D============eER    .     -     -     -     -     -     -  1.00     -     -     -     -     -
+ 15. nop word ptr cs:[rax + rax]     .   D===eE---------R    .     -     -     -     -     -     -     -     -     -     -     -     -
+ 16. mov eax, dword ptr [rsp + 0x6c] .   DeeeeeE--------R    .     -     -     -  1.00     -     -     -     -     -     -     -     -
+ 17. sub dword ptr [rsp + 0x6c], 0x1 .    DeeeeeeeeeeeeER    .     -     -  1.00     -  1.00     -     -  1.00     -     -  1.00     -
+ 18. jae -0xb                        .    D============eER   .  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 19. sub dword ptr [rsp + 0x6c], 0x1 .     DeeeeeeeeeeeeER   .     -     -     -     -     -     -  1.00     -  1.00  1.00     -  1.00
+ 20. jb 0x1a                         .     D============eER  .     -     -     -     -     -     -  1.00     -     -     -     -     -
+ 21. nop word ptr cs:[rax + rax]     .     D===eE---------R  .     -     -     -     -     -     -     -     -     -     -     -     -
+ 22. mov eax, dword ptr [rsp + 0x6c] .     DeeeeeE--------R  .     -     -     -  1.00     -     -     -     -     -     -     -     -
+ 23. sub dword ptr [rsp + 0x6c], 0x1 .     .DeeeeeeeeeeeeER  .     -     -  1.00     -  1.00  1.00     -  1.00     -     -     -     -
+ 24. jae -0xb                        .     .D============eER .  1.00     -     -     -     -     -     -     -     -     -     -     -
+ 25. sub dword ptr [rsp + 0x6c], 0x1 .     . DeeeeeeeeeeeeER .     -  1.00     -     -     -     -     -     -  1.00  1.00     -  1.00
+ 26. jb 0x1a                         .     . D============eER.     -     -     -     -     -     -  1.00     -     -     -     -     -
+ 27. nop word ptr cs:[rax + rax]     .     . D===eE---------R.     -     -     -     -     -     -     -     -     -     -     -     -
+ 28. mov eax, dword ptr [rsp + 0x6c] .     . DeeeeeE--------R.     -     -     -  1.00     -     -     -     -     -     -     -     -
+ 29. sub dword ptr [rsp + 0x6c], 0x1 .     .  DeeeeeeeeeeeeER.  1.00     -  1.00     -  1.00     -     -  1.00     -     -     -     -
+ 30. jae -0xb                        .     .  D============eER  1.00     -     -     -     -     -     -     -     -     -     -     -
 
  [0] index
- [1] mca.assembly # intel
+ [4] mca.assembly # intel
  [2] mca.timeline
   - 'D': instruction dispatched
   - 'e': instruction executing
@@ -1673,30 +1636,63 @@ perf::annotate(analyzer[]);
   - 'R': instruction retired
   - '=': instruction waiting
   - '-': instruction executed
+ [3] mca.resource_pressure
+	- ADLPPort                                                     00     01    02    03    04    05    06    07    08    09    10    11
+ [4] mca.bottleneck
+  - <register>
+  - [memory]
+  - {resource:probability}
 ```
-<!-- .element: style="font-size:10px" -->
+<!-- .element: style="font-size:9px" -->
 
 ----
 
 #### disassemble vs. trace
 <!-- .element: style="text-align:left" -->
 
-
 ```cpp
-perf::profiler profiler{perf::trace::instructions, perf::trace::cycles};
+perf::profiler profiler{perf::trace::instructions};
 perf::analyzer analyzer{perf::mca::assembly, perf::mca::timeline};
 
-profiler.start();
-for (auto n = 0; n < prevent_elision(4); ++n) {
-  while (n--) {
-    s *= n;
-  }
-}
-profiler.stop();
+int s{}, i = std::rand();
 
-analyzer << profiler[perf::trace::instructions];
-perf::log(analyzer[]);
+profiler.start();
+perf::code::label("begin");
+if (i % 2) {
+  a ^= i;
+}
+a++;
+perf::code::label("end");
+profiler.stop();
 ```
+<!-- .element: style="font-size:20px" -->
+
+----
+
+```cpp
+// disassemble                                      // trace
+
+ analyzer << perf::mca::region{                      perf::verify(not (i % 2));
+   perf::code::labels["begin"],                      analyzer << profiler[
+   perf::code::labels["end"]                           perf::trace::instructions
+ };                                                  ]);
+ perf::annotate(analyzer[]);                         perf::annotate(analyzer[]);
+
+
+
+ [0] [1]                        [2]                 [0] [1]                        [2]
+ --- -------------------------- -----------------   --- -------------------------- ----------------
+  1. test ptr [rsp + 0x4c], 0x1 DeeeeeeeER  .        1. test ptr [rsp + 0x48], 0x1 DeeeeeeeER  .
+  2. je 0x8                     D=======eER .        2. je 0x8                     D=======eER .
+  3. mov eax, ptr [rsp + 0x4c]  DeeeeeE---R .
+  4. xor ptr [rsp + 0x6c], eax  .DeeeeeeeeeeeeER
+  5. inc ptr [rsp + 0x6c]       . DeeeeeeeeeeeeER    3. inc ptr [rsp + 0x4c]       .DeeeeeeeeeeeeER
+
+ [0] index                                           [0] index
+ [1] mca.assembly # intel                            [1] mca.assembly # intel
+ [2] mca.timeline                                    [2] mca.timeline
+```
+<!-- .element: style="font-size:15px" -->
 
 ----
 
@@ -1710,20 +1706,27 @@ perf::profiler profiler{
   perf::record::mem_loads,
 };
 
+profiler.start();
+// ...
+profiler.stop();
+
 perf::analyzer analyzer{perf::mca::assembly};
 analyzer << profiler[perf::trace::instructions];
 
 perf::annotate(tuple(analyzer[], profiler[])[
   perf::mca::assembly,
-  perf::trace::instructions / perf::trace::cycles,  // instruction per cycle (IPC) per IP
-  perf::record::mem_loads                           // dL1, dL2, dL3, iTLB hit/miss
+  perf::trace::instructions / perf::trace::cycles,
+  perf::record::mem_loads
 ]);
 ```
 <!-- .element: style="font-size:17px" -->
 
+```cpp
+```
+
 ----
 
-#### profiler/analyzer -> bench
+#### profiler/analyzer ⭢ runner (bench)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1817,7 +1820,7 @@ perf::annotate<vsplit>(bench[perf::mca::timeline] | filter(perf::trace::instruct
 ```
 <!-- .element: style="font-size:14px" -->
 
-```sh
+```cpp
 fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpredictable)/latency:
  [0] [1]                          [0] [1]                          [0] [1]
  -- ------------------            --- ------------------------     --- -----------------------
@@ -1857,7 +1860,7 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
 ```cpp
 perf::annotate<vsplit>(bench[
   perf::mca::assembly,
-  perf::record::branch::misses / perf::record::branches
+  perf::record::branch_misses / perf::record::branches
 ] | filter(perf::trace::instructions));
 ```
 <!-- .element: style="font-size:15px" -->
@@ -2428,8 +2431,8 @@ auto analyze = [](auto fn, auto... ts) {
 ```
 <!-- .element: style="text-align:left" -->
 
-```cpp
- user@perf:~# ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
+```sh
+ user@perf:~$ ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
 ```
 <!-- .element: style="text-align:left;font-size:13px;" -->
 
