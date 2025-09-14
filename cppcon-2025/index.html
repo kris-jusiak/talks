@@ -1129,28 +1129,24 @@ $CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
 ----
 
 ```cpp
-auto fn_v1 = [] (size_t size, int n) {
+[[gnu:noinline]] auto fn_v1(size_t size, int n) {
   size_t sum{};
   for (size_t i = {}; i < size; ++i) {
-      if (i % x) {
-        sum += i;
-      }
+    if (i % x) sum += i;
   }
   return sum;
-};
+}
 
-template<auto Alignment>
-auto fn_v2 = []<auto cfg> [[gnu::aligned(Alignment)]] (size_t size, int n) {
-  int stack[cfg];
+template<auto cfg>
+[gnu::noinline, gnu::aligned(cfg.fn_alignment)]] auto fn_v2(size_t size, int n) {
+  perf::code::align(cflg.code_alignment) std::byte _[cfg.stack_size];
   size_t sum{};
   perf::code::align(cfg) for (auto i = 0 ; i < size; ++i) {
-      if (i % x) {
-        sum += i;
-      }
-      perf::code::align(cfg.alignment);
+    if (i % x) sum += i;
+    perf::code::align(cfg.alignment);
   }
   return sum;
-};
+}
 ```
 <!-- .element: style="font-size:18px;" -->
 
@@ -1214,11 +1210,18 @@ lstopo # hardware topology (alderlake:6.154.3)
 
 ```cpp
 bench(fn, ts...);                   // runs in a new process
+```
+
+```cpp
 using perf::memory::cache::fill;    // fills cache level
 using perf::memory::cache::flush;   // clears cache lines
 using perf::memory::pollute;        // prevents continuous allocation
 using perf::memory::pre_fault;      // touches all pages used by data
+```
+
+```cpp
 //...
+```
 
 ----
 
