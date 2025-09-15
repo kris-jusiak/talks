@@ -618,7 +618,7 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
-<img src="images/tune.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+<img src="images/tune.png" style="width: 1000px; height: 230px; background:none; border:none; box-shadow:none;" />
 </p>
 
 ```cpp
@@ -1223,11 +1223,11 @@ int main() {
 
       for (auto s = 0u; s < samples; ++s) {
         for (auto i = 0; i < iterations; ++i) {
-          update_branch_history(ts...);     // based on input distrubution
-          flush_cache();                    // clflush (L1d, L1i, L2d, L3d)
-                                            // Ld3 only - different core can be used
+          branch::predict(ts...);           // based on input distrubution
+          cache::flush();                   // clflush (L1d, L1i, L2d, L3d)
+                                            // L3d - evict from another core
 
-          start();                          // needs to be low overhead
+          start();                          // rdtsc, rdpmc
           perf::prevent_elision(fn(ts...)); // may need to unroll
           stop();
           // ...
@@ -1396,7 +1396,7 @@ perf::log(profiler[]); // [] - all elements
  ...
 
 ```
-<!-- .element: style="font-size:18px" -->
+<!-- .element: style="font-size:20px" -->
 
 ----
 
@@ -1633,9 +1633,9 @@ perf::analyzer analyzer{
 // ...
 
 perf::code::label("begin");
-while (n--) {
-  s *= n;
-}
+  while (n--) {
+    s *= n;
+  }
 perf::code::label("end");
 ```
 
@@ -2299,7 +2299,7 @@ int main() {
 
   auto sort_v2 = []<auto cfg>(std::vector<int>& v) {
     std::ranges::sort(v);
-    if constexpr (cfg.debug) {
+    if constexpr (cfg.debug) { // not measured
       perf::verify(is_sorted(v));
     }
   };
