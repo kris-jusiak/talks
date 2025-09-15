@@ -1211,7 +1211,7 @@ int main() {
 // - likwid      - https://github.com/RRZE-HPC/likwid
 // - callgrind   - https://valgrind.org/docs/manual/cl-manual.html
 
-// Analyzing (https://compiler-explorer.com)
+// Analyzing
 // - llvm-mca    - https://llvm.org/docs/CommandGuide/llvm-mca.html
 // - osaca       - https://github.com/RRZE-HPC/OSACA
 // - uica        - https://uica.uops.info
@@ -1840,7 +1840,6 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
 perf::annotate<vsplit>(bench[
   perf::mca::assembly,
   perf::record::branch_misses / perf::record::branches,
-  perf::trace::instructions / perf::trace::cycles, // IPC # cyc_thresh
   perf::record::mem_loads,
 ] | filter(perf::trace::instructions));
 ```
@@ -1877,6 +1876,11 @@ fizz_buzz(15)/latency:                        fizz_buzz(5)/latency:             
   - 'hit': L1d, L2d, L3d, RAM
 ```
 <!-- .element: style="font-size:11px" -->
+
+```cpp
+// perf::trace::instructions / perf::trace::cycles, // IPC # cyc_thresh
+```
+<!-- .element: style="font-size:15px" -->
 
 ----
 
@@ -2386,8 +2390,157 @@ auto analyze = [](auto fn, auto... ts) {
 ##### - Resources - [https://github.com/qlibs/perf#resources](https://github.com/qlibs/perf?tab=readme-ov-file#User-Guide)
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 
-##### - Studies - [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+----
+
+## Bonus
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Always measure - https://valgrind.org/docs/manual/cl-manual.html
+<!-- .element: style="text-align:left" -->
+
+```cpp
+ └─ System
+    └── Application
+
+          int main() {
+            prof::callgrind profiler{"simulation"};
+
+            while (true) {
+              profiler.reset();
+              profiler.start();
+
+              if (trigger) { // fast-path
+                // action
+
+                profiler.stop();
+                profiler.flush();
+              }
+            }
+          }
+```
+
+```sh
+        valgrind --tool=callgrind --instr-atstart=no \ # 5x-100x overhead
+          --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes ...
+```
+<!-- .element: style="font-size:18px;" -->
+
+----
+
+```cpp
+int main() {
+  perf::runner bench{
+    timeit{.iterations = 1u,     .samples = 1u},
+    timeit{.iterations = 10'000, .samples = 1u},
+    timeit{.iterations = 1,      .samples = 100},
+    timeit{.iterations = 10'000, .samples = 100},
+    timeit{}, // estimated
+  };
+
+  bench(fizz_buzz, {});
+
+  perf::plot::bar(bench[
+    perf::stat::tsc / perf::bench::operations,
+    perf::stat::steady_time / perf::bench::operations
+  ]);
+}
+```
+<!-- .element: style="font-size:15px;" -->
+
+<p align="left">
+<img src="images/is.png" style="width: 90%; background:none; border:none; box-shadow:none;  margin: 0 0;" />
+</p>
+
+----
+
+#### trace & record & mca
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf::profiler profiler{
+  perf::trace::instructions,
+  perf::trace::cycles,        // cyc_thresh
+  perf::record::mem_loads,    // PEBS
+};
+
+profiler.start();
+// ...
+profiler.stop();
+
+perf::analyzer analyzer{perf::mca::assembly};
+analyzer << profiler[perf::trace::instructions];
+
+perf::annotate(tuple(analyzer[], profiler[])[
+  perf::mca::assembly,
+  perf::trace::instructions / perf::trace::cycles, // IPC per IP
+  perf::record::mem_loads                          // L1d, L2d, L3d, TLBi hit/miss
+]);
+```
+<!-- .element: style="font-size:17px" -->
+
+----
+
+#### Baseline
+<!-- .element: style="text-align:left" -->
+
+```cpp
+int main() {
+  perf::runner bench{perf::bench::latency{}};
+
+  bench(baseline(fizz_buzz), unpredictable<int>);
+  bench(fizz_buzz_fast_mod,  unpredictable<int>);
+  bench(fizz_buzz_lut,       unpredictable<int>);
+
+  auto ops = perf::bench::operations;
+
+  perf::report(bench[perf::stat::tsc / ops], p50, p99);
+  perf::plot::ecdf(bench[perf::stat::tsc / ops]);
+}
+```
+<!-- .element: style="font-size:21px;" -->
+
+----
+
+```cpp
+benchmark                                           [1]           [2]
+-----------------------------------------  ------------  ------------
+fiz_buzz(unpredictable)/latency[*]         (1.00x) 8.16  (1.00x) 9.19
+fizz_buzz_fast_mod(unpredictable)/latency  (1.45x) 5.64  (1.50x) 6.13
+fizz_buzz_lut(unpredictable)/latency       (0.89x) 9.15  (1.00x) 9.22
+
+[*] baseline
+(0) speedup(slowest:1.00x) // against the baseline
+[1] p50((stat.tsc[ns]/bench.operations))
+[2] p99((stat.tsc[ns]/bench.operations))
+
+```
+<!-- .element: style="font-size:20px;" -->
+
+<p align="left">
+<img src="images/baseline.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
+</p>
+
+----
+
+#### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
+<!-- .element: style="text-align:left" -->
+
+```cpp
+// "Code can tell you what works, not what doesn't"
+```
+<!-- .element: style="text-align:left" -->
+
+```sh
+ user@perf:~$ ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
+```
+<!-- .element: style="text-align:left;font-size:13px;" -->
+
+<p align="left">
+&nbsp; <img src="images/gh_html.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
+</p>
+<!-- .element: style="margin: -30px 0;" -->
           </script>
         </section>
       </div>
@@ -2409,7 +2562,7 @@ auto analyze = [](auto fn, auto... ts) {
         progress: false,
 
         // Display the page number of the current slide
-        slideNumber: 'c/t',
+        slideNumber: 'c',
 
         // Push each slide change to the browser history
         history: true,
