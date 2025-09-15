@@ -307,7 +307,7 @@
     └── Application
       └── µArch
 
-            perf stat/record ...
+            perf stat/record -e cycles:u ...
 ```
 
 ```cpp
@@ -749,34 +749,19 @@ for (auto i = 0u; i < n; ++i) {       // seq, unseq, unroll
 ----
 
 ```cpp
-int main() {
-  {
-    perf::runner bench{perf::bench::latency{}};
+auto latency = // ns/op
+  perf::stat::tsc / perf::bench::operations;
 
-    bench(fizz_buzz, {});
 
-    perf::report(
-      bench[perf::stat::tsc / perf::bench::operations] // ns/op
-    );
-  }
+auto throughput  = // op/s
+  perf::bench::operations / seconds(perf::stat::tsc);
 
-  {
-    perf::runner bench{
-      perf::bench::throughput{.policy = seq},
-      perf::bench::throughput{.policy = unseq},
-      perf::bench::throughput{.policy = unroll},
-    };
+auto throughput_ = // Gb/s
+  (perf::bench::operations * arg("size")) / seconds(perf::stat::tsc);
 
-    bench(fizz_buzz, {});
-
-    perf::report(
-      bench[perf::bench::operations / seconds(perf::stat::tsc)] // op/s
-      // bench[perf::stat::tsc / perf::bench::operations]       // ns/op (inverse throughput)
-    );
-  }
-}
+auto inverse_throughput = // ns/op
+  perf::stat::tsc / perf::bench::operations;
 ```
-<!-- .element: style="text-align:left; font-size:17px; " -->
 
 ----
 
@@ -825,7 +810,6 @@ int main() {
 
 ```cpp
 // Modern branch predictor can learn ~10'000 1/0 branches
-// - branch aliasing - multiple branches map to the same predictor entry
 // - no history { backward = taken, forward = not_taken }
 ```
 <!-- .element: style="font-size:21px;" -->
@@ -838,7 +822,7 @@ int main() {
 /**
  * vary(measure(repeat(fn)) -> measure(repeat(vary(fn))
  */
-for (auto i = 0u; i < iterations; ++i) {
+for (auto i = 0u; i < n; ++i) {
   // fn(ts...);
   fn(ts[i]...); // vary inputs per iteration based on the distribution
 }
@@ -875,7 +859,6 @@ int main() {
 <!-- .element: style="font-size:17px;" -->
 
 ```cpp
-// unpredictable<int> | perf::memory::heap::pollute | to<std::unordered_map<int>>(1'000)
 // perf::memory::heap::pollute(); // prevents continuous allocation # used with containers
 ```
 <!-- .element: style="font-size:15px;" -->
@@ -1317,7 +1300,7 @@ perf::log(profiler[]); // [] - all elements
  stat.branch_misses:
    53
  trace.instructions:
-   0xf400 6 // ip size
+   0xf400 6 // ip size # instruction pointer
    0xf404 5
    ...
  trace.cycles:
@@ -1439,7 +1422,7 @@ perf::annotate(analyzer[]); // per instruction pointer (IP)
 
 ----
 
-#### latency vs. rthroughput vs. uops vs...
+#### uops vs. size. vs. latency vs...
 <!-- .element: style="text-align:left; margin: 0px 0px;" -->
 
 <table>
@@ -1637,7 +1620,7 @@ perf::annotate(analyzer[]);
 
 ----
 
-#### disassemble vs. trace
+#### region vs. trace
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1660,7 +1643,7 @@ profiler.stop();
 ----
 
 ```cpp
-// disassemble                         // trace
+// region                             // trace
 ```
 <!-- .element: style="font-size:20px" -->
 
@@ -1718,7 +1701,7 @@ int main() {
 
 ```cpp
 perf::annotate<vsplit>(
-  bench[perf::mca::assembly] // disassemble
+  bench[perf::mca::assembly] // region(fn.entry, fn.exit);
 );
 ```
 <!-- .element: style="font-size:17px" -->
@@ -1934,7 +1917,7 @@ main;render 7
 
 ```cpp
 // Establishing the baseline
-// Reducing instruction count / Increasing instructions|µops per cycle
+// Reducing overall instruction count / Increasing instructions|µops per cycle
 // Top down Microarchitecture Analysis Method
 ```
 
@@ -1949,7 +1932,7 @@ Modern CPUs are primarily bottlenecked by
 
 ```sh
   Approaches
-   - Reducing instruction count
+   - Reducing overall instruction count
        perf::stat::instructions
        perf::record::instructions
        perf::trace::instructions
@@ -2164,11 +2147,7 @@ using mca::bottleneck;
 int main() {
   perf::runner bench{perf::bench::latency{}};
 
-  auto sort_v1 = [](std::vector<int>& v) {
-    std::ranges::sort(v);
-  };
-
-  auto sort_v2 = []<auto cfg>(std::vector<int>& v) {
+  auto sort = []<auto cfg>(std::vector<int>& v) {
     std::ranges::sort(v);
     if constexpr (cfg.debug) { // not measured
       perf::verify(is_sorted(v));
@@ -2176,46 +2155,16 @@ int main() {
   };
 
   for (auto i = 1; i <= 1024; i *= 2) {
-    bench(sort_v1, unpredictable<int> | to<std::vector>(i));
-    bench(sort_v2, unpredictable<int> | to<std::vector>(i));
+    bench(sort, unpredictable<int> | to<std::vector>(i));
   }
 
-  // ...
+  perf::plot::errorbar(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-----
-
-```cpp
-perf::report<split>(bench[perf::stat::tsc / perf::bench::operations, perf::bench::operations], min);
-perf::plot::errorbar(bench[perf::stat::tsc / perf::bench::operations]);
-```
-<!-- .element: style="text-align:left; font-size:14px;" -->
-
-```cpp
-benchmark                                 [1]              [2]     benchmark                                 [1]              [2]
-------------------------  -------------------  ---------------     ------------------------  -------------------  ---------------
-sort_v1(v(1))/latency     (1111.15x)     9.16    (1.05x) 28480     sort_v2(v(1))/latency     (1097.21x)     9.28    (1.01x) 29584
-sort_v1(v(2))/latency      (975.52x)    10.44    (1.00x) 29820     sort_v2(v(2))/latency      (926.80x)    10.98    (1.04x) 28718
-sort_v1(v(4))/latency      (816.24x)    12.47    (1.08x) 27699     sort_v2(v(4))/latency      (872.65x)    11.67    (1.09x) 27328
-sort_v1(v(8))/latency      (399.79x)    25.46    (1.50x) 19814     sort_v2(v(8))/latency      (377.16x)    26.99    (1.56x) 19134
-sort_v1(v(16))/latency     (131.17x)    77.61    (3.19x)  9353     sort_v2(v(16))/latency     (132.18x)    77.02    (3.17x)  9414
-sort_v1(v(32))/latency      (76.22x)   133.56    (5.39x)  5528     sort_v2(v(32))/latency      (80.41x)   126.60    (5.15x)  5786
-sort_v1(v(64))/latency      (30.76x)   330.98   (11.53x)  2586     sort_v2(v(64))/latency      (30.61x)   332.55   (12.01x)  2483
-sort_v1(v(128))/latency     (12.18x)   835.59   (28.65x)  1041     sort_v2(v(128))/latency     (11.91x)   854.95   (28.98x)  1029
-sort_v1(v(256))/latency      (5.38x)  1891.72   (64.27x)   464     sort_v2(v(256))/latency      (5.36x)  1899.39   (61.48x)   485
-sort_v1(v(512))/latency      (2.24x)  4554.20  (149.85x)   199     sort_v2(v(512))/latency      (2.22x)  4589.61  (144.06x)   207
-sort_v1(v(1024))/latency     (1.00x) 10180.22  (298.20x)   100     sort_v2(v(1024))/latency     (1.00x) 10143.13  (298.20x)   100
-
-(0) speedup(slowest:1.00x)                                         (0) speedup(slowest:1.00x)
-[1] min((stat.tsc[ns]/bench.operations))                           [1] min((stat.tsc[ns]/bench.operations))
-[2] min(bench.operations)                                          [2] min(bench.operations)
-```
-<!-- .element: style="text-align:left; font-size:11px;" -->
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 <p align="left">
-<img src="images/sort.png" style="width: 93%; background:none; border:none; box-shadow:none;" />
+<img src="images/sort.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ----
