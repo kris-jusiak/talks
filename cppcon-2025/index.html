@@ -130,7 +130,7 @@
 ```
 
 ```cpp
- [*] trust, reason, understand, validate, ...
+ [*] trust, understand, reproduce, ...
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
@@ -166,8 +166,8 @@
           AMDuProfCLI --profile -t cpu -- ... # AMD
           xctrace record --template ...       # Apple
 
-          perf probe -x /usr/lib/libc.so malloc
-          perf record -g probe_libc:malloc ...
+          perf probe -x ...
+          perf record -g ...
 
           (gdb) record function-call-history /ilc
           (gdb) run
@@ -268,39 +268,6 @@
           }
 ```
 <!-- .element: style="font-size:19px;" -->
-
-----
-
-#### Always measure - https://valgrind.org/docs/manual/cl-manual.html
-<!-- .element: style="text-align:left" -->
-
-```cpp
- └─ System
-    └── Application
-
-          int main() {
-            prof::callgrind profiler{"simulation"};
-
-            while (true) {
-              profiler.reset();
-              profiler.start();
-
-              if (trigger) { // fast-path
-                // action
-
-                profiler.stop();
-                profiler.flush();
-              }
-            }
-          }
-```
-
-```sh
-        valgrind --tool=callgrind --instr-atstart=no \ # 5x-100x overhead
-          --cache-sim=yes --branch-sim=yes --collect-jumps=yes --dump-instr=yes ...
-```
-<!-- .element: style="font-size:18px;" -->
-
 
 ----
 
@@ -469,9 +436,7 @@ pyperf system tune # pip install pyperf
 taskset -c <cpu numbers> ...
 nice -n -20 ... # chrt -f 99 ...
 
-
-# Non-uniform memory access (NUMA)
-numactl --cpunodebind=<node ids> --membind=<node ids> ...
+...
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
@@ -562,17 +527,26 @@ int main() {
   perf::self::test({.verbose = true}); // run-time checks
 }
 ```
-<!-- .element: class="fragment" data-fragment-index="2" -->
 
 ```cpp
-// measured vs. documented
+// Tuned vs. Non-tuned
+```
+<!-- .element: class="fragment" data-fragment-index="1" style="font-size:17px;" -->
+
+<p align="left">
+<img src="images/tune.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: -15px 0;" />
+</p>
+<!-- .element: class="fragment" data-fragment-index="1"" -->
+
+```cpp
+// Measured vs. Documented
 // - instructions latency/rthroughput/...
 // - L1d/L2d/L3d load/store latency/bandwidth
 // - branch misprediction penalty
 // - max(µops/cycle) vs. dispatch width
 //  ...
 ```
-<!-- .element: class="fragment" data-fragment-index="2" style="font-size:17px;" -->
+<!-- .element: class="fragment" data-fragment-index="1" style="font-size:17px;" -->
 
 ----
 
@@ -611,20 +585,6 @@ add(reg,reg)/latency:      sub(reg,reg)/latency:      mul(reg,reg)/latency:     
  [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel   [1] mca.assembly # intel
 ```
 <!-- .element: style="text-align:left;font-size:11px; margin: -35px 0;" -->
-
-----
-
-#### Tuned vs. Non-tuned
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/tune.png" style="width: 1000px; height: 230px; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-// rdtsc{p} # same scale
-```
-<!-- .element: style="text-align:left;font-size:14px;" -->
 
 ----
 
@@ -729,32 +689,6 @@ int main() {
 <!-- .element: style="font-size:13px;" -->
 
 ```
-
-----
-
-```cpp
-int main() {
-  perf::runner bench{
-    timeit{.iterations = 1u,     .samples = 1u},
-    timeit{.iterations = 10'000, .samples = 1u},
-    timeit{.iterations = 1,      .samples = 100},
-    timeit{.iterations = 10'000, .samples = 100},
-    timeit{}, // estimated
-  };
-
-  bench(fizz_buzz, {});
-
-  perf::plot::bar(bench[
-    perf::stat::tsc / perf::bench::operations,
-    perf::stat::steady_time / perf::bench::operations
-  ]);
-}
-```
-<!-- .element: style="font-size:15px;" -->
-
-<p align="left">
-<img src="images/is.png" style="width: 90%; background:none; border:none; box-shadow:none;  margin: 0 0;" />
-</p>
 
 ----
 
@@ -1765,33 +1699,6 @@ profiler.stop();
 
 ----
 
-#### trace & record & mca
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf::profiler profiler{
-  perf::trace::instructions,
-  perf::trace::cycles,        // cyc_thresh
-  perf::record::mem_loads,    // PEBS
-};
-
-profiler.start();
-// ...
-profiler.stop();
-
-perf::analyzer analyzer{perf::mca::assembly};
-analyzer << profiler[perf::trace::instructions];
-
-perf::annotate(tuple(analyzer[], profiler[])[
-  perf::mca::assembly,
-  perf::trace::instructions / perf::trace::cycles, // IPC per IP
-  perf::record::mem_loads                          // L1d, L2d, L3d, TLBi hit/miss
-]);
-```
-<!-- .element: style="font-size:17px" -->
-
-----
-
 #### profiler/analyzer ⭢ runner (bench)
 <!-- .element: style="text-align:left" -->
 
@@ -1803,7 +1710,7 @@ int main() {
   bench(fizz_buzz, 5);
   bench(fizz_buzz, unpredictable<int>);
 
-  perf::annotate<vsplit>(bench[perf::mca::assembly]);
+  // ...
 }
 ```
 
@@ -1933,6 +1840,7 @@ fizz_buzz(15)/latency:           fizz_buzz(5)/latency:            fizz_buzz(unpr
 perf::annotate<vsplit>(bench[
   perf::mca::assembly,
   perf::record::branch_misses / perf::record::branches,
+  perf::trace::instructions / perf::trace::cycles, // IPC # cyc_thresh
   perf::record::mem_loads,
 ] | filter(perf::trace::instructions));
 ```
@@ -2025,48 +1933,6 @@ main;render 7
 // Reducing instruction count / Increasing instructions|µops per cycle
 // Top down Microarchitecture Analysis Method
 ```
-
-----
-
-#### Baseline
-<!-- .element: style="text-align:left" -->
-
-```cpp
-int main() {
-  perf::runner bench{perf::bench::latency{}};
-
-  bench(baseline(fizz_buzz), unpredictable<int>);
-  bench(fizz_buzz_fast_mod,  unpredictable<int>);
-  bench(fizz_buzz_lut,       unpredictable<int>);
-
-  auto ops = perf::bench::operations;
-
-  perf::report(bench[perf::stat::tsc / ops], p50, p99);
-  perf::plot::ecdf(bench[perf::stat::tsc / ops]);
-}
-```
-<!-- .element: style="font-size:21px;" -->
-
-----
-
-```cpp
-benchmark                                           [1]           [2]
------------------------------------------  ------------  ------------
-fiz_buzz(unpredictable)/latency[*]         (1.00x) 8.16  (1.00x) 9.19
-fizz_buzz_fast_mod(unpredictable)/latency  (1.45x) 5.64  (1.50x) 6.13
-fizz_buzz_lut(unpredictable)/latency       (0.89x) 9.15  (1.00x) 9.22
-
-[*] baseline
-(0) speedup(slowest:1.00x) // against the baseline
-[1] p50((stat.tsc[ns]/bench.operations))
-[2] p99((stat.tsc[ns]/bench.operations))
-
-```
-<!-- .element: style="font-size:20px;" -->
-
-<p align="left">
-<img src="images/baseline.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
-</p>
 
 ----
 
@@ -2217,11 +2083,12 @@ int main() {
   ], median);
 
   perf::plot::bar(bench[
-    perf::stat::branch_misses / perf::stat::branches,
-    perf::stat::instructions  / perf::stat::cycles
+    perf::stat::branch_misses / perf::stat::branches, // branch_miss_rate
+    perf::stat::instructions  / perf::stat::cycles    // ipc
   ]);
 }
 ```
+<!-- .element: style="font-size:21px;" -->
 
 ----
 
@@ -2449,19 +2316,6 @@ auto analyze = [](auto fn, auto... ts) {
 
 ----
 
-```cpp
-"bench.coverage"_test = [] {
-  // ...
-  for (const auto& [name, data]:
-    bench[perf::trace::instructions, perf::mca::instructions]) {
-    perf::verify(data[perf::trace::instructions].size() ==
-                 data[perf::mca::instructions].size());
-  }
-};
-```
-
-----
-
 #### Validation
 <!-- .element: style="text-align:left" -->
 
@@ -2495,26 +2349,6 @@ auto analyze = [](auto fn, auto... ts) {
         ├─ [5] The Illusion // ⭢ Validating
         └─ ...
 ```
-
-----
-
-#### [https://github.com/qlibs/perf#studies](https://github.com/qlibs/perf/discussions/4)
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// "Code can tell you what works, not what doesn't"
-```
-<!-- .element: style="text-align:left" -->
-
-```sh
- user@perf:~$ ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
-```
-<!-- .element: style="text-align:left;font-size:13px;" -->
-
-<p align="left">
-&nbsp; <img src="images/gh_html.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
-</p>
-<!-- .element: style="margin: -30px 0;" -->
 
 ----
 
