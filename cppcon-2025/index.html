@@ -891,8 +891,11 @@ int main() {
 
 ```cpp
 // Modern branch predictor can learn ~10'000 1/0 branches
-// [no history] backward = taken, forward = not_taken
+// - branch aliasing - multiple branches map to the same predictor entry
+// - no history { backward = taken, forward = not_taken }
 ```
+<!-- .element: style="font-size:21px;" -->
+
 <p align="left">
 <img src="images/cpu2.png" style="width: 60%; background:none; border:none; box-shadow:none;" />
 </p>
