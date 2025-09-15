@@ -12,9 +12,3 @@ Vidoes
 Resources
 - https://github.com/qlibs/perf/discussions/3
 - https://github.com/qlibs/perf/discussions/4
-- https://lemire.github.io/talks/2025/sea/sea2025.html
-- https://en.algorithmica.org/hpc
-- https://lucisqr.substack.com/p/leveraging-llvm-mca?r=2laeyk
-- https://probablydance.com/2025/05/31/im-open-sourcing-my-custom-benchmark-gui/
-- https://emeryberger.com/research/stabilizer/ / https://github.com/ccurtsinger/stabilizer
-- https://travisdowns.github.io/blog/2019/06/11/speed-limits.html
