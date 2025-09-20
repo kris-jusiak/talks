@@ -49,13 +49,13 @@
           <script type="text/template">
 <!-- .element: data-background-image="images/title.png" data-background-size="100%" -->
 
-<br />
-<br />
-<br />
+<!--<br />-->
+<!--<br />-->
+<!--<br />-->
 
-<p align="left">
-<img src="images/qr.png" style="width: 17%; background:none; border:none; box-shadow:none; margin: 0 50px;" />
-</p>
+<!--<p align="left">-->
+<!--<img src="images/qr.png" style="width: 17%; background:none; border:none; box-shadow:none; margin: 0 50px;" />-->
+<!--</p>-->
 
 ----
 
@@ -1070,10 +1070,7 @@ auto fn_v2(size_t size, int n) {
   }
   return sum;
 }
-```
-<!-- .element: class="fragment" data-fragment-index="1" style="font-size:18px;" -->
 
-```cpp
 int main() {
   perf::runner bench{perf::bench::latency{.cfg = ...}}; // setup
   // ...
@@ -1917,7 +1914,8 @@ main;render 7
 
 ```cpp
 // Establishing the baseline
-// Reducing overall instruction count / Increasing instructions|µops per cycle
+// Reducing overall instruction count
+// Increasing {instructions,µops} per cycle
 // Top down Microarchitecture Analysis Method
 ```
 
