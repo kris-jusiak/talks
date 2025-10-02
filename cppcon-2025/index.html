@@ -79,10 +79,15 @@
 </code></pre>
   </td>
   <td>
-    <img src="images/moore.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+    <img src="images/trend.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
 </tr>
 </table>
+
+```cpp
+// https://github.com/karlrupp/microprocessor-trend-data
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 ----
 
@@ -186,10 +191,10 @@
  └─ System
     └── Application
 
-          import prof; // https://github.com/qlibs/prof
+          import <perf.tool>; // https://github.com/qlibs/perf
 
           int main() {
-            prof::linux_perf profiler{"/dev/shm/perf"};
+            perf::tool::linux_perf profiler{"/dev/shm/perf"};
 
             profiler.start(); // syscall
             // ...
@@ -245,8 +250,10 @@
  └─ System
     └── Application
 
+          import <perf.tool>; // https://github.com/qlibs/perf
+
           int main() {
-            prof::callgrind profiler{"simulation"};
+            perf::tool::callgrind profiler{"simulation"};
 
             while (true) {
               profiler.reset();
@@ -261,6 +268,7 @@
             }
           }
 ```
+<!-- .element: style="font-size:21px;" -->
 
 ```sh
         valgrind --tool=callgrind --instr-atstart=no \ # 5x-100x overhead
@@ -2293,7 +2301,7 @@ int main() {
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
 <p align="left">
-<img src="images/sort.png" style="width: 90%; background:none; border:none; box-shadow:none;" />
+<img src="images/sort.png" style="width: 71%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ----
@@ -2438,7 +2446,7 @@ auto analyze = [](auto fn, auto... ts) {
 <!-- .element: style="text-align:left" -->
 
 ```sh
-user@perf:~$ ./fizz_buzz | export.sh html | gh gist create --public # markdown, notebook
+user@perf:~$ PERF_IO_OUT=fizz_buzz.* ./fizz_buzz | gh gist create fizz_buzz.* --public
 ```
 <!-- .element: style="text-align:left;font-size:13px;" -->
 
