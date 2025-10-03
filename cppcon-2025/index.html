@@ -826,8 +826,8 @@ auto latency = // ns/op
 auto throughput  = // op/s
   perf::bench::operations / seconds(perf::stat::tsc);
 
-auto throughput_ = // Gb/s
-  (perf::bench::operations * arg("size")) / seconds(perf::stat::tsc);
+auto throughput = // Gb/s
+  (perf::bench::operations * "size"_arg) / seconds(perf::stat::tsc);
 
 auto inverse_throughput = // ns/op
   perf::stat::tsc / perf::bench::operations;
@@ -2301,7 +2301,7 @@ int main() {
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
 <p align="left">
-<img src="images/sort.png" style="width: 71%; background:none; border:none; box-shadow:none;" />
+<img src="images/sort.png" style="width: 92%; background:none; border:none; box-shadow:none;" />
 </p>
 
 ----
@@ -2373,7 +2373,7 @@ auto analyze = [](auto fn, auto... ts) {
 ----
 
 ```cpp
-"?optimized"_test = [] {
+"optimized"_test = [] {
   auto ub  = [](int x) { return x + 1 > x; }; // undefined behavior
   auto opt = [](int x) { return true; };      // expected optimization
 
