@@ -975,11 +975,6 @@ perf::plot::bar(
 <img src="images/study1.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 </p>
 
-```cpp
-// Bar: Compares categories (lower is better*)
-```
-<!-- .element: style="font-size:19px;" -->
-
 ----
 
 ```cpp
@@ -1013,6 +1008,24 @@ perf::plot::box(
 
 ```cpp
 // Box: Shows data distrubution, central tendency and variability
+```
+<!-- .element: style="font-size:19px;" -->
+
+----
+
+```cpp
+perf::plot::errorbar(
+  bench[perf::stat::tsc / perf::bench::operations]
+);
+```
+<!-- .element: style="font-size:19px;" -->
+
+<p align="left">
+<img src="images/sort.png" style="width: 92%; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+// Errorbar: Shows uncertainty/variability
 ```
 <!-- .element: style="font-size:19px;" -->
 
@@ -1207,12 +1220,12 @@ int main() {
 
       for (auto s = 0u; s < samples; ++s) {
         for (auto i = 0; i < iterations; ++i) {
-          branch::predict(ts...);           // based on input distrubution
-          cache::flush();                   // clflush (L1d, L1i, L2d, L3d)
-                                            // L3d - evict from another core
+          cache::evict();                      // L1d, L1i - address aliasing
+                                               // L1d-L3d  - cflush
+                                               // L3d     - evict from another core
 
-          start();                          // rdtsc, rdpmc
-          perf::prevent_elision(fn(ts...)); // may need to unroll
+          start();                             // rdtsc, rdpmc
+          perf::prevent_elision(fn(ts[i]...)); // branch prediction
           stop();
           // ...
         }
@@ -1224,7 +1237,7 @@ int main() {
   // ...
 }
 ```
-<!-- .element: style="font-size:19px" -->
+<!-- .element: style="font-size:18px" -->
 
 ----
 
@@ -2291,18 +2304,12 @@ int main() {
     }
   };
 
-  for (auto i = 1; i <= 1024; i *= 2) {
-    bench(sort, unpredictable<int> | to<std::vector>(i));
+  for (auto i = 1; i < 10; i++) {
+    bench(sort, unpredictable<int> | to<std::vector>((1 << i)));
   }
-
-  perf::plot::errorbar(bench[perf::stat::tsc / perf::bench::operations]);
 }
 ```
-<!-- .element: style="text-align:left; font-size:15px;" -->
-
-<p align="left">
-<img src="images/sort.png" style="width: 92%; background:none; border:none; box-shadow:none;" />
-</p>
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
