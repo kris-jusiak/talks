@@ -424,7 +424,7 @@ Focused on x86-64-linux-gnu
  ├─ LBR   - Last Branch Record                    // Intel, AMD
  └─ IPT   - Intel Processor Trace                 // Intel
 
-Powered by perf # https://github.com/qlibs/perf
+Powered by https://github.com/qlibs/perf
  ├─ c++2x
  ├─ linux/perf                                    // perf_event_open/ipt-dev
  ├─ llvm/mca                                      // llvm-dev
@@ -469,7 +469,7 @@ int main();
 isolcpus=<cpu numbers> # bootloader
 
 
-# Disable CPU Frequency Scaling, ...
+# Disable CPU Frequency Scaling, Processor Boosting, Turbo Mode, ...
 pyperf system tune # pip install pyperf
 
 
@@ -727,7 +727,7 @@ int main() {
 // - mae (median absolute error), mad (median absolute deviation), cv (coefficient of variation)
 // - ...
 
-// [*] what and how to run based bench[...] # compile-time
+// [*] what and how to deduced at compile-time based on `bench[...]`
 ```
 <!-- .element: style="font-size:13px;" -->
 
@@ -804,7 +804,7 @@ for (auto i = 0u; i < n; ++i) {       // [*]
 
 // Throughput
 for (auto i = 0u; i < n; ++i) {       // seq, unseq, unroll
-  fn(ts...);                          // par, omp, ...
+  fn(ts...);                          // par, omp, cuda, ...
 } // ?
 ```
 
@@ -1215,23 +1215,20 @@ user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 ```cpp
 int main() {
   perf::runner bench{
-    [](auto fn, auto ... ts) {
-      // profile to gather executed branches, addresses, instructions, ... [3]
+    perf::named("latency", [](auto fn, auto ... ts) {
+      // profile to gather executed branches, addresses, instructions, ...
 
       for (auto s = 0u; s < samples; ++s) {
-        for (auto i = 0; i < iterations; ++i) {
-          cache::evict();                      // L1d, L1i - address aliasing
-                                               // L1d-L3d  - cflush
-                                               // L3d     - evict from another core
+        cache::evict();                      // L1d, L1i - address aliasing
+                                             // L1d-L3d  - cflush
+                                             // L3d      - evict from another core
 
-          start();                             // rdtsc, rdpmc
-          perf::prevent_elision(fn(ts[i]...)); // branch prediction
-          stop();
-          // ...
-        }
+        start();                             // rdtsc, rdpmc
+        perf::prevent_elision(fn(ts[i]...)); // branch prediction
+        stop();
         // ...
       }
-    }
+    })
   };
 
   // ...
