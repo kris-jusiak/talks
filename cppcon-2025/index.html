@@ -570,7 +570,7 @@ int main() {
 ```
 
 ```cpp
-// Tuned vs. Non-tuned
+// Non-tuned vs. Tuned
 ```
 <!-- .element: class="fragment" data-fragment-index="1" style="font-size:17px;" -->
 
@@ -790,7 +790,7 @@ int main() {
   ├─ Total number of operations
   │  completed in a given amount of time
   ├─ Example: Total distance traveled in 1 hour
-  └─ op/s, Gb/s, ...
+  └─ ops/s, Gb/s, ...
 ```
 
 ----
@@ -823,7 +823,7 @@ auto latency = // ns/op
   perf::stat::tsc / perf::bench::operations;
 
 
-auto throughput  = // op/s
+auto throughput  = // ops/s
   perf::bench::operations / seconds(perf::stat::tsc);
 
 auto throughput = // Gb/s
