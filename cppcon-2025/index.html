@@ -1936,15 +1936,15 @@ perf::annotate<vsplit>(bench[
 fizz_buzz(15)/latency:                        fizz_buzz(5)/latency:                        fizz_buzz(unpredictable)/latency:
  [0] [1]                             [2] [3]   [0] [1]                            [2] [3]   [0] [1]                            [2] [3]
  --- ------------------------------  --- ---   --- ------------------------------ --- ---   --- ------------------------------ --- ---
-  1. imul eax, edi, 0xeeeeeeef                  1. imul eax, edi, 0xeeeeeeef                 1.  imul eax, edi, 0xeeeeeeef
-  2. add eax, 0x8888888                         2. add eax, 0x8888888                        2.  add eax, 0x8888888
-  3. cmp eax, 0x11111111                        3. cmp eax, 0x11111111                       3.  cmp eax, 0x11111111
-  4. jb 0x36                          0%        4. jb 0x36                         0%        4.  jb 0x36                        32%
-  5. lea rax, [rip + 0x1397]             L1d    5. imul eax, edi, 0xaaaaaaab                 5.  imul eax, edi, 0xaaaaaaab
-  6. jmp 0x7                          0%        6. add eax, 0x2aaaaaaa                       6.  add eax, 0x2aaaaaaa
-  7. mov qword ptr [rsp - 0x8], rax      L1d    7. cmp eax, 0x55555555                       7.  cmp eax, 0x55555555
-                                                8. jb 0x2d                         0%        8.  jb 0x2d                        28%
-                                                9. imul eax, edi, 0xcccccccd                 9.  imul eax, edi, 0xcccccccd
+  1. imul eax, edi, 0xeeeeeeef                  1. imul eax, edi, 0xeeeeeeef                 1. imul eax, edi, 0xeeeeeeef
+  2. add eax, 0x8888888                         2. add eax, 0x8888888                        2. add eax, 0x8888888
+  3. cmp eax, 0x11111111                        3. cmp eax, 0x11111111                       3. cmp eax, 0x11111111
+  4. jb 0x36                          0%        4. jb 0x36                         0%        4. jb 0x36                        32%
+  5. lea rax, [rip + 0x1397]             L1d    5. imul eax, edi, 0xaaaaaaab                 5. imul eax, edi, 0xaaaaaaab
+  6. jmp 0x7                          0%        6. add eax, 0x2aaaaaaa                       6. add eax, 0x2aaaaaaa
+  7. mov qword ptr [rsp - 0x8], rax      L1d    7. cmp eax, 0x55555555                       7. cmp eax, 0x55555555
+                                                8. jb 0x2d                         0%        8. jb 0x2d                        28%
+                                                9. imul eax, edi, 0xcccccccd                 9. imul eax, edi, 0xcccccccd
                                                10. add eax, 0x19999999                      10. add eax, 0x19999999
                                                11. cmp eax, 0x33333333                      11. cmp eax, 0x33333333
                                                12. lea rcx, [rip + 0x13af]            L1d   12. lea rcx, [rip + 0x13af]            L1d
