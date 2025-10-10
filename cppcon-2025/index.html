@@ -191,7 +191,7 @@
  └─ System
     └── Application
 
-          import perf.tool; // https://github.com/qlibs/perf
+          #import <perf.tool>; // https://github.com/qlibs/perf
 
           int main() {
             perf::tool::linux_perf profiler{"/dev/shm/perf"};
@@ -250,7 +250,7 @@
  └─ System
     └── Application
 
-          import perf.tool; // https://github.com/qlibs/perf
+          #import <perf.tool>; // https://github.com/qlibs/perf
 
           int main() {
             perf::tool::callgrind profiler{"simulation"};
