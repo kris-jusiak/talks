@@ -1219,6 +1219,7 @@ int main() {
       // profile to gather executed branches, addresses, instructions, ...
 
       for (auto s = 0u; s < samples; ++s) {
+        memory::pre_fault();                 // dTLB     - mprotect
         cache::evict();                      // L1d, L1i - address aliasing
                                              // L1d-L3d  - cflush
                                              // L3d      - evict from another core
