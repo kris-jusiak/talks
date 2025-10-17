@@ -191,10 +191,10 @@
  └─ System
     └── Application
 
-          #import <perf.tool>; // https://github.com/qlibs/perf
+          import xprof; // https://github.com/qlibs/xprof
 
           int main() {
-            perf::tool::linux_perf profiler{"/dev/shm/perf"};
+            xprof::perf profiler{"/dev/shm/perf"};
 
             profiler.start(); // syscall
             // ...
@@ -250,10 +250,10 @@
  └─ System
     └── Application
 
-          #import <perf.tool>; // https://github.com/qlibs/perf
+          import xprof; // https://github.com/qlibs/xprof
 
           int main() {
-            perf::tool::callgrind profiler{"simulation"};
+            xprof::callgrind profiler{"simulation"};
 
             while (true) {
               profiler.reset();
@@ -329,6 +329,7 @@
           intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
           amd-uprof   # https://www.amd.com/en/developer/uprof.html
           linux-perf  # https://perf.wiki.kernel.org
+          likwid      # https://github.com/RRZE-HPC/likwid
           dtrace      # https://github.com/opendtrace
           tracy       # https://github.com/wolfpld/tracy
           gperftools  # https://github.com/gperftools/gperftools
@@ -822,14 +823,10 @@ for (auto i = 0u; i < n; ++i) {       // seq, unseq, unroll
 auto latency = // ns/op
   perf::stat::tsc / perf::bench::operations;
 
-
 auto throughput  = // ops/s
   perf::bench::operations / seconds(perf::stat::tsc);
 
-auto throughput = // Gb/s
-  (perf::bench::operations * "size"_arg) / seconds(perf::stat::tsc);
-
-auto inverse_throughput = // ns/op
+auto rthroughput = // ns/ops # reciprocal
   perf::stat::tsc / perf::bench::operations;
 ```
 
@@ -1266,10 +1263,10 @@ int main() {
 ```cpp
 // Profiling/Tracing
 // - linux-perf  - https://perf.wiki.kernel.org
+// - likwid      - https://github.com/RRZE-HPC/likwid
 // - dtrace      - https://github.com/opendtrace
 // - intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
 // - amd-uprof   - https://www.amd.com/en/developer/uprof.html
-// - likwid      - https://github.com/RRZE-HPC/likwid
 // - callgrind   - https://valgrind.org/docs/manual/cl-manual.html
 
 // Analyzing
