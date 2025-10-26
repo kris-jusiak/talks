@@ -1213,16 +1213,17 @@ user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 int main() {
   perf::runner bench{
     perf::named("latency", [](auto fn, auto ... ts) {
-      // profile to gather executed branches, addresses, instructions, ...
+      // [*] profile executed addresses, branches, instructions, ...
 
       for (auto s = 0u; s < samples; ++s) {
-        memory::pre_fault();                 // dTLB     - mprotect
-        cache::evict();                      // L1d, L1i - address aliasing
-                                             // L1d-L3d  - cflush
-                                             // L3d      - evict from another core
+        // accordingly to given distrubution
+        for (auto addr : [*]) {
+          memory::pre_fault<...>(addr);      // tlb
+          memory::refresh<...>(addr);        // cache
+        }
 
-        start();                             // rdtsc, rdpmc
-        perf::prevent_elision(fn(ts[i]...)); // branch prediction
+        start();
+        perf::prevent_elision(fn(ts[i]...)); // branch
         stop();
         // ...
       }
