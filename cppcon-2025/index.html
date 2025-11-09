@@ -318,6 +318,7 @@
 ```
  // hot-spotting   != speedup
  // no-bottlenecks != fastest
+ // fast + fast    != fast    # performance isn't additive
 
  └─ System
       bcc      # https://github.com/iovisor/bcc
@@ -354,11 +355,10 @@
 
 ```cpp
             /**
-            * Iteration speed
-            * Isolation
-            * Coverage (under specific conditions)
-            * Understanding
-            * Tuning
+            * Iteration speed     # cost
+            * Isolation/Coverage  # what if?
+            * Understanding       # hardware effects
+            * Tuning              # optimizations
             */
             auto bench(auto code) -> measurements;
 ```
@@ -418,18 +418,18 @@
 
 ```cpp
 Focused on x86-64-linux-gnu
- ├─ RDTSC - Read Time-Stamp Counter               // Intel, AMD
- ├─ RDPMC - Read Performance-Monitoring Counters  // Intel, AMD
- ├─ PEBS  - Precise Event-Based Sampling          // Intel
- ├─ IBS   - Instruction Based Sampling            // AMD
- ├─ LBR   - Last Branch Record                    // Intel, AMD
- └─ IPT   - Intel Processor Trace                 // Intel
+ ├─ RDTSC - Read Time-Stamp Counter              // Intel, AMD
+ ├─ RDPMC - Read Performance-Monitoring Counters // Intel, AMD
+ ├─ PEBS  - Precise Event-Based Sampling         // Intel
+ ├─ IBS   - Instruction Based Sampling           // AMD
+ ├─ LBR   - Last Branch Record                   // Intel, AMD
+ └─ IPT   - Intel Processor Trace                // Intel
 
 Powered by https://github.com/qlibs/perf
  ├─ c++2x
- ├─ linux/perf                                    // perf_event_open/ipt-dev
- ├─ llvm/mca                                      // llvm-dev
- └─ gnuplot/sixel                                 // term/tty
+ ├─ linux/perf                                   // perf_event_open/ipt-dev
+ ├─ llvm/mca                                     // llvm-dev
+ └─ gnuplot/sixel                                // term/tty
 ```
 <!-- .element: style="margin: 2% 2%; font-size:21px;" -->
 
@@ -797,23 +797,27 @@ int main() {
 ----
 
 ```cpp
-// Latency # start(); fn(ts...); stop();
-for (auto i = 0u; i < n; ++i) {       // [*]
-  checksum ^= fn(checksum ^ ts...);   // data dependency
-  // memory fence                     // if mem-stores
-}
+// Latency                               // [^1]
+fn(ts...);                               // [^2]
 
 // Throughput
-for (auto i = 0u; i < n; ++i) {       // seq, unseq, unroll
-  fn(ts...);                          // par, omp, cuda, ...
+for (auto i = 0u; i < n; ++i) {          // unroll
+  fn(ts...);
 } // ?
 ```
 
 ```cpp
 
-// [*] A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
+// [^1] A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
 // - https://arxiv.org/abs/1911.03282
 // - https://uops.info/table.html
+
+
+// [^2]
+// for (auto i = 0u; i < n; ++i) {
+//   checksum ^= fn(checksum ^ ts...);   // data dependency
+//   // memory fence                     // if mem-stores
+// }
 ```
 <!-- .element: style="text-align:left; font-size:16px; " -->
 
@@ -1152,12 +1156,13 @@ auto fn_v2(size_t size, int n) {
 }
 
 int main() {
-  perf::runner bench{perf::bench::latency{.cfg = ...}}; // setup
-  // ...
+  perf::runner bench{perf::bench::latency{}};
+
   for (auto i = 0; i < 1024; ++i) {
     bench(fn_v1, n, unpredictable<int>); // bench runs in a new process by default
     bench(fn_v2, n, unpredictable<int>);
   }
+
   // ...
 }
 ```
@@ -1211,27 +1216,25 @@ user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 
 ```cpp
 int main() {
-  perf::runner bench{
-    perf::named("latency", [](auto fn, auto ... ts) {
-      // [*] profile executed addresses, branches, instructions, ...
+  perf::runner bench{perf::bench::latency{
+    .setup = perf::bench::optune{         // [*]
+      .L1i  = percent(100),               // L1 # instructions
 
-      for (auto s = 0u; s < samples; ++s) {
-        // accordingly to given distrubution
-        for (auto addr : [*]) {
-          memory::pre_fault<...>(addr);      // tlb
-          memory::refresh<...>(addr);        // cache
-        }
+      .L1d  = range<percent>(0, 100, 25), // L1 # data
+      .L2d  = range<percent>(0, 100, 25), // L2 # data
+      .L3d  = percent(100),               // L3 # data
 
-        start();
-        perf::prevent_elision(fn(ts[i]...)); // branch
-        stop();
-        // ...
-      }
-    })
+      .TLBi = percent(100),               // Translation lookaside buffer # instructions
+      .TLBd = percent(100),               // Translation lookaside buffer # data
+    }},
   };
+
+  bench(fizz_buzz, unpredictable<int>);   // branch predictor
 
   // ...
 }
+
+// [*] `profiler{record::mem_loads, record::mem_stores}`
 ```
 <!-- .element: style="font-size:18px" -->
 
