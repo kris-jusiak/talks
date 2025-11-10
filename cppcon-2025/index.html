@@ -797,41 +797,47 @@ int main() {
 ----
 
 ```cpp
-// Latency                               // [^1]
-fn(ts...);                               // [^2]
+// Latency
+fn(ts...);
 
-// Throughput
-for (auto i = 0u; i < n; ++i) {          // unroll
-  fn(ts...);
-} // ?
-```
-
-```cpp
-
-// [^1] A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
-// - https://arxiv.org/abs/1911.03282
-// - https://uops.info/table.html
-
-
-// [^2]
 // for (auto i = 0u; i < n; ++i) {
 //   checksum ^= fn(checksum ^ ts...);   // data dependency
 //   // memory fence                     // if mem-stores
 // }
+
+
+// Throughput
+for (auto i = 0u; i < n; ++i) {
+  fn(ts...);
+}
+
+// fn(ts...);
+// fn(ts...);
+// fn(ts...);
+// ...                                   // unroll
+```
+
+```cpp
+
+// A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
+// - https://arxiv.org/abs/1911.03282
+// - https://uops.info/table.html
 ```
 <!-- .element: style="text-align:left; font-size:16px; " -->
 
 ----
 
 ```cpp
-auto latency = // ns/op
-  perf::stat::tsc / perf::bench::operations;
+auto latency =
+  perf::stat::tsc / perf::bench::operations;          // ns/op
 
-auto throughput  = // ops/s
-  perf::bench::operations / seconds(perf::stat::tsc);
 
-auto rthroughput = // ns/ops # reciprocal
-  perf::stat::tsc / perf::bench::operations;
+auto throughput  =
+  perf::bench::operations / seconds(perf::stat::tsc); // ops/s
+
+// reciprocal throughput # inverse
+auto rthroughput =
+  perf::stat::tsc / perf::bench::operations;          // ns/ops
 ```
 
 ----
@@ -1234,7 +1240,7 @@ int main() {
   // ...
 }
 
-// [*] `profiler{record::mem_loads, record::mem_stores}`
+// [*] record::mem_loads, record::mem_stores
 ```
 <!-- .element: style="font-size:18px" -->
 
@@ -1278,12 +1284,12 @@ int main() {
 // - osaca       - https://github.com/RRZE-HPC/OSACA
 // - uica        - https://uica.uops.info
 ```
-<!-- .element: style="font-size:16px" -->
+<!-- .element: style="font-size:17px" -->
 
 ```sh
 BENCHMARK_FILTER=fizz_buzz perf record -g ./a.out # bias?
 ```
-<!-- .element: style="font-size:16px" -->
+<!-- .element: style="font-size:17px" -->
 
 ----
 
@@ -2424,7 +2430,7 @@ auto analyze = [](auto fn, auto... ts) {
 ```
 
 ```
-"benchmarks slower, app faster" - next steps?
+"benchmarks slower, app faster?"
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
