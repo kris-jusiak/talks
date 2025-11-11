@@ -108,8 +108,8 @@
   DRAM access          350 ± 20  70.00 ± 5.00 ████████████████████████████████████████████░░░░░
   ...
 
-  [0]: ~cycles // Intel/AMD/Apple
-  [1]: (cycles/4Ghz) [ns]
+  [0]: ~cycles # Intel/AMD/ARM
+  [1]: cycles/4Ghz [ns]
   [2]: cycles ± variability
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
@@ -467,7 +467,7 @@ int main();
 
 ```sh
 # Kernel Mode Task-Isolation - https://lwn.net/articles/816298
-isolcpus=<cpu numbers> # bootloader
+isolcpus=<cpu numbers> # bootloader or cgroups
 
 
 # Disable CPU Frequency Scaling, Processor Boosting, Turbo Mode, ...
@@ -794,6 +794,15 @@ int main() {
   └─ ops/s, Gb/s, ...
 ```
 
+```cpp
+
+
+   // A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
+   // - https://arxiv.org/abs/1911.03282
+   // - https://uops.info/table.html
+```
+<!-- .element: style="text-align:left; font-size:16px; " -->
+
 ----
 
 ```cpp
@@ -817,23 +826,19 @@ for (auto i = 0u; i < n; ++i) {
 // ...                                   // unroll
 ```
 
-```cpp
-
-// A Low-Overhead Tool for Running Microbenchmarks on x86 Systems
-// - https://arxiv.org/abs/1911.03282
-// - https://uops.info/table.html
-```
-<!-- .element: style="text-align:left; font-size:16px; " -->
 
 ----
 
 ```cpp
+// Metrics
+
 auto latency =
   perf::stat::tsc / perf::bench::operations;          // ns/op
 
 
 auto throughput  =
   perf::bench::operations / seconds(perf::stat::tsc); // ops/s
+
 
 // reciprocal throughput # inverse
 auto rthroughput =
@@ -1139,24 +1144,14 @@ $CXX -Wl,--shuffle-sections=<seed> -fuse-ld=lld ... # mold
 ----
 
 ```cpp
-[[gnu:noinline]] auto fn_v1(size_t size, int n) {
-  size_t sum{};
-  for (size_t i = {}; i < size; ++i) {
-    if (i % x) sum += i;
-  }
-  return sum;
-}
-```
-<!-- .element: style="font-size:18px;" -->
-
-```cpp
 template<auto cfg>
-[[gnu::noinline, gnu::aligned(cfg.function_alignment)]]
-auto fn_v2(size_t size, int n) {
+[[gnu::noinline, /*gnu::aligned(cfg.function_alignment)*/]]
+auto fn(size_t size, int n) {
   size_t sum{};
-  perf::code::align(cfg.loop_alignment) for (auto i = 0 ; i < size; ++i) {
+  /* perf::code::align(cfg.loop_alignment); */
+  for (auto i = 0 ; i < size; ++i) {
     if (i % x) sum += i;
-    perf::code::align(cfg.loop_boundry); // nops...
+    /* perf::code::align(cfg.loop_boundry); */
   }
   return sum;
 }
@@ -1165,14 +1160,12 @@ int main() {
   perf::runner bench{perf::bench::latency{}};
 
   for (auto i = 0; i < 1024; ++i) {
-    bench(fn_v1, n, unpredictable<int>); // bench runs in a new process by default
-    bench(fn_v2, n, unpredictable<int>);
+    bench(fn, n, unpredictable<int>);
   }
 
   // ...
 }
 ```
-<!-- .element: style="font-size:15px;" -->
 
 ----
 
