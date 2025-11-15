@@ -1215,20 +1215,17 @@ user@perf:~$ lstopo # hardware topology (alderlake:6.154.3)
 
 ```cpp
 int main() {
-  perf::runner bench{perf::bench::latency{
-    .setup = perf::bench::optune{         // [*]
-      .L1i  = percent(100),               // L1 # instructions
+  perf::runner bench{perf::bench::latency{        // [*]
+    .L1i_hit_rate  = percent(100),                // L1 # instructions
+    .L1d_hit_rate  = range<percent>(0, 100, 25),  // L1 # data distrubtion
+    .L2d_hit_rate  = range<percent>(0, 100, 25),  // L2 # data distrubtion
+    .L3d_hit_rate  = percent(100),                // L3 # data
 
-      .L1d  = range<percent>(0, 100, 25), // L1 # data
-      .L2d  = range<percent>(0, 100, 25), // L2 # data
-      .L3d  = percent(100),               // L3 # data
+    .TLBi_hit_rate = percent(100),                // Translation lookaside buffer # instructions
+    .TLBd_hit_rate = percent(100),                // Translation lookaside buffer # data
+  }};
 
-      .TLBi = percent(100),               // Translation lookaside buffer # instructions
-      .TLBd = percent(100),               // Translation lookaside buffer # data
-    }},
-  };
-
-  bench(fizz_buzz, unpredictable<int>);   // branch predictor
+  bench(fizz_buzz, unpredictable<int>);           // branch predictor
 
   // ...
 }
