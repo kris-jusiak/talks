@@ -504,7 +504,7 @@ int efi_main(perf::uefi::sys* sys) {
 
   perf::report(
     sys->stdout,
-    bench[perf::stat::tsc, perf::stat::cycles], // rdtsc, rdpmc
+    bench[perf::stat::wall_time, perf::stat::cycles], // rdtsc, rdpmc
     min, median, p90, p99
   );
 }
@@ -685,12 +685,12 @@ struct timeit {
   auto operator()(auto fn, auto... ts) {
     // ...
 
-    for (auto s = 0u; s < samples; ++s) {        //  Time                     now [ns]
-      auto start = now();                        //  ------------------------ ---------------
-      for (auto i = 0u; i < iterations; ++i) {   //  Time-Stamp-Counter (TSC) rdtsc{p} / freq
-        fn(ts...);                               //  Steady time              steady_clock
-      }                                          //  Process time             clock_gettime
-      auto stop = now();                         //  Thread time              clock_gettime
+    for (auto s = 0u; s < samples; ++s) {        //  Time         now [ns]
+      auto start = now();                        //  ------------ ------------------------
+      for (auto i = 0u; i < iterations; ++i) {   //  Wall time    CLOCK_MONOTONIC_RAW
+        // ...                                   //               rdtsc{p} / frequency
+      }                                          //  Process time CLOCK_PROCESS_CPUTIME_ID
+      auto stop = now();                         //  Thread time  CLOCK_THREAD_CPUTIME_ID
       // ...
     }
 
@@ -712,7 +712,7 @@ struct timeit {
 int main() {
   perf::runner bench{timeit{}};
   bench(fizz_buzz, ...);
-  perf::plot::hist(bench[perf::stat::tsc / perf::bench::operations]); // [*]
+  perf::plot::hist(bench[perf::stat::wall_time / perf::bench::operations]); // [*]
 }
 ```
 <!-- .element: style="font-size:20px;" -->
@@ -750,8 +750,8 @@ int main() {
   bench(fizz_buzz, {});
 
   perf::plot::bar(bench[
-    perf::stat::tsc / perf::bench::operations,
-    perf::stat::steady_time / perf::bench::operations
+    perf::stat::wall_time / perf::bench::operations,
+    perf::stat::thread_time / perf::bench::operations
   ]);
 }
 ```
@@ -833,16 +833,16 @@ for (auto i = 0u; i < n; ++i) {
 // Metrics
 
 auto latency =
-  perf::stat::tsc / perf::bench::operations;          // ns/op
+  perf::stat::wall_time / perf::bench::operations;          // ns/op
 
 
 auto throughput  =
-  perf::bench::operations / seconds(perf::stat::tsc); // ops/s
+  perf::bench::operations / seconds(perf::stat::wall_time); // ops/s
 
 
 // reciprocal throughput # inverse
 auto rthroughput =
-  perf::stat::tsc / perf::bench::operations;          // ns/ops
+  perf::stat::wall_time / perf::bench::operations;          // ns/ops
 ```
 
 ----
@@ -948,7 +948,7 @@ int main() {
 ----
 
 ```cpp
-perf::report(bench[perf::stat::tsc / perf::bench::operations],
+perf::report(bench[perf::stat::wall_time / perf::bench::operations],
   min, median, p90, p99
 );
 ```
@@ -967,10 +967,10 @@ fizz_buzz({3,5,15},{0.25,0.5,0.25})/latency   (1.00x) 6.99  (1.00x) 7.50  (1.00x
 fizz_buzz(unpredictable)/latency              (1.29x) 5.42  (1.34x) 5.62  (1.32x) 5.82  (1.29x) 6.50
 
 (0) speedup(slowest:1.00x)
-[1] min((stat.tsc[ns]/bench.operations))
-[2] median((stat.tsc[ns]/bench.operations))
-[3] p90((stat.tsc[ns]/bench.operations))
-[4] p99((stat.tsc[ns]/bench.operations))
+[1] min((stat.wall_time[ns]/bench.operations))
+[2] median((stat.wall_time[ns]/bench.operations))
+[3] p90((stat.wall_time[ns]/bench.operations))
+[4] p99((stat.wall_time[ns]/bench.operations))
 ```
 <!-- .element: style="font-size:15px;" -->
 
@@ -978,7 +978,7 @@ fizz_buzz(unpredictable)/latency              (1.29x) 5.42  (1.34x) 5.62  (1.32x
 
 ```cpp
 perf::plot::bar(
-  bench[perf::stat::tsc / perf::bench::operations]
+  bench[perf::stat::wall_time / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -991,7 +991,7 @@ perf::plot::bar(
 
 ```cpp
 perf::plot::hist(
-  bench[perf::stat::tsc / perf::bench::operations]
+  bench[perf::stat::wall_time / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -1009,7 +1009,7 @@ perf::plot::hist(
 
 ```cpp
 perf::plot::box(
-  bench[perf::stat::tsc / perf::bench::operations]
+  bench[perf::stat::wall_time / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -1027,7 +1027,7 @@ perf::plot::box(
 
 ```cpp
 perf::plot::errorbar(
-  bench[perf::stat::tsc / perf::bench::operations]
+  bench[perf::stat::wall_time / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:19px;" -->
@@ -1045,7 +1045,7 @@ perf::plot::errorbar(
 
 ```cpp
 perf::plot::ecdf(
-  bench[perf::stat::tsc / perf::bench::operations]
+  bench[perf::stat::wall_time / perf::bench::operations]
 );
 ```
 <!-- .element: style="font-size:17px;" -->
@@ -1289,7 +1289,7 @@ BENCHMARK_FILTER=fizz_buzz perf record -g ./a.out # bias?
 perf::profiler stat{            // perf stat -e
   perf::stat::cycles,
   perf::stat::instructions,
-  perf::stat::tsc,
+  perf::stat::wall_time,
   // ...
 };
 
@@ -1345,7 +1345,7 @@ static_assert(not trace.is_syscall_free);
 
 ```cpp
 perf::profiler profiler{
-  perf::stat::tsc,
+  perf::stat::wall_time,
   perf::stat::branches, perf::stat::branch_misses,
   perf::trace::instructions, perf::trace::cycles,
   perf::record::mem_loads, perf::record::mem_stores,
@@ -1368,7 +1368,7 @@ perf::log(profiler[]); // [] - all elements
 ```
 
 ```cpp
- tsc:
+ wall_time:
    332ns
  stat.branches:
    132
@@ -2039,8 +2039,8 @@ int main() {
 
   auto ops = perf::bench::operations;
 
-  perf::report(bench[perf::stat::tsc / ops], p50, p99);
-  perf::plot::ecdf(bench[perf::stat::tsc / ops]);
+  perf::report(bench[perf::stat::wall_time / ops], p50, p99);
+  perf::plot::ecdf(bench[perf::stat::wall_time / ops]);
 }
 ```
 <!-- .element: style="font-size:21px;" -->
@@ -2056,8 +2056,8 @@ fizz_buzz_lut(unpredictable)/latency       (0.89x) 9.15  (1.00x) 9.22
 
 [*] baseline
 (0) speedup(slowest:1.00x) // against the baseline
-[1] p50((stat.tsc[ns]/bench.operations))
-[2] p99((stat.tsc[ns]/bench.operations))
+[1] p50((stat.wall_time[ns]/bench.operations))
+[2] p99((stat.wall_time[ns]/bench.operations))
 
 ```
 <!-- .element: style="font-size:20px;" -->
