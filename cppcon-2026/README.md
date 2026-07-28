@@ -2,6 +2,11 @@
 
 https://github.com/perf-labs/perf
 
+Disclaimer
+- read intel manual
+- then read angr
+- then experiment
+
 Motivation
 - transistions (moore law)
 - goals: how fast, what if, why so
@@ -10,7 +15,8 @@ Motivation
   - perf info cpu (lstopo)
   - cache effects
      - L1-RAM - picture
-  - branches
+     - nonstream temporary access [TIP]
+  - branches [TIP]
      - fwd no-taken
      - bkw taken
      - never-taken (no entry in BTB)
@@ -42,6 +48,7 @@ Profiling:
     - profile regions not functions (inlining, setup)
     - inline function (different version each time)
     - latency vs throughput
+    - you wanna be fast you wanna be in the future speculative [TIP]
 
 Analyzing:
   - angr/mca/uica
