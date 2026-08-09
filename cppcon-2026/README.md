@@ -60,3 +60,32 @@ Testing:
 
 Summary:
   correlation
+
+Code:
+"loop.begin"_label;
+"loop.end"_label;
+
+Intel Xeon
+    L1 - 4ns
+        keep()
+        fence()
+    L2 - 13ns
+        flush()
+        fence()
+        settle()
+        prefetch()
+    L3 - 75ns
+        keep()
+        demote()
+        settle()
+    RAM - 294ns
+        flush()
+        fence()
+
+Chart
+    images/vix.png
+
+Usage:
+    --topdown use perf info labels siimlar to probs
+    perf record -e cycles:ppp -- ./your_app
+    perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
