@@ -114,3 +114,5 @@ dL1: 4ns
 dL2: 77ns
 dL3: 77ns
 RAM: 294ns
+
+rust,zig
