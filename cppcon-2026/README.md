@@ -33,7 +33,7 @@ Benchmarking:
     - load elf
     - relocate
     - analyze (angr) / may require help with a perf run
-    - bench -> distrubtuion best->worst 
+    - bench -> distrubtuion best->worst
 
   - examples
       - smallest hash table vs lookup table (mph) - cache (fpga)
@@ -43,7 +43,7 @@ Benchmarking:
 Profiling:
     - help to fix it (affects execution - see bias)
     - sampling/tracing(intel_pt) - effects on results
-        - use the same binary 
+        - use the same binary
     - top-down
     - profile regions not functions (inlining, setup)
     - inline function (different version each time)
