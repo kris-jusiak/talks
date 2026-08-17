@@ -92,3 +92,25 @@ Usage:
 
 
 No code changes
+
+
+INTEL(R) XEON(R)
+AMD EPYC
+
+prefetch/demote
+dL1: 4ns
+dL2: 13ns
+dL3: 77ns
+RAM: 294ns
+
+prefetch
+dL1: 4ns
+dL2: 13ns
+dL3: 13ns
+RAM: 294ns
+
+demote
+dL1: 4ns
+dL2: 77ns
+dL3: 77ns
+RAM: 294ns
