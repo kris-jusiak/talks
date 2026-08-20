@@ -73,10 +73,14 @@ Examples
 How (symbolic execution)
 
     [how]
+        states
 
     regions
 
-    perf bench region hot_begin..hot_end
+        perf bench func fizz_buzz
+        perf bench region hot_begin..hot_end
+        perf bench asm 'mov eax, 42' --setup 'mov eax, 0'
+        perf bench func fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
 
 Verification
     perf.bench(asm).instrucitons < 10
