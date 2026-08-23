@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="reveal.js/css/reveal.css">
     <link rel="stylesheet" href="reveal.js/css/theme/white.css" id="theme">
     <link rel="stylesheet" href="extensions/plugin/line-numbers/line-numbers.css">
-    <!--<link rel="stylesheet" href="extensions/css/highlight-styles/zenburn.css">-->
     <link rel="stylesheet" href="extensions/css/custom.css">
 
     <style>
@@ -50,10 +49,212 @@
 <!-- .element: data-background-image="images/title.png" data-background-size="100%" data-background-color="black" -->
 
 <p align="left">
-<img src="images/qr.png" style="width: 14%; background:none; border:none; box-shadow:none; margin: 37% 7%;" />
+<img src="images/qr.png" style="width: 14%; background:none; border:none; box-shadow:none; margin: 37% 10%;" />
 </p>
 
 ----
+
+Problem statment
+what will happen in the future / chart
+- goals: how fast, what if, why so
+  - answer what if (not as if)
+    - the volume will spike tomorrow - show some VIX charts
+    - use the same binary (don't fight compiler)
+
+
+----
+
+
+#### Disclaimer
+<!-- .element: style="text-align:left" -->
+
+#### AMD Zen5 - https://chipsandcheese.com
+
+  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+
+```cpp
+x86-64-linux-gnu
+ ├─ RDTSC - Read Time-Stamp Counter              // Intel, AMD
+ ├─ RDPMC - Read Performance-Monitoring Counters // Intel, AMD
+ ├─ PEBS  - Precise Event-Based Sampling         // Intel
+ ├─ IBS   - Instruction Based Sampling           // AMD
+ ├─ LBR   - Last Branch Record                   // Intel, AMD
+ └─ IPT   - Intel Processor Trace                // Intel
+```
+
+    powered by
+        https://github.com/perf-labs/perf (perf + extenions)
+        supports any language C++, rust, zig, ...
+
+  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+Linux 6.x - https://makelinux.github.io/kernel/map
+
+----
+
+
+Profiling
+    profiling (don't change binary) - use same binary
+        instrumenting
+        performance counters
+            may require multiple runs
+        collecting data (for bencmarking) - profiling is good to get actual distrbutions of data and cache misses
+    can't check all combination in production, what if
+
+    perf topdown
+
+todpwn picutre
+<img src="images/td.png" style="width: 900px; height:350px; background:none; border:none; box-shadow:none;margin: 0 0;" />
+Measuring Workloads With TopLev # https://github.com/andikleen/pmu-tools/wiki/toplev-manual
+
+```
+perf stat --topdown -I 1000 ./your_binary
+    --topdown use perf info labels siimlar to probs
+    perf record -e cycles:ppp -- ./your_app
+    perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
+```
+
+perf probe
+perf intel_pt
+
+```
+perf record \
+  -e intel_pt//u,cyc=1,tsc=1,mtc=1 \
+  -e cycles:u \
+  --snapshot \
+  -m 64,8192 \
+  -o perf.data \
+  -- ls
+```
+
+latency
+  ├─ Time it takes for a single
+    - you wanna be fast you wanna be in the future speculative [TIP]
+
+throughput
+  ├─ Total number of operations
+
+```
+perf tune latency
+# self checks
+# emasured vs documented
+```
+
+----
+
+##### CPU vs. FPGA vs. GPU
+<!-- .element: style="text-align:left" -->
+
+<p align="left" style="margin: 0 0;">
+<img src="images/fpga.gif" style="width: 52%; background:none; border:none; box-shadow:none;" />
+</p>
+
+<p align="right" style="margin: 0 0;">
+<img src="images/gpu.gif" style="width: 52%; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+// source: http://www.qbaylogic.com
+```
+<!-- .element: style="text-align:left; font-size:12px; margin: -10px 0;" -->
+
+----
+
+
+```cpp
+#define PERF_LABEL(name)                                \
+    asm volatile(                                       \
+        ".pushsection perf.label, \"aw?\", @progbits\n" \
+        ".quad 0f\n"                                    \
+        ".asciz \"" #name "\"\n"                        \
+        ".popsection\n"                                 \
+        "0:\n"                                          \
+    ); name:
+```
+
+cpu
+singleton
+
+
+Bias (controlled chaos)
+- control the noise (don't let noise control you)
+  - perf info cpu (lstopo)
+
+    hardware effects
+
+        cache
+
+            Intel Xeon
+                L1 - 4ns
+                    keep()
+                    fence()
+                L2 - 13ns
+                    flush()
+                    fence()
+                    settle()
+                    prefetch()
+                L3 - 75ns
+                    keep()
+                    demote()
+                    settle()
+                RAM - 294ns
+                    flush()
+                    fence()
+
+                INTEL(R) XEON(R)
+                AMD EPYC
+
+                prefetch/demote
+                dL1: 4ns
+                dL2: 13ns
+                dL3: 77ns
+                RAM: 294ns
+
+                prefetch
+                dL1: 4ns
+                dL2: 13ns
+                dL3: 13ns
+                RAM: 294ns
+
+                demote
+                dL1: 4ns
+                dL2: 77ns
+                dL3: 77ns
+                RAM: 294ns
+
+        layout (ASLR)
+            - reshuffle
+
+            config = {
+                memory = hot
+            }
+    Cache:
+        prefetch/cldemote
+    Branch:
+        different data each iteration
+         - fwd no-taken
+         - bkw taken
+         - never-taken (no entry in BTB)
+    Layout:
+        reshuffle
+        stack
+        heap
+    Others:
+        TLB, port executions, ROB, ...
+
+    Questions:
+        - what about noise enviornments
+
+Examples
+    (memory bound, retiirng)
+
+    dispatch (jump table)
+    mph (hash table in register)
+
+    branching: fizz_buzz
+    hash table vs lookup table (mph) - cache (fpga) / in register
+    cache: dispatching table or branchless binary
+    layout: unordered_map
+    simd - throughput (gpu, tpu)
 
 #### Performance <br/> [https://www.intel.com/.../articles/moores-law.html](https://www.intel.com/content/www/us/en/history/virtual-vault/articles/moores-law.html)
 <!-- .element: style="text-align:left" -->
@@ -68,7 +269,7 @@
   - Overclocked: ~9 GHz<br />
 (⬆️) Transistors
   - More Cores
-  - More Cache
+  - More Caches
   - Improved Execution
   - Improved Parallelism
   - ...<br />
@@ -82,6 +283,82 @@
 
 https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left; font-size:20px;" -->
+
+```
+// Modern branch predictor can learn ~10'000 1/0 branches
+// - no history { backward = taken, forward = not_taken }
+```
+
+Profiling -> Benchmarking
+
+by region (not function)
+        - profile regions not functions (inlining, setup)
+inlining
+        - inline function (different version each time)
+
+- benchmarking
+
+    latency vs throughput
+        latency: asm Nx2000 - Nx1000
+  
+- symbolic execution
+    - load elf
+    - relocate
+    - analyze (angr) / may require help with a perf run
+    - bench -> distrubtuion best->worst
+
+    [how]
+        states
+
+    regions
+
+        perf bench fn fizz_buzz -f /tmp/a.out
+        perf bench region hot_begin..hot_end
+        perf bench asm 'mov eax, 42' --setup 'mov eax, 0'
+        perf bench fn fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
+
+
+
+
+```
+perf bench fn
+```
+
+ecdf
+```
+perf view
+perf plot --baseline
+```
+
+flowgraph,flamegraph
+// https://github.com/brendangregg/FlameGraph
+
+jupyter notebook
+analyzing (mca,uca)
+    asm/timeline
+testing
+    perf.bench(asm).instrucitons < 10
+
+Modern CPUs are primarily bottlenecked by
+ - Instruction supply
+ - Data access
+ - Branch prediction
+
+wanna be fast has to be in the future
+
+
+Further readings
+
+##### - Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - ARM - https://developer.arm.com/documentation/ddi0487/latest
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+##### - Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
+<!-- .element: style="text-align:left; margin: 0 0;" -->
+
+What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
 
           </script>
         </section>
