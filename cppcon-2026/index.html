@@ -564,6 +564,18 @@ inlining
     latency vs throughput
         latency: asm Nx2000 - Nx1000
 
+- harness
+
+```asm
+    rdtsc                   # rdpmc ecx
+    mov r11, rax            # fine with < 1s, otherwise will overflow
+
+    {code}
+
+    rdtscp
+    lfence
+```
+
 - symbolic execution
     - load elf
     - relocate
