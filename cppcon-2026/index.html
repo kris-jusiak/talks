@@ -55,6 +55,7 @@
 ----
 
 Problem statment
+
 what will happen in the future / chart
 - goals: how fast, what if, why so
   - answer what if (not as if)
@@ -63,7 +64,6 @@ what will happen in the future / chart
 
 
 ----
-
 
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
@@ -91,7 +91,6 @@ Linux 6.x - https://makelinux.github.io/kernel/map
 
 ----
 
-
 Profiling
     profiling (don't change binary) - use same binary
         instrumenting
@@ -100,9 +99,10 @@ Profiling
         collecting data (for bencmarking) - profiling is good to get actual distrbutions of data and cache misses
     can't check all combination in production, what if
 
-    perf topdown
+----
 
-todpwn picutre
+perf topdown
+
 <img src="images/td.png" style="width: 900px; height:350px; background:none; border:none; box-shadow:none;margin: 0 0;" />
 Measuring Workloads With TopLev # https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 
@@ -113,8 +113,10 @@ perf stat --topdown -I 1000 ./your_binary
     perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
 ```
 
+```
 perf probe
 perf intel_pt
+```
 
 ```
 perf record \
@@ -125,6 +127,8 @@ perf record \
   -o perf.data \
   -- ls
 ```
+
+----
 
 latency
   ├─ Time it takes for a single
@@ -159,7 +163,6 @@ perf tune latency
 
 ----
 
-
 ```cpp
 #define PERF_LABEL(name)                                \
     asm volatile(                                       \
@@ -171,11 +174,13 @@ perf tune latency
     ); name:
 ```
 
-cpu
-singleton
-
+----
 
 Bias (controlled chaos)
+    cpu
+    - singleton
+
+
 - control the noise (don't let noise control you)
   - perf info cpu (lstopo)
 
@@ -244,6 +249,8 @@ Bias (controlled chaos)
     Questions:
         - what about noise enviornments
 
+----
+
 Examples
     (memory bound, retiirng)
 
@@ -255,6 +262,8 @@ Examples
     cache: dispatching table or branchless binary
     layout: unordered_map
     simd - throughput (gpu, tpu)
+
+----
 
 #### Performance <br/> [https://www.intel.com/.../articles/moores-law.html](https://www.intel.com/content/www/us/en/history/virtual-vault/articles/moores-law.html)
 <!-- .element: style="text-align:left" -->
@@ -289,12 +298,16 @@ https://github.com/karlrupp/microprocessor-trend-data
 // - no history { backward = taken, forward = not_taken }
 ```
 
+----
+
 Profiling -> Benchmarking
 
 by region (not function)
         - profile regions not functions (inlining, setup)
 inlining
         - inline function (different version each time)
+
+----
 
 - benchmarking
 
@@ -312,16 +325,17 @@ inlining
 
     regions
 
-        perf bench fn fizz_buzz -f /tmp/a.out
-        perf bench region hot_begin..hot_end
-        perf bench asm 'mov eax, 42' --setup 'mov eax, 0'
-        perf bench fn fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
+    ```
+    perf bench fn fizz_buzz -f /tmp/a.out
+    perf bench region hot_begin..hot_end
+    perf bench asm 'mov eax, 42' --setup 'mov eax, 0'
+    perf bench fn fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
+    ```
 
-
-
+----
 
 ```
-perf bench fn
+perf bench fn fizz_buzz
 ```
 
 ecdf
@@ -329,6 +343,8 @@ ecdf
 perf view
 perf plot --baseline
 ```
+
+---
 
 flowgraph,flamegraph
 // https://github.com/brendangregg/FlameGraph
@@ -338,6 +354,8 @@ analyzing (mca,uca)
     asm/timeline
 testing
     perf.bench(asm).instrucitons < 10
+
+----
 
 Modern CPUs are primarily bottlenecked by
  - Instruction supply
