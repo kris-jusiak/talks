@@ -54,9 +54,10 @@
 
 ----
 
-Problem statment
+Motiviation?
 
 what will happen in the future / chart
+
 - goals: how fast, what if, why so
   - answer what if (not as if)
     - the volume will spike tomorrow - show some VIX charts
@@ -68,35 +69,32 @@ what will happen in the future / chart
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
 
-#### AMD Zen5 - https://chipsandcheese.com
+#### CPU - https://chipsandcheese.com
 
   <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 ```cpp
-x86-64-linux-gnu
- ├─ RDTSC - Read Time-Stamp Counter              // Intel, AMD
- ├─ RDPMC - Read Performance-Monitoring Counters // Intel, AMD
- ├─ PEBS  - Precise Event-Based Sampling         // Intel
- ├─ IBS   - Instruction Based Sampling           // AMD
- ├─ LBR   - Last Branch Record                   // Intel, AMD
- └─ IPT   - Intel Processor Trace                // Intel
+CPU                             Intel            AMD              ARM
+ ├─ Timestamp Counter           RDTSC/RDTSCP     RDTSC/RDTSCP     CNTVCT_EL0/CNTPCT_EL0
+ ├─ Performance Counters        RDPMC            RDPMC            PMCCNTR_EL0/PMEVCNTRN_EL0
+ ├─ Event Sampling              PEBS             IBS              SPE
+ ├─ Branch Recording            LBR              LBR              BRBE
+ └─ Processor Trace             PT               -                ETM (CoreSight)
 ```
 
-    powered by
-        https://github.com/perf-labs/perf (perf + extenions)
-        supports any language C++, rust, zig, ...
+powered by
+    https://github.com/perf-labs/perf (perf + extenions) / [machine code level] c++, rust, zig, ...
 
-  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+<img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 Linux 6.x - https://makelinux.github.io/kernel/map
 
 ----
 
 Profiling
-    profiling (don't change binary) - use same binary
+    > can't require rebulding as that chaning the perf profile for profiling)
         instrumenting
-        performance counters
-            may require multiple runs
-        collecting data (for bencmarking) - profiling is good to get actual distrbutions of data and cache misses
+        performance counters - may require multiple runs
+        collecting    profiling ( data (for bencmarking) - profiling is good to get actual distrbutions of data and cache misses
     can't check all combination in production, what if
 
 ----
@@ -624,7 +622,18 @@ Modern CPUs are primarily bottlenecked by
  - Data access
  - Branch prediction
 
-wanna be fast has to be in the future
+Tips
+- start from top-down
+- benchmarking is the key
+
+Optimiations
+- wanna be fast has to be in the future
+- focus on IPC
+- [[code::align]] [[function::align]]
+- non-temporal storage load
+- static keys
+
+
 
 ----
 
