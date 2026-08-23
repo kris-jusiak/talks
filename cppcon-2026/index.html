@@ -175,12 +175,10 @@ perf tune latency
 ```cpp
 #include <perf/perf.hpp>
 
-auto hot_path() {
+auto main() {
   // ...
   PERF_LABEL(hot_begin);
-  for (auto i = 0; i < N; ++i) {
-      // ...
-  }
+  ...
   PERF_LABEL(hot_end);
   // ...
 }
@@ -208,95 +206,188 @@ config = {
   },
 }
 
-df = perf.bench(binary="a.out", filter="fizz_buzz", config=config)
+df = perf.bench(file="a.out", target="fizz_buzz", config=config)
 print(df.describe())
 df.ecdf();
 ```
 
 ```sh
+perf tune latency
 perf info cpu
 perf info metadata
 perf tune latency --config.latency.aslr=1
 perf bench asm 'mov eax, 42'
-perf bench func fizz_buzz
-perf bench func fizz_buzz --setup-fn init
-perf bench region hot_begin..hot_end --setup-fn init
-perf bench asm 'mov eax, 42' --setup-asm 'mov eax, 11' -t mov -o data/
+perf bench fn fizz_buzz
+perf bench fn fizz_buzz --setup init
+perf bench region hot_begin..hot_end --setup init
+perf bench asm 'mov eax, 42' --setup 'mov eax, 11' -t mov -o data/
 perf view
 perf plot
 ```
 
 ----
 
-Bias (controlled chaos)
-    cpu
-    - singleton
+### Bias
 
+##### [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
+<!-- .element: style="text-align:left; margin: 3px 12px;" -->
 
-- control the noise (don't let noise control you)
-  - perf info cpu (lstopo)
+```cpp
+vector<{branch, cache}> cpus{64u};
+// numa
 
-    hardware effects
+int main() {
+    // ...
+}
+```
 
-        cache
+- controlled chaos - control the noise - don't let noise control your benchmark
 
-            Intel Xeon
-                L1 - 4ns
-                    keep()
-                    fence()
-                L2 - 13ns
-                    flush()
-                    fence()
-                    settle()
-                    prefetch()
-                L3 - 75ns
-                    keep()
-                    demote()
-                    settle()
-                RAM - 294ns
-                    flush()
-                    fence()
+```sh
+perf info cpu
+```
 
-                INTEL(R) XEON(R)
-                AMD EPYC
+----
 
-                prefetch/demote
-                dL1: 4ns
-                dL2: 13ns
-                dL3: 77ns
-                RAM: 294ns
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
 
-                prefetch
-                dL1: 4ns
-                dL2: 13ns
-                dL3: 13ns
-                RAM: 294ns
+config = {
+  "affinity": [0],
+  "alignment": 16,
+  "branch": ["predictable"]
+  "memory": {
+    "heap": ["random"],
+    "stack": ["random"],
+    "layout": ["random"],
+    "x86-64": {
+      "dL1": ["hot"],
+      "dL2": ["hot"],
+      "dL3": ["warm"],
+      "iL1": ["hot"],
+      "iL2": ["hot"],
+      "dTLB": ["hot"],
+      "iTLB": ["hot"],
+    }
+  },
+}
 
-                demote
-                dL1: 4ns
-                dL2: 77ns
-                dL3: 77ns
-                RAM: 294ns
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
 
-        layout (ASLR)
-            - reshuffle
+```cpp
+// 0x0100: void unused();                     // code layout
+//
+// 0x0110: void fn(value) {
+// 0x0110:   push                             // stack
+//
+// 0x0114:   for (...) {
+// 0x0118:     auto i = lookup_table[value];  // memory access
+   0x011C:     if (i) {                       // branch prediction
+// 0x0120:         ...
+// 0x0124:     }
+// 0x0128:   }
+//
+// 0x012C:   pop                              // stack
+//         }
+//
+// 0x1000: lookup_table:                      // data layout
+//          ...
+```
 
-            config = {
-                memory = hot
-            }
-    Cache:
-        prefetch/cldemote
-    Branch:
+----
+
+```cpp
+```
+<!-- .element: style="font-size:21px;" -->
+
+```cpp
+template<Level level>
+auto refresh(const void* addr) {
+    assert(addr);
+    if constexpr (level == Level::L1) {
+        load(addr); // dL1
+        fence();
+    } else if constexpr (level == Level::L2) {
+        flush(addr); // RAM
+        fence();
+        settle();
+        prefetch<Level>(addr); // .prfetcht1 # hint
+    } else if constexpr (level == Level::L3) {
+        load(addr);   // dL1
+        demote(addr); // .cldemote # hint
+    } else {
+        flush(addr);  // RAM
+        fence();
+    }
+    settle();
+}
+```
+
+```cpp
+INTEL(R) XEON(R)
+
+prefetch
+dL1: 4ns
+dL2: 13ns
+dL3: 13ns
+RAM: 294ns
+
+cldemote:
+dL1 -   4ns
+dL2 -  74ns
+dL3 -  75ns
+RAM - 294ns
+
+prefetch/cldemote
+dL1 -   4ns
+dL2 -  13ns
+dL3 -  75ns
+RAM - 294ns
+```
+
+----
+
+### Branch
+
+    ```cpp
+    // very simplified 
+    std::vector<entry> btb(10'000); // global per core (~10'000 1/0 branches)
+
+    if (btb_hash(address_ptr)) { // branch aliasing
+        btb.allocate(address_ptr); // never used - no btb entry
+        if (no_history and is_fbackward) { // for loops
+            // taken
+        }
+    }
+    ```
+
+    ```cpp
         different data each iteration
-         - fwd no-taken
-         - bkw taken
-         - never-taken (no entry in BTB)
-    Layout:
-        reshuffle
-        stack
-        heap
-    Others:
-        TLB, port executions, ROB, ...
+    ```
+
+----
+
+#### Layout
+
+Address Space Layout Randomization (ASLR)
+# - 0: none
+# - 1: stack, mmap, shared libs
+# - 2: 1, heap, main binary (-fPIE)
+echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
+
+##### [Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left; margin: 3px 12px;" -->
+
+```
+re-shuffle functions
+```
+
+### Others
+
+TLB, port executions, ROB, ...
+
+----
 
     Questions:
         - what about noise enviornments
@@ -562,7 +653,17 @@ inlining
     latency vs throughput
         latency: asm Nx2000 - Nx1000
 
-- harness
+
+```cpp
+auto latency = perf::stat::time / perf::bench::operations;          // ns/op
+auto throughput = perf::bench::operations / seconds(perf::stat::time); // ops/s
+// reciprocal throughput # inverse
+auto rthroughput =
+  perf::stat::time / perf::bench::operations;          // ns/ops
+```
+
+----
+#### Benchmarkng harness (x86-64)
 
 ```asm
     rdtsc                   # rdpmc ecx
@@ -574,6 +675,10 @@ inlining
     lfence
 ```
 
+----
+
+#### Symbole Benchmarking
+
 - symbolic execution
     - load elf
     - relocate
@@ -583,14 +688,12 @@ inlining
     [how]
         states
 
-    regions
-
-    ```
-    perf bench fn fizz_buzz -f /tmp/a.out
-    perf bench region hot_begin..hot_end
-    perf bench asm 'mov eax, 42' --setup 'mov eax, 0'
-    perf bench fn fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
-    ```
+```sh
+perf bench fn fizz_buzz -f /tmp/a.out
+perf bench region hot_begin..hot_end
+perf bench asm 'mov eax, 42' --setup 'mov eax, 0'
+perf bench fn fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
+```
 
 ----
 
@@ -601,13 +704,27 @@ perf bench fn fizz_buzz
 ecdf
 ```
 perf view
-perf plot --baseline
+perf plot --baseline # // Establishing the baseline
 ```
 
 ---
 
-flowgraph,flamegraph
+<p align="left">
+<img src="images/flamegraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+# sampling (freq/period) | call-stack (LBR) | count
+main;parse;tokenize 5
+main;parse;analyze 3
+main;render 7
+```
+<!-- .element: style="text-align:left" -->
+
+```cpp
 // https://github.com/brendangregg/FlameGraph
+```
+<!-- .element: style="font-size:15px" -->
 
 jupyter notebook
 analyzing (mca,uca)
@@ -623,17 +740,49 @@ Modern CPUs are primarily bottlenecked by
  - Branch prediction
 
 Tips
+```cpp
+Modern CPUs are primarily bottlenecked by
+ - Instruction supply
+ - Data access
+ - Branch prediction
+```
+
 - start from top-down
 - benchmarking is the key
 
 Optimiations
 - wanna be fast has to be in the future
-- focus on IPC
-- [[code::align]] [[function::align]]
+- focus on IPC - Reducing overall instruction count
+- Increasing {instructions,µops} per cycle
+- [[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
 - non-temporal storage load
 - static keys
 
+```sh
+  Approaches
+   - Reducing overall instruction count
+       perf::stat::instructions
+       perf::record::instructions
+       perf::trace::instructions
 
+   - Increasing instruction per cycle (ipc) | µops per cycle (upc)
+       perf::stat::ipc     # stat::instructions   / stat::cycles
+       perf::record::ipc   # record::instructions / record::cycles
+       perf::trace::ipc    # trace::instructions  / trace::cycles
+
+       perf::stat::mca_upc # perf::stat::mca_uops / perf::stat::mca_cycles
+                           # max(µops / cycle) <= dispatch_width
+
+   - Top down Microarchitecture Analysis Method
+      ...
+```
+<!-- .element: style="font-size:18px;" -->
+
+----
+
+Flow (same as TDD) / regions
+
+   Profile -> Benchmark -> Analyze -> Optimize
 
 ----
 
