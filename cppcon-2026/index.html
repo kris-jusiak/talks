@@ -111,8 +111,9 @@ Measuring Workloads With TopLev # https://github.com/andikleen/pmu-tools/wiki/to
 ```
 perf stat --topdown -I 1000 ./your_binary
     --topdown use perf info labels siimlar to probs
-    perf record -e cycles:ppp -- ./your_app
-    perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
+
+perf record -e cycles:ppp -- ./your_app
+perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
 ```
 
 ```
@@ -162,22 +163,16 @@ perf intel_pt
 perf bench
 ```
 
-
 perf probe --exec=file --funcs
-
 perf probe ---exec --add"..."
-
 perf record -e name:probe -aR sleep 1
 
 
 perf stat -e exe:probe -p $(pidof exe) -I 1000
-
 perf record --aux-sampe=32768 -e '{intel_pt//u,noretcomp=1/u,exe:probe}' -p $(pidof exe) -o perf.data
-
 perf report --itrace=10nsbg1024 --cal-graph fractal
 
 linux intel pt
-
 
 ----
 
@@ -210,25 +205,35 @@ linux intel pt
     ); name:
 ```
 
-```asm
-# no instruction metadata in perf.label section
-
-objdump -sj .perf.label <file> # show
-objdump -R .perf.label <file>  # remove
-```
-
-
 ```cpp
 #include <perf/perf.hpp>
 
 auto main() {
   // ...
   PERF_LABEL(hot_begin);
-  ...
+  puts("hello world")
   PERF_LABEL(hot_end);
   // ...
 }
 ```
+
+```asm
+0x000 main:
+0x000   push    rax
+0x000   lea     rdi, [rip + .L.str] <- hot_begin
+0x000   call    puts@PLT            <- hot_end
+0x000   xor     eax, eax
+0x000   pop     rcx
+0x000   ret
+```
+
+```
+perf info metadata
+
+# objdump -sj .perf.label <file> # show
+# objdump -R .perf.label <file>  # remove
+```
+
 
 ```
 import perf
