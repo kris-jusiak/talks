@@ -56,13 +56,17 @@
 
 Motiviation?
 
-what will happen in the future / chart
+Chart - the volume will spike tomorrow - show some VIX charts
 
-- goals: how fast, what if, why so
-  - answer what if (not as if)
-    - the volume will spike tomorrow - show some VIX charts
-    - use the same binary (don't fight compiler)
+`what if rule` # can't be answered by profiling in prod
 
+- what if get more data
+- what if get less data
+- what if get different data
+- what if i change unrelated code and recompile
+- what if instrumentation/profiling affects the results
+- what if i add envs...
+- ...
 
 ----
 
@@ -136,10 +140,44 @@ throughput
   ├─ Total number of operations
 
 ```
-perf tune latency
+perf tune
 # self checks
-# emasured vs documented
+# measured vs documented (example. mca measured)
 ```
+
+----
+
+```
+perf top-down
+```
+
+```sh
+perf intel_pt
+```
+
+# perf probe show how to do it
+
+
+```
+perf bench
+```
+
+
+perf probe --exec=file --funcs
+
+perf probe ---exec --add"..."
+
+perf record -e name:probe -aR sleep 1
+
+
+perf stat -e exe:probe -p $(pidof exe) -I 1000
+
+perf record --aux-sampe=32768 -e '{intel_pt//u,noretcomp=1/u,exe:probe}' -p $(pidof exe) -o perf.data
+
+perf report --itrace=10nsbg1024 --cal-graph fractal
+
+linux intel pt
+
 
 ----
 
@@ -171,6 +209,14 @@ perf tune latency
         "0:\n"                                          \
     ); name:
 ```
+
+```asm
+# no instruction metadata in perf.label section
+
+objdump -sj .perf.label <file> # show
+objdump -R .perf.label <file>  # remove
+```
+
 
 ```cpp
 #include <perf/perf.hpp>
@@ -297,9 +343,10 @@ config = {
 
 ----
 
-```cpp
-```
-<!-- .element: style="font-size:21px;" -->
+### Cache
+
+#### - What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
+
 
 ```cpp
 template<Level level>
@@ -324,22 +371,34 @@ auto refresh(const void* addr) {
 }
 ```
 
+```asm
+PREFETCHNTA	Non-temporal
+PREFETCHT0	Hint into all cache levels (L1 priority)
+PREFETCHT1	Hint into L2/L3, lower L1 priority
+PREFETCHT2	Hint into L2/L3 with even lower urgency
+CLDEMOTE	Hint to hardware to move the cache line containing m8 to a more distant level of the cache without writing back to memory
+```
+
+https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+
+----
+
 ```cpp
 INTEL(R) XEON(R)
 
-prefetch
+flush/fence/prefetch/settle
 dL1: 4ns
 dL2: 13ns
 dL3: 13ns
 RAM: 294ns
 
-cldemote:
+flush/fence/cldemote.../settle
 dL1 -   4ns
 dL2 -  74ns
 dL3 -  75ns
 RAM - 294ns
 
-prefetch/cldemote
+flush/fence/{prefetc,cldemote}/settle
 dL1 -   4ns
 dL2 -  13ns
 dL3 -  75ns
@@ -680,7 +739,17 @@ auto rthroughput =
 #### Symbole Benchmarking
 
 - symbolic execution
+
+    ```
+    what influences the output (registers, memory)
+    emulation from specifc state
+    profiling date for help (distributions)
+    ```
+
     - load elf
+
+##### - ABI - https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
+<!-- .element: style="text-align:left; margin: 0 0;" -->
     - relocate
     - analyze (angr) / may require help with a perf run
     - bench -> distrubtuion best->worst
@@ -796,8 +865,6 @@ Further readings
 <!-- .element: style="text-align:left; margin: 0 0;" -->
 ##### - Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
 <!-- .element: style="text-align:left; margin: 0 0;" -->
-
-What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
 
 ---
 
