@@ -160,13 +160,14 @@ perf intel_pt
 
 
 ```
-perf bench
+perf bench -x a.out hot_begin..hot_end
+perf bench -x a.out foo
+perf bench -x asm-x86 'mov eax, 42'
 ```
 
-perf probe --exec=file --funcs
-perf probe ---exec --add"..."
-perf record -e name:probe -aR sleep 1
-
+perf probe -x file --funcs
+perf probe -x --add"..."
+perf record -e exe:probe -aR sleep 1
 
 perf stat -e exe:probe -p $(pidof exe) -I 1000
 perf record --aux-sampe=32768 -e '{intel_pt//u,noretcomp=1/u,exe:probe}' -p $(pidof exe) -o perf.data
@@ -772,7 +773,9 @@ perf bench fn fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
 ----
 
 ```
-perf bench fn fizz_buzz
+perf bench -x a.out hot_begin..hot_end
+perf bench -x a.out foo
+perf bench 'mov eax, 42'
 ```
 
 ecdf
@@ -873,7 +876,7 @@ Further readings
 
 ---
 
-### Citadel Securities https://citadelsecurities.com/careers/engineering
+##### Citadel Securities https://citadelsecurities.com/careers/engineering
 <img src="images/careers.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
 
           </script>
