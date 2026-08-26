@@ -115,7 +115,7 @@ https://github.com/karlrupp/microprocessor-trend-data
 #### AMD Zen5
 <!-- .element: style="text-align:left" -->
 
-<img src="images/cpu.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
+<img src="images/cpu.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
 https://chipsandcheese.com
 <!-- .element: style="text-align:left; font-size:22px;" -->
@@ -295,17 +295,16 @@ perf report \
 <!-- .element: style="text-align:left" -->
 
 ```
-perf bench exec a.out hot_begin..hot_end
-perf bench exec a.out fn
-perf bench exec a.out fn  \
+perf bench --exec a.out hot_begin..hot_end
+perf bench --exec a.out fn
+perf bench --exec a.out fn  \
     --mode latency  \
     --config latency.json \
     --config.memory.cache.dL1.hit_rate=25
     --data data.json \
     --event cycles,instructions
-perf bench exec a.out begin..end
-perf bench asm 'mov eax, 42'
-perf bench instr mov
+perf bench --exec a.out begin..end
+perf bench asm --code 'mov eax, 42'
 ```
 
 ----
@@ -774,11 +773,9 @@ Profile -> Benchmark -> Analyze -> Optimize
 ---
 
 ##### Citadel Securities https://citadelsecurities.com/careers/engineering
-<!-- .element: style="text-align:left" -->
+<!-- .element: style="text-align:left; font-size:24px;" -->
 
-<p align="left">
-<img src="images/careers.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
-</p>
+<div style="text-align:left;"><img src="images/careers.png" style="width:15%; background:none; border:none; box-shadow:none;" /></div>
 
           </script>
         </section>
