@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="reveal.js/css/reveal.css">
     <link rel="stylesheet" href="reveal.js/css/theme/white.css" id="theme">
     <link rel="stylesheet" href="extensions/plugin/line-numbers/line-numbers.css">
+    <link rel="stylesheet" href="extensions/css/highlight-styles/default.css">
     <link rel="stylesheet" href="extensions/css/custom.css">
 
     <style>
@@ -48,628 +49,40 @@
           <script type="text/template">
 <!-- .element: data-background-image="images/title.png" data-background-size="100%" data-background-color="black" -->
 
-<p align="left">
-<img src="images/qr.png" style="width: 14%; background:none; border:none; box-shadow:none; margin: 37% 10%;" />
-</p>
-
 ----
 
-Motiviation?
+#### `what if rule` [case for benchmarking]
+<!-- .element: style="text-align:left" -->
 
-Chart - the volume will spike tomorrow - show some VIX charts
+<!--Chart - the volume will spike tomorrow - show some VIX charts-->
 
-`what if rule` # can't be answered by profiling in prod
-
+```
 - what if get more data
 - what if get less data
 - what if get different data
-- what if i change unrelated code and recompile
+- what if unrelated code will change
 - what if instrumentation/profiling affects the results
-- what if i add envs...
-- ...
+- what if ...
+```
+<!-- .element: style="text-align:left" -->
 
 ----
 
 #### Disclaimer
 <!-- .element: style="text-align:left" -->
 
-#### CPU - https://chipsandcheese.com
-
-  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-
-```cpp
-CPU                             Intel            AMD              ARM
- ├─ Timestamp Counter           RDTSC/RDTSCP     RDTSC/RDTSCP     CNTVCT_EL0/CNTPCT_EL0
- ├─ Performance Counters        RDPMC            RDPMC            PMCCNTR_EL0/PMEVCNTRN_EL0
- ├─ Event Sampling              PEBS             IBS              SPE
- ├─ Branch Recording            LBR              LBR              BRBE
- └─ Processor Trace             PT               -                ETM (CoreSight)
 ```
-
-powered by
-    https://github.com/perf-labs/perf (perf + extenions) / [machine code level] c++, rust, zig, ...
-
-<img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-Linux 6.x - https://makelinux.github.io/kernel/map
-
-----
-
-Profiling
-    > can't require rebulding as that chaning the perf profile for profiling)
-        instrumenting
-        performance counters - may require multiple runs
-        collecting    profiling ( data (for bencmarking) - profiling is good to get actual distrbutions of data and cache misses
-    can't check all combination in production, what if
-
-----
-
-perf topdown
-
-<img src="images/td.png" style="width: 900px; height:350px; background:none; border:none; box-shadow:none;margin: 0 0;" />
-Measuring Workloads With TopLev # https://github.com/andikleen/pmu-tools/wiki/toplev-manual
-
+- Focused on x86-64/linux
+- Powered by linux-perf + extensions
 ```
-perf stat --topdown -I 1000 ./your_binary
-    --topdown use perf info labels siimlar to probs
-
-perf record -e cycles:ppp -- ./your_app
-perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
-```
-
-```
-perf probe
-perf intel_pt
-```
-
-```
-perf record \
-  -e intel_pt//u,cyc=1,tsc=1,mtc=1 \
-  -e cycles:u \
-  --snapshot \
-  -m 64,8192 \
-  -o perf.data \
-  -- ls
-```
-
-----
-
-latency
-  ├─ Time it takes for a single
-    - you wanna be fast you wanna be in the future speculative [TIP]
-
-throughput
-  ├─ Total number of operations
-
-```
-perf tune
-# self checks
-# measured vs documented (example. mca measured)
-```
-
-----
-
-```
-perf top-down
-```
-
-```sh
-perf intel_pt
-```
-
-# perf probe show how to do it
-
-
-```
-perf bench -x a.out hot_begin..hot_end
-perf bench -x a.out foo
-perf bench -x asm-x86 'mov eax, 42'
-```
-
-perf probe -x file --funcs
-perf probe -x --add"..."
-perf record -e exe:probe -aR sleep 1
-
-perf stat -e exe:probe -p $(pidof exe) -I 1000
-perf record --aux-sampe=32768 -e '{intel_pt//u,noretcomp=1/u,exe:probe}' -p $(pidof exe) -o perf.data
-perf report --itrace=10nsbg1024 --cal-graph fractal
-
-linux intel pt
-
-----
-
-##### CPU vs. FPGA vs. GPU
 <!-- .element: style="text-align:left" -->
 
-<p align="left" style="margin: 0 0;">
-<img src="images/fpga.gif" style="width: 52%; background:none; border:none; box-shadow:none;" />
-</p>
-
-<p align="right" style="margin: 0 0;">
-<img src="images/gpu.gif" style="width: 52%; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-// source: http://www.qbaylogic.com
-```
-<!-- .element: style="text-align:left; font-size:12px; margin: -10px 0;" -->
+https://github.com/perf-labs/perf
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-```cpp
-#define PERF_LABEL(name)                                \
-    asm volatile(                                       \
-        ".pushsection perf.label, \"aw?\", @progbits\n" \
-        ".quad 0f\n"                                    \
-        ".asciz \"" #name "\"\n"                        \
-        ".popsection\n"                                 \
-        "0:\n"                                          \
-    ); name:
-```
-
-```cpp
-#include <perf/perf.hpp>
-
-auto main() {
-  // ...
-  PERF_LABEL(hot_begin);
-  puts("hello world")
-  PERF_LABEL(hot_end);
-  // ...
-}
-```
-
-```asm
-0x000 main:
-0x000   push    rax
-0x000   lea     rdi, [rip + .L.str] <- hot_begin
-0x000   call    puts@PLT            <- hot_end
-0x000   xor     eax, eax
-0x000   pop     rcx
-0x000   ret
-```
-
-```
-perf info metadata
-
-# objdump -sj .perf.label <file> # show
-# objdump -R .perf.label <file>  # remove
-```
-
-
-```
-import perf
-
-config = {
-  "affinity": [0],
-  "alignment": 16,
-  "branch": ["predictable"]
-  "memory": {
-    "heap": ["random"],
-    "stack": ["random"],
-    "x86-64": {
-      "dL1": ["hot"],
-      "dL2": ["hot"],
-      "dL3": ["warm"],
-      "iL1": ["hot"],
-      "iL2": ["hot"],
-      "dTLB": ["hot"],
-      "iTLB": ["hot"],
-    }
-  },
-}
-
-df = perf.bench(file="a.out", target="fizz_buzz", config=config)
-print(df.describe())
-df.ecdf();
-```
-
-```sh
-perf tune latency
-perf info cpu
-perf info metadata
-perf tune latency --config.latency.aslr=1
-perf bench asm 'mov eax, 42'
-perf bench fn fizz_buzz
-perf bench fn fizz_buzz --setup init
-perf bench region hot_begin..hot_end --setup init
-perf bench asm 'mov eax, 42' --setup 'mov eax, 11' -t mov -o data/
-perf view
-perf plot
-```
-
-----
-
-### Bias
-
-##### [Statistically Sound Performance Evaluation](https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf)
-<!-- .element: style="text-align:left; margin: 3px 12px;" -->
-
-```cpp
-vector<{branch, cache}> cpus{64u};
-// numa
-
-int main() {
-    // ...
-}
-```
-
-- controlled chaos - control the noise - don't let noise control your benchmark
-
-```sh
-perf info cpu
-```
-
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-config = {
-  "affinity": [0],
-  "alignment": 16,
-  "branch": ["predictable"]
-  "memory": {
-    "heap": ["random"],
-    "stack": ["random"],
-    "layout": ["random"],
-    "x86-64": {
-      "dL1": ["hot"],
-      "dL2": ["hot"],
-      "dL3": ["warm"],
-      "iL1": ["hot"],
-      "iL2": ["hot"],
-      "dTLB": ["hot"],
-      "iTLB": ["hot"],
-    }
-  },
-}
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-```cpp
-// 0x0100: void unused();                     // code layout
-//
-// 0x0110: void fn(value) {
-// 0x0110:   push                             // stack
-//
-// 0x0114:   for (...) {
-// 0x0118:     auto i = lookup_table[value];  // memory access
-   0x011C:     if (i) {                       // branch prediction
-// 0x0120:         ...
-// 0x0124:     }
-// 0x0128:   }
-//
-// 0x012C:   pop                              // stack
-//         }
-//
-// 0x1000: lookup_table:                      // data layout
-//          ...
-```
-
-----
-
-### Cache
-
-#### - What Every Programmer Should Know About Memory - https://www.akkadia.org/drepper/cpumemory.pdf
-
-
-```cpp
-template<Level level>
-auto refresh(const void* addr) {
-    assert(addr);
-    if constexpr (level == Level::L1) {
-        load(addr); // dL1
-        fence();
-    } else if constexpr (level == Level::L2) {
-        flush(addr); // RAM
-        fence();
-        settle();
-        prefetch<Level>(addr); // .prfetcht1 # hint
-    } else if constexpr (level == Level::L3) {
-        load(addr);   // dL1
-        demote(addr); // .cldemote # hint
-    } else {
-        flush(addr);  // RAM
-        fence();
-    }
-    settle();
-}
-```
-
-```asm
-PREFETCHNTA	Non-temporal
-PREFETCHT0	Hint into all cache levels (L1 priority)
-PREFETCHT1	Hint into L2/L3, lower L1 priority
-PREFETCHT2	Hint into L2/L3 with even lower urgency
-CLDEMOTE	Hint to hardware to move the cache line containing m8 to a more distant level of the cache without writing back to memory
-```
-
-https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
-
-----
-
-```cpp
-INTEL(R) XEON(R)
-
-flush/fence/prefetch/settle
-dL1: 4ns
-dL2: 13ns
-dL3: 13ns
-RAM: 294ns
-
-flush/fence/cldemote.../settle
-dL1 -   4ns
-dL2 -  74ns
-dL3 -  75ns
-RAM - 294ns
-
-flush/fence/{prefetc,cldemote}/settle
-dL1 -   4ns
-dL2 -  13ns
-dL3 -  75ns
-RAM - 294ns
-```
-
-----
-
-### Branch
-
-    ```cpp
-    // very simplified 
-    std::vector<entry> btb(10'000); // global per core (~10'000 1/0 branches)
-
-    if (btb_hash(address_ptr)) { // branch aliasing
-        btb.allocate(address_ptr); // never used - no btb entry
-        if (no_history and is_fbackward) { // for loops
-            // taken
-        }
-    }
-    ```
-
-    ```cpp
-        different data each iteration
-    ```
-
-----
-
-#### Layout
-
-Address Space Layout Randomization (ASLR)
-# - 0: none
-# - 1: stack, mmap, shared libs
-# - 2: 1, heap, main binary (-fPIE)
-echo <level> | sudo tee /proc/sys/kernel/randomize_va_space
-
-##### [Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left; margin: 3px 12px;" -->
-
-```
-re-shuffle functions
-```
-
-### Others
-
-TLB, port executions, ROB, ...
-
-----
-
-    Questions:
-        - what about noise enviornments
-
-----
-
-Examples
-    (memory bound, retiirng)
-
-    dispatch (jump table)
-    mph (hash table in register)
-
-----
-
-policy based design
-
-#### enum_to_string - Minimal perfect hashing
-
-<img src="images/hashing.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-----
-
-#### enum_to_string - Minimal perfect hashing
-
-```cpp
-enum uri { ftp = 0, file = 1, http = 2, ws = 3, wss = 4, };
-```
-<!-- .element: class="fragment" style="float:left" data-fragment-index="0" -->
-
----
-
-#### bit mixer
-<!-- .element: class="fragment" style="float:left" data-fragment-index="1" -->
-<br />
-
-```cpp
-(value * magic) >> shift
-```
-<!-- .element: class="fragment" data-fragment-index="2" -->
-
-```cpp
-// shift
-static_assert(
-  (sizeof(u32) * CHAR_BIT) - countr_zero(max(&enumerators<E>::second))
-  ==                      // countr_zero - count the number of trailing
-  29                      //               zero bits
-);
-```
-<!-- .element: class="fragment" data-fragment-index="3" -->
-
----
-
-```cpp
-// magic
-assert((to<u32>("ftp")  * 2893426669) >> 29) == 1);
-assert((to<u32>("file") * 2893426669) >> 29) == 4);
-assert((to<u32>("http") * 2893426669) >> 29) == 0);
-assert((to<u32>("ws")   * 2893426669) >> 29) == 2);
-assert((to<u32>("wss")  * 2893426669) >> 29) == 3);
-```
-<!-- .element: class="fragment" data-fragment-index="4" -->
-
-----
-
-#### enum_to_string - Minimal perfect hashing
-
-#### lookup table
-<!-- .element: class="fragment" style="float:left" data-fragment-index="2" -->
-<br />
-
-```cpp
-{1, 4, 0, 2, 3}[n]
-```
-<!-- .element: class="fragment" data-fragment-index="3" -->
-
-```cpp
-{0b001, 0b100, 0b000, 0b010, 0b011}[n]
-```
-<!-- .element: class="fragment" data-fragment-index="4" -->
-
-```cpp
-(0b'001'100'000'010'011 >> 3*n) & 0b111
-```
-<!-- .element: class="fragment" data-fragment-index="5" -->
-
----
-
-#### lookup
-<!-- .element: class="fragment" style="float:left" data-fragment-index="6" -->
-<br />
-
-```cpp
-(lut >> ((value * magic) >> shift)) & mask
-
-// shift - 29
-// mask  - 0b111
-// magic - 2893426669 (???)
-// lut   - 0b001100000010011 (???)
-```
-<!-- .element: class="fragment" data-fragment-index="6" -->
-
-----
-
-#### enum_to_string - Minimal perfect hashing
-
-```cpp
-template<class E, size_t MaxAttempts = 100'000,
-         class T = underlying_type_t<E>> requires is_enum_v<E>
-constexpr auto unsafe$enum_to_string(string_view str) -> E {
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-```cpp
-  constexpr auto nbits = /*number of required bits 
-                           to represent all values*/;  // 3
-  constexpr auto shift = sizeof(T) * CHAR_BIT - nbits; // 29
-  constexpr auto mask  = (1u << nbits) - 1u;           // 0b111
-  constexpr auto [magic, lut] = magic_lut(mask, shift, MaxAttempts);
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-```cpp
-  auto&& value = to<T>(key);
-  return (lut >> ((value * magic) >> shift)) & mask;
-```
-<!-- .element: class="fragment" data-fragment-index="2" -->
-
-```cpp
-}
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-----
-
-#### enum_to_string - Minimal perfect hashing
-
-```cpp
-template<class T>
-consteval auto magic_lut(auto mask, auto shift, auto max_attempts) {
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-```cpp
-  while (max_attempts--) {
-    magic = random(); // compile-time pseudo random number generation
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-```cpp
-   T lut{};
-   for (const auto& [enumeration, name] : enumerators<E>) {
-     lut |= (enumeration << (to<T>(name) * magic >> shift));
-   }
-```
-<!-- .element: class="fragment" data-fragment-index="2" -->
-
-```cpp
-   for (const auto& [enumeration, name] : enumerators<E>) {
-     if ((lut >> (to<T>(name) * magic >> shift) & mask) != enumeration)
-       { lut = {}; break; } // not found, keep-going
-   }
-   if (magic and lut) return pair{magic, lut}; // found
-```
-<!-- .element: class="fragment" data-fragment-index="3" -->
-
-```cpp
-  }
-  return {};
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-```cpp
-}
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-----
-
-#### enum_to_string - Minimal perfect hashing - https://godbolt.org/z/3j8qcabsj
-
-```cpp
-[1]: #uOps    [2]: Latency   [3]: RThroughput
-[4]: MayLoad  [5]: MayStore  [6]: HasSideEffects (U)
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-<pre><code class="fragment" data-trim data-noescape data-fragment-index="1" data-line-numbers="4,5,6,7,8">
-[1] [2] [3]  [4] [5] [6]   Instructions:
- 1   1  0.50               shl  edi, 3
- 2   5  0.50  *            bzhi eax, dword ptr [rsi], edi
- 1   3  1.00               imul eax, eax, 2893426669   /*magic*/
- 1   1  0.50               shr  eax, 29                /*shift*/
- 1   1  0.50               mov  ecx, 0b001100000010011 /*lut*/
- 1   1  0.50               shrx eax, ecx, eax
- 1   1  0.25               and  eax, 0b111             /*mask*/
- 1   5  0.50          U    ret
-</code></pre>
-
----
-
-```cpp
-no lookup table (stored directly in a register)
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-----
-
-    branching: fizz_buzz
-    hash table vs lookup table (mph) - cache (fpga) / in register
-    cache: dispatching table or branchless binary
-    layout: unordered_map
-    simd - throughput (gpu, tpu)
-
-----
-
-#### Performance <br/> [https://www.intel.com/.../articles/moores-law.html](https://www.intel.com/content/www/us/en/history/virtual-vault/articles/moores-law.html)
+#### [https://www.intel.com/.../articles/moores-law.html](https://www.intel.com/content/www/us/en/history/virtual-vault/articles/moores-law.html)
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -684,7 +97,7 @@ no lookup table (stored directly in a register)
   - More Cores
   - More Caches
   - Improved Execution
-  - Improved Parallelism
+  - Improved Parallelism&nbsp;
   - ...<br />
 </code></pre>
   </td>
@@ -695,100 +108,597 @@ no lookup table (stored directly in a register)
 </table>
 
 https://github.com/karlrupp/microprocessor-trend-data
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### AMD Zen5
+<!-- .element: style="text-align:left" -->
+
+<img src="images/cpu.png" style="width: 75%; background:none; border:none; box-shadow:none;" />
+
+https://chipsandcheese.com
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Performance Monitoring Unit (PMU)
+<!-- .element: style="text-align:left" -->
+
+```
+CPU                      Intel        AMD          ARM
+ ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+ ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+ ├─ Event Sampling       PEBS         IBS          SPE
+ ├─ Branch Recording     LBR          LBR          BRBE
+ └─ Processor Trace      PT           -            ETM (CoreSight)
+```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-```
-// Modern branch predictor can learn ~10'000 1/0 branches
-// - no history { backward = taken, forward = not_taken }
-```
+<br />
+
+##### https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+##### https://docs.amd.com/v/u/en-US/40332-PUB_4.08
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+##### https://developer.arm.com/documentation/ddi0487/latest
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+##### https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
 
 ----
 
+#### Linux 6.x
+<!-- .element: style="text-align:left" -->
+
+<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+
+https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Profiling
+<!-- .element: style="text-align:left" -->
+
+```
+sampling
+instrumenting
+tracing
+...
+```
+
+```
+collecting
+- distrubutions # topdown -> benchmarking
+```
+
+```
+performance counters
+- may require multiple runs
+```
+
+```
 Profiling -> Benchmarking
+- by region - profile regions not functions
+- inlining  - inlined functions
+```
 
-by region (not function)
-        - profile regions not functions (inlining, setup)
-inlining
-        - inline function (different version each time)
+<!--todo examples of function/inlining-->
 
 ----
 
-- benchmarking
+#### [https://www.intel.com/.../top-down-microarchitecture-analysis-method.html](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-1/top-down-microarchitecture-analysis-method.html)
+<!-- .element: style="text-align:left" -->
 
-    latency vs throughput
-        latency: asm Nx2000 - Nx1000
+<img src="images/td.png" style="width: 70%; background:none; border:none; box-shadow:none;margin: 0 0;" />
 
+https://github.com/andikleen/pmu-tools/wiki/toplev-manual
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```
+perf stat --topdown -I 1000 ./a.out
+```
+
+```
+perf record -e cycles:ppp -- ./a.out
+
+perf report \
+    --start-address=0x7f1234000000
+    --stop-address=0x7f1234002000
+```
+
+```
+perf record \
+  -e intel_pt//u,cyc=1,tsc=1,mtc=1 \
+  -e cycles:u \
+  --snapshot \
+  -m 64,8192 \
+  -o perf.data \
+  -- ./a.out
+```
+
+----
+
+#### latency vs throughput
+<!-- .element: style="text-align:left" -->
+
+```
+latency
+  └─ Time it takes for a single
+```
+
+```
+throughput
+  └─ Total number of operations
+```
+
+```
+auto latency = time / operations;             // ns/op
+auto throughput = operations / seconds(time); // ops/s
+// reciprocal throughput # inverse
+auto rthroughput = time / operations;         // ns/ops
+```
+
+----
+
+#### [perf tune]
+<!-- .element: style="text-align:left" -->
+
+```
+perf tune latency
+```
+
+```
+# Address Space Layout Randomization (ASLR)
+perf tune latency --config.latency.aslr=1
+```
+
+<!--todo self checks measured vs documented (example. mca measured)-->
+
+https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### perf probe
+<!-- .element: style="text-align:left" -->
+
+```
+perf probe -x file --funcs
+perf probe -x --add"..."
+perf record -e exe:probe -aR sleep 1
+```
+
+```
+perf stat \
+    -e exe:probe \
+    -p $(pidof exe) \
+    -I 1000
+
+perf record \
+    --aux-sampe=32768 \
+    -e '{intel_pt//u,noretcomp=1/u,exe:probe}' \
+    -p $(pidof exe) \
+    -o perf.data
+
+perf report \
+    --itrace=10nsbg1024 \
+    --cal-graph fractal
+````
+
+----
+
+#### [perf bench]
+<!-- .element: style="text-align:left" -->
+
+```
+perf bench exec a.out hot_begin..hot_end
+perf bench exec a.out fn
+perf bench exec a.out fn  \
+    --mode latency  \
+    --config latency.json \
+    --config.memory.cache.dL1.hit_rate=25
+    --data data.json \
+    --event cycles,instructions
+perf bench exec a.out begin..end
+perf bench asm 'mov eax, 42'
+perf bench instr mov
+```
+
+----
+
+##### CPU vs. FPGA vs. GPU
+<!-- .element: style="text-align:left" -->
+
+<img src="images/fpga.gif" style="width: 49%; background:none; border:none; box-shadow:none;" />
+<img src="images/gpu.gif" style="width: 49%; background:none; border:none; box-shadow:none;" />
+
+http://www.qbaylogic.com
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
 
 ```cpp
-auto latency = perf::stat::time / perf::bench::operations;          // ns/op
-auto throughput = perf::bench::operations / seconds(perf::stat::time); // ops/s
-// reciprocal throughput # inverse
-auto rthroughput =
-  perf::stat::time / perf::bench::operations;          // ns/ops
+#define PERF_LABEL(name)                                \
+    asm volatile(                                       \
+        ".pushsection perf.label, \"aw?\", @progbits\n" \
+        ".quad 0f\n"                                    \
+        ".asciz \"" #name "\"\n"                        \
+        ".popsection\n"                                 \
+        "0:\n"                                          \
+    ); name:
 ```
 
 ----
-#### Benchmarkng harness (x86-64)
+
+```cpp
+#include <perf/perf.hpp>
+
+auto main() {
+  // ...
+  PERF_LABEL(hot_begin);
+  puts("hello world")
+  PERF_LABEL(hot_end);
+  // ...
+}
+```
+
+```
+0x000 main:
+0x000   push    rax
+0x000   lea     rdi, [rip + .L.str] <- hot_begin
+0x000   call    puts@PLT            <- hot_end
+0x000   xor     eax, eax
+0x000   pop     rcx
+0x000   ret
+```
+
+----
+
+#### [perf info]
+<!-- .element: style="text-align:left" -->
+
+```
+perf info metadata a.out
+perf info cpu --topology
+```
+
+```
+# objdump -sj .perf.label <file>
+# objdump -R  .perf.label <file>
+```
+
+----
+
+```
+import perf
+```
+
+```
+df = perf.bench(file="a.out", target="fizz_buzz", config=config)
+print(df.describe())
+```
+
+----
+
+#### Bias [controlled chaos]
+<!-- .element: style="text-align:left" -->
+
+```cpp
+vector<{branch, cache}> cpus{64u};
+// numa
+
+int main() {
+    // ...
+}
+```
+
+<!--todo question what about noise enviornments-->
+
+https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+```
+config = {
+  "affinity": [0],
+  "layout": {
+    "alignment": [8, 16],
+    "order": ["random"], # re-shuffle functions
+  },
+  "branch": ["predictable", "unpredictable"]
+  "memory": {
+    "heap": ["random"],
+    "stack": ["random"],
+    "cache": {
+      "dL1":  [{"hit_tate":[25, 50, 70]}],
+      "dL2":  [{"hit_tate":"50", "perf.data"}],
+      "dL3":  [{"hit_tate":"100"}],
+      "iL1":  [{"hit_tate":"100"}],
+      "iL2":  [{"hit_tate":"100"}],
+      "dTLB": [{"hit_tate":"100"}],
+      "iTLB": [{"hit_tate":"100"}],
+    }
+  }
+}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+```
+data = {
+    "0x043242", 121,
+    "0x043244", 111,
+    "rax": '432'
+}
+```
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+```cpp
+0x0100: void unused();                     // code layout
+
+0x0110: void fn(value) {
+0x0110:   push                             // stack
+
+0x0114:   for (...) {
+0x0118:     auto i = lookup_table[value];  // memory access
+0x011C:     if (i) {                       // branch prediction
+0x0120:         ...
+0x0124:     }
+0x0128:   }
+
+0x012C:   pop                              // stack
+        }
+
+0x1000: lookup_table:                      // data layout
+         ...
+```
+
+----
+
+#### Cache effects
+<!-- .element: style="text-align:left" -->
+
+```cpp
+template<Level level>
+auto refresh(const void* addr) {
+    assert(addr);
+    if constexpr (level == Level::L1) {
+        load(addr);                                 // L1
+        fence();
+    } else if constexpr (level == Level::L2) {
+        flush(addr);                                // RAM
+        fence();
+        settle();
+        prefetch<Level>(addr);                      // .prefetcht1 hint
+    } else if constexpr (level == Level::L3) {
+        load(addr);                                 // L1
+        demote(addr);                               // .cldemote hint
+    } else {
+        flush(addr);                                // RAM
+        fence();
+    }
+    settle();
+}
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ```asm
-    rdtsc                   # rdpmc ecx
-    mov r11, rax            # fine with < 1s, otherwise will overflow
+PREFETCHNTA Non-temporal
+PREFETCHT0  Hint into all cache levels (L1 priority)
+PREFETCHT1  Hint into L2/L3, lower L1 priority
+PREFETCHT2  Hint into L2/L3 with even lower urgency
+CLDEMOTE    Hint into more distant level
+```
+<!-- .element: style="text-align:left; font-size:12px;" -->
 
-    {code}
+https://www.akkadia.org/drepper/cpumemory.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
-    rdtscp
-    lfence
+----
+
+#### Cache effects
+<!-- .element: style="text-align:left" -->
+
+```
+INTEL(R) XEON(R)
+```
+
+```cpp
+[flush]/{prefetch,cldemote}
+  dL1:   4ns
+  dL2:  13ns # cldemote -> 75ns
+  dL3:  75ns # prefetch -> 13ns
+  RAM: 294ns
 ```
 
 ----
 
-#### Symbole Benchmarking
+#### Branch effects
+<!-- .element: style="text-align:left" -->
 
-- symbolic execution
+```cpp
+std::vector<entry> btb(10'000);         // global per core
+                                        // (~10'000 1/0 branches)
+if (btb_hash(address_ptr)) {            // branch aliasing
+    btb.allocate(address_ptr);          // never used - no btb entry
+    if (no_history and is_fbackward) {  // for loops
+        // taken
+    }
+}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
-    ```
-    what influences the output (registers, memory)
-    emulation from specifc state
-    profiling date for help (distributions)
-    ```
+<!-- todo for different data each iteration-->
 
-    - load elf
+----
 
-##### - ABI - https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
-<!-- .element: style="text-align:left; margin: 0 0;" -->
-    - relocate
-    - analyze (angr) / may require help with a perf run
-    - bench -> distrubtuion best->worst
+#### Examples
+<!-- .element: style="text-align:left" -->
 
-    [how]
-        states
+```
+branching: fizz_buzz
+hash table vs lookup table (mph) - cache (fpga) / in register
+cache: dispatching table or branchless binary
+layout: unordered_map
+simd - throughput (gpu, tpu)
+```
 
-```sh
-perf bench fn fizz_buzz -f /tmp/a.out
-perf bench region hot_begin..hot_end
-perf bench asm 'mov eax, 42' --setup 'mov eax, 0'
-perf bench fn fizz_buzz --setup-region h..dd --teardown-asm 'mov eax, 42'
+<!--todo use reflection-->
+
+----
+
+#### Examples - Minimal perfect hashing
+<!-- .element: style="text-align:left" -->
+
+<img src="images/hashing.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
+
+----
+
+#### `enum_to_string`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+enum uri { ftp = 0, file = 1, http = 2, ws = 3, wss = 4, };
+```
+
+```cpp
+template<class E, size_t MaxAttempts = 100'000,
+         class T = underlying_type_t<E>> requires is_enum_v<E>
+constexpr auto enum_to_string(string_view str) -> E {
+  constexpr auto nbits = /*number of required bits to represent all values*/
+  constexpr auto shift = sizeof(T) * CHAR_BIT - nbits; // 29
+  constexpr auto mask  = (1u << nbits) - 1u;           // 0b111
+  constexpr auto [magic, lut] = magic_lut(mask, shift, MaxAttempts);
+  auto&& value = to<T>(key);
+  return (lut >> ((value * magic) >> shift)) & mask;
+}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+# https://godbolt.org/z/3j8qcabsj # find hash at compile-time (constexpr gpu)
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+#### `enum_to_string`
+<!-- .element: style="text-align:left" -->
+
+```
+perf bench exec gcc26.out enum_to_string
 ```
 
 ----
 
-```
-perf bench -x a.out hot_begin..hot_end
-perf bench -x a.out foo
-perf bench 'mov eax, 42'
+#### `enum_to_string`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+[1]: #uOps    [2]: Latency   [3]: RThroughput
+[4]: MayLoad  [5]: MayStore  [6]: HasSideEffects (U)
 ```
 
-ecdf
+<pre><code data-trim data-noescape data-line-numbers="4,5,6,7,8">
+[1] [2] [3]  [4] [5] [6]   Instructions:
+ 1   1  0.50               shl  edi, 3
+ 2   5  0.50  *            bzhi eax, dword ptr [rsi], edi
+ 1   3  1.00               imul eax, eax, 2893426669   /*magic*/
+ 1   1  0.50               shr  eax, 29                /*shift*/
+ 1   1  0.50               mov  ecx, 0b001100000010011 /*lut*/
+ 1   1  0.50               shrx eax, ecx, eax
+ 1   1  0.25               and  eax, 0b111             /*mask*/
+ 1   5  0.50          U    ret
+</code></pre>
+
+```
+no lookup table (stored directly in a register)
+```
+
+----
+
+#### Benchmarkng - harness
+<!-- .element: style="text-align:left" -->
+
+##### latency
+<!-- .element: style="text-align:left" -->
+
+```asm
+  # setup
+  rdtsc           # rdpmc ecx
+  mov r11, rax    # fine with < 1s
+
+  {code}
+
+  rdtscp
+  lfence
+```
+
+##### throughput
+<!-- .element: style="text-align:left" -->
+
+```
+asm Nx2000 - Nx1000
+```
+
+https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+
+----
+
+#### Symbolic Benchmarking
+<!-- .element: style="text-align:left" -->
+
+```
+symbolic execution
+- what influences the output (registers, memory)
+- emulation from specifc state
+- profiling date for help (distributions)
+```
+
+```
+how
+- load elf
+- re-shuffle -> relocate
+- analyze (angr) / may require help with a perf run
+    - states
+- bench -> distrubtuion best->worst
+```
+
+https://github.com/angr/angr
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### [perf plot] # ECDF, flamegraph
+<!-- .element: style="text-align:left" -->
+
 ```
 perf view
 perf plot --baseline # // Establishing the baseline
 ```
 
----
-
-<p align="left">
-<img src="images/flamegraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-</p>
+<!--todo ecdf-->
+<!--todo flemgraph-->
 
 ```cpp
 # sampling (freq/period) | call-stack (LBR) | count
@@ -796,88 +706,79 @@ main;parse;tokenize 5
 main;parse;analyze 3
 main;render 7
 ```
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+https://github.com/brendangregg/FlameGraph
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Analyzing/Testing
 <!-- .element: style="text-align:left" -->
 
-```cpp
-// https://github.com/brendangregg/FlameGraph
 ```
-<!-- .element: style="font-size:15px" -->
-
 jupyter notebook
 analyzing (mca,uca)
     asm/timeline
 testing
     perf.bench(asm).instrucitons < 10
+```
 
 ----
 
-Modern CPUs are primarily bottlenecked by
- - Instruction supply
- - Data access
- - Branch prediction
+#### Optimizations
+<!-- .element: style="text-align:left" -->
 
-Tips
-```cpp
+```
 Modern CPUs are primarily bottlenecked by
  - Instruction supply
  - Data access
  - Branch prediction
 ```
 
-- start from top-down
-- benchmarking is the key
-
-Optimiations
-- wanna be fast has to be in the future
-- focus on IPC - Reducing overall instruction count
-- Increasing {instructions,µops} per cycle
-- [[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
-- non-temporal storage load
-- static keys
-
-```sh
-  Approaches
-   - Reducing overall instruction count
-       perf::stat::instructions
-       perf::record::instructions
-       perf::trace::instructions
-
-   - Increasing instruction per cycle (ipc) | µops per cycle (upc)
-       perf::stat::ipc     # stat::instructions   / stat::cycles
-       perf::record::ipc   # record::instructions / record::cycles
-       perf::trace::ipc    # trace::instructions  / trace::cycles
-
-       perf::stat::mca_upc # perf::stat::mca_uops / perf::stat::mca_cycles
-                           # max(µops / cycle) <= dispatch_width
-
-   - Top down Microarchitecture Analysis Method
-      ...
+```
+Top down Microarchitecture Analysis Method
+Wanna be fast has to be in the future
+Reducing overall instruction count
+Increasing {instructions,µops} per cycle
+[[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
+cache: non-temporal storage load
 ```
 <!-- .element: style="font-size:18px;" -->
 
 ----
 
-Flow (same as TDD) / regions
+#### Perf mantra
+<!-- .element: style="text-align:left" -->
 
-   Profile -> Benchmark -> Analyze -> Optimize
+```cpp
+Profile -> Benchmark -> Analyze -> Optimize
+```
 
 ----
 
-Further readings
+#### Further readings
+<!-- .element: style="text-align:left" -->
 
 ##### - Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
 ##### - AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
 ##### - ARM - https://developer.arm.com/documentation/ddi0487/latest
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
 ##### - Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
-<!-- .element: style="text-align:left; margin: 0 0;" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
+
+<br />
 
 ---
 
 ##### Citadel Securities https://citadelsecurities.com/careers/engineering
-<img src="images/careers.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/careers.png" style="width: 15%; background:none; border:none; box-shadow:none;" />
+</p>
 
           </script>
         </section>
