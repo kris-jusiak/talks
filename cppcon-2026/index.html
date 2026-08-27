@@ -112,6 +112,15 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
+```cpp
+Modern CPUs are primarily bottlenecked by
+ - Instruction supply - Wanna be fast has to be in the future
+ - Data access - Increasing {instructions,µops} per cycle
+ - Branch prediction - Reducing overall instruction count
+```
+
+----
+
 #### AMD Zen5
 <!-- .element: style="text-align:left" -->
 
@@ -387,6 +396,101 @@ print(df.describe())
 
 ----
 
+#### Benchmarkng - harness
+<!-- .element: style="text-align:left" -->
+
+##### latency
+<!-- .element: style="text-align:left" -->
+
+```asm
+  # setup
+  rdtsc           # rdpmc ecx
+  mov r11, rax    # fine with < 1s
+
+  {code}
+
+  rdtscp
+  lfence
+```
+
+##### throughput
+<!-- .element: style="text-align:left" -->
+
+```
+asm Nx2000 - Nx1000
+```
+
+https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+
+----
+
+#### Symbolic Benchmarking
+<!-- .element: style="text-align:left" -->
+
+```
+symbolic execution
+- what influences the output (registers, memory)
+- emulation from specifc state
+- profiling date for help (distributions)
+```
+
+```
+how
+- load elf
+- re-shuffle -> relocate
+- analyze (angr) / may require help with a perf run
+    - states
+- bench -> distrubtuion best->worst
+```
+
+https://github.com/angr/angr
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### [perf plot] # ECDF, flamegraph
+<!-- .element: style="text-align:left" -->
+
+```
+perf view
+perf plot --baseline # // Establishing the baseline
+```
+
+<!--todo ecdf-->
+<!--todo flemgraph-->
+
+```cpp
+# sampling (freq/period) | call-stack (LBR) | count
+main;parse;tokenize 5
+main;parse;analyze 3
+main;render 7
+```
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+https://github.com/brendangregg/FlameGraph
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Analyzing/Testing
+<!-- .element: style="text-align:left" -->
+
+```
+jupyter notebook
+analyzing (mca,uca)
+    asm/timeline
+testing
+    perf.bench(asm).instrucitons < 10
+```
+
+----
+
 #### Bias [controlled chaos]
 <!-- .element: style="text-align:left" -->
 
@@ -555,17 +659,57 @@ if (btb_hash(address_ptr)) {            // branch aliasing
 <!-- .element: style="text-align:left" -->
 
 ```
-# enum to string with reflection
-if_else
-# generate switch-case
-map
-pext
-pext+simd
-mph
--> policies
+std::string_view enum_to_string_v1(enum auto value) {
+    template for (constexpr auto e : std::define_static_array(std::meta::enumerators_of(^^E))) {
+        if (value == [:e:]) {
+            return std::meta::identifier_of(e);
+        }
+    }
+    return {};
+}
+
+int main() {
+    // enum_to_string(
+}
 ```
 
-<!--todo use reflection-->
+----
+
+```cpp
+perf bench exec gcc26.out enum_to_string
+```
+
+----
+
+```cpp
+std::string_view enum_to_string_v1(enum auto value) {
+  if constexpr (Enumerable)
+    template for (constexpr auto e : std::define_static_array(std::meta::enumerators_of(^^E)))
+        switch(value) {
+            case [:e:]: return std::meta::identifier_of(e);
+        }
+  return "<unnamed>";
+}
+```
+
+----
+
+```cpp
+std::string_view enum_to_string_v1(enum auto value) {
+    // mask
+    // pext
+}
+```
+
+----
+
+```cpp
+std::string_view enum_to_string_v1(enum auto value) {
+    // mask
+    // pext
+    // simd
+}
+```
 
 ----
 
@@ -576,17 +720,13 @@ mph
 
 ----
 
-#### `enum_to_string`
-<!-- .element: style="text-align:left" -->
-
 ```cpp
 enum uri { ftp = 0, file = 1, http = 2, ws = 3, wss = 4, };
 ```
 
 ```cpp
-template<class E, size_t MaxAttempts = 100'000,
-         class T = underlying_type_t<E>> requires is_enum_v<E>
-constexpr auto enum_to_string(string_view str) -> E {
+std::string_view enum_to_string_v1(enum auto value) {
+  // mph
   constexpr auto nbits = /*number of required bits to represent all values*/
   constexpr auto shift = sizeof(T) * CHAR_BIT - nbits; // 29
   constexpr auto mask  = (1u << nbits) - 1u;           // 0b111
@@ -595,19 +735,8 @@ constexpr auto enum_to_string(string_view str) -> E {
   return (lut >> ((value * magic) >> shift)) & mask;
 }
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
 
-# https://godbolt.org/z/3j8qcabsj # find hash at compile-time (constexpr gpu)
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-----
-
-#### `enum_to_string`
-<!-- .element: style="text-align:left" -->
-
-```
-perf bench exec gcc26.out enum_to_string
-```
+https://godbolt.org/z/3j8qcabsj # find hash at compile-time (constexpr gpu)
 
 ----
 
@@ -637,120 +766,22 @@ no lookup table (stored directly in a register)
 
 ----
 
-#### Benchmarkng - harness
-<!-- .element: style="text-align:left" -->
-
-##### latency
-<!-- .element: style="text-align:left" -->
-
-```asm
-  # setup
-  rdtsc           # rdpmc ecx
-  mov r11, rax    # fine with < 1s
-
-  {code}
-
-  rdtscp
-  lfence
+```cpp
+std::string_view enum_to_string_v1(enum auto value) {
+    // mask
+    // pext
+    // simd
+}
 ```
-
-##### throughput
-<!-- .element: style="text-align:left" -->
-
-```
-asm Nx2000 - Nx1000
-```
-
-https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
 
 ----
-
-#### Symbolic Benchmarking
-<!-- .element: style="text-align:left" -->
-
-```
-symbolic execution
-- what influences the output (registers, memory)
-- emulation from specifc state
-- profiling date for help (distributions)
-```
-
-```
-how
-- load elf
-- re-shuffle -> relocate
-- analyze (angr) / may require help with a perf run
-    - states
-- bench -> distrubtuion best->worst
-```
-
-https://github.com/angr/angr
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### [perf plot] # ECDF, flamegraph
-<!-- .element: style="text-align:left" -->
-
-```
-perf view
-perf plot --baseline # // Establishing the baseline
-```
-
-<!--todo ecdf-->
-<!--todo flemgraph-->
 
 ```cpp
-# sampling (freq/period) | call-stack (LBR) | count
-main;parse;tokenize 5
-main;parse;analyze 3
-main;render 7
+std::string_view enum_to_string_v1(enum auto value) {
+    // policy
+    // [[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
+}
 ```
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-https://github.com/brendangregg/FlameGraph
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Analyzing/Testing
-<!-- .element: style="text-align:left" -->
-
-```
-jupyter notebook
-analyzing (mca,uca)
-    asm/timeline
-testing
-    perf.bench(asm).instrucitons < 10
-```
-
-----
-
-#### Optimizations
-<!-- .element: style="text-align:left" -->
-
-```
-Modern CPUs are primarily bottlenecked by
- - Instruction supply
- - Data access
- - Branch prediction
-```
-
-```
-Top down Microarchitecture Analysis Method
-Wanna be fast has to be in the future
-Reducing overall instruction count
-Increasing {instructions,µops} per cycle
-[[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
-cache: non-temporal storage load
-```
-<!-- .element: style="font-size:18px;" -->
 
 ----
 
