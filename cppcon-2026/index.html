@@ -706,6 +706,42 @@ if (btb_hash(address_ptr)) {            // branch aliasing
 #### Case study
 <!-- .element: style="text-align:left" -->
 
+```cpp
+int main() {
+    while(...) {
+        auto x = enum_to_string(value);
+        if (x) {
+            trigger();
+        }
+    }
+}
+```
+
+----
+
+#### Case study
+<!-- .element: style="text-align:left" -->
+
+```cpp
+g++ -O3 -std=c++26 case_study.cpp
+```
+
+```cpp
+perf stat --topdown -I 1000 ./a.out
+```
+
+----
+
+#### Case study
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf probe
+perf intel pt
+```
+
+----
+
 <!--template void enum_to_string(color);-->
 
 ```cpp
@@ -887,7 +923,7 @@ Profile -> Benchmark -> Analyze -> Optimize
 ---
 
 ##### Citadel Securities https://citadelsecurities.com/careers/engineering
-<!-- .element: style="text-align:left; font-size:24px;" -->
+<!-- .element: style="text-align:left; font-size:26px;" -->
 
 <div style="text-align:left;"><img src="images/careers.png" style="width:15%; background:none; border:none; box-shadow:none;" /></div>
 
