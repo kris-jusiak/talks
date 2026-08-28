@@ -72,8 +72,8 @@
 <!-- .element: style="text-align:left" -->
 
 ```
-- Focused on x86-64/linux
-- Powered by linux-perf + extensions
+Focused on x86-64/linux
+Powered by linux-perf + extensions
 ```
 <!-- .element: style="text-align:left" -->
 
@@ -237,7 +237,7 @@ perf record \
 
 ----
 
-#### latency vs throughput
+#### latency vs. throughput
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -253,9 +253,11 @@ throughput
 ```
 auto latency = time / operations;             // ns/op
 auto throughput = operations / seconds(time); // ops/s
-// reciprocal throughput # inverse
 auto rthroughput = time / operations;         // ns/ops
 ```
+
+reciprocal throughput = inverse throughput
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -292,17 +294,21 @@ perf stat \
     -e exe:probe \
     -p $(pidof exe) \
     -I 1000
+```
 
+```
 perf record \
     --aux-sampe=32768 \
     -e '{intel_pt//u,noretcomp=1/u,exe:probe}' \
     -p $(pidof exe) \
     -o perf.data
+```
 
+```
 perf report \
     --itrace=10nsbg1024 \
     --cal-graph fractal
-````
+```
 
 ----
 
@@ -310,16 +316,24 @@ perf report \
 <!-- .element: style="text-align:left" -->
 
 ```
-perf bench --exec a.out hot_begin..hot_end
-perf bench --exec a.out fn
-perf bench --exec a.out fn  \
+perf bench region hot_begin..hot_end
+```
+
+```
+perf bench func fn
+```
+
+```
+perf bench func fn  \
     --mode latency  \
     --config latency.json \
     --config.memory.cache.dL1.hit_rate=25
     --data data.json \
     --event cycles,instructions
-perf bench --exec a.out begin..end
-perf bench asm --code 'mov eax, 42'
+```
+
+```
+perf bench asm 'mov eax, 42'
 ```
 
 ----
@@ -387,17 +401,21 @@ perf info cpu --topology
 
 ----
 
-```
+```md
 pip install git+https://github.com/perf-labs/perf.git
 ```
+
+----
 
 ```
 import perf
 ```
 
 ```
-df = perf.bench(file="a.out", target="fizz_buzz", config=config)
-print(df.describe())
+df = perf.bench(exec="a.out",
+                target="fizz_buzz",
+                config=config, 
+                data=data)
 ```
 
 ----
@@ -427,9 +445,9 @@ asm Nx2000 - Nx1000
 ```
 
 https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
@@ -453,10 +471,10 @@ how
 ```
 
 https://github.com/angr/angr
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
@@ -465,7 +483,7 @@ https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/
 
 ```
 perf view
-perf plot --baseline # // Establishing the baseline
+perf plot --baseline
 ```
 
 <!--todo ecdf-->
@@ -487,10 +505,13 @@ https://github.com/brendangregg/FlameGraph
 #### Analyzing/Testing
 <!-- .element: style="text-align:left" -->
 
-```
+```cpp
 jupyter notebook
-analyzing (mca,uca)
-    asm/timeline
+analyzing (mca,uica)
+    asm/timeline/resource_pressure
+```
+
+```cpp
 testing
     perf.bench(asm).instrucitons < 10
 ```
@@ -664,8 +685,10 @@ if (btb_hash(address_ptr)) {            // branch aliasing
 #### Case study
 <!-- .element: style="text-align:left" -->
 
-```
-std::string_view enum_to_string_v1(enum auto value) {
+<!--template void enum_to_string(color);-->
+
+```cpp
+constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
     template for (constexpr auto e :
         define_static_array(meta::enumerators_of(^^E))) {
         if (value == [:e:]) {
@@ -674,11 +697,8 @@ std::string_view enum_to_string_v1(enum auto value) {
     }
     return {};
 }
-
-int main() {
-    // enum_to_string(
-}
 ```
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```
 "enum_to_string"_test = [] constexpr {
@@ -689,13 +709,13 @@ int main() {
 ----
 
 ```cpp
-perf bench exec gcc26.out enum_to_string
+perf bench func enum_to_string -x gcc26.out 
 ```
 
 ----
 
 ```cpp
-std::string_view enum_to_string_v1(enum auto value) {
+std::string_view v1::enum_to_string(enum auto value) {
     template for (constexpr auto e : 
         std::define_static_array(std::meta::enumerators_of(^^E)))
         switch(value) {
@@ -707,9 +727,8 @@ std::string_view enum_to_string_v1(enum auto value) {
 
 ----
 
-
 ```cpp
-std::string_view enum_to_string(enum auto value) {
+std::string_view v2::enum_to_string(enum auto value) {
     static const auto map = [] {
         std::unordered_map<E, std::string_view> m;
         template for (constexpr auto e :
@@ -726,6 +745,7 @@ std::string_view enum_to_string(enum auto value) {
     return {};
 }
 ```
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -760,7 +780,7 @@ enum uri { ftp = 0, file = 1, http = 2, ws = 3, wss = 4, };
 ```cpp
 std::string_view enum_to_string_v1(enum auto value) {
   // mph
-  constexpr auto nbits = /*number of required bits to represent all values*/
+  constexpr auto nbits = /*bits*/
   constexpr auto shift = sizeof(T) * CHAR_BIT - nbits; // 29
   constexpr auto mask  = (1u << nbits) - 1u;           // 0b111
   constexpr auto [magic, lut] = magic_lut(mask, shift, MaxAttempts);
@@ -768,8 +788,10 @@ std::string_view enum_to_string_v1(enum auto value) {
   return (lut >> ((value * magic) >> shift)) & mask;
 }
 ```
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 https://godbolt.org/z/3j8qcabsj # find hash at compile-time (constexpr gpu)
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -800,7 +822,7 @@ no lookup table (stored directly in a register)
 ----
 
 ```cpp
-std::string_view enum_to_string_v1(enum auto value) {
+std::string_view v4::enum_to_string(enum auto value) {
     // mask
     // pext
     // simd
@@ -810,7 +832,7 @@ std::string_view enum_to_string_v1(enum auto value) {
 ----
 
 ```cpp
-std::string_view enum_to_string_v1(enum auto value) {
+std::string_view v5::enum_to_string(enum auto value) {
     // policy
     // [[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
 }
@@ -818,7 +840,7 @@ std::string_view enum_to_string_v1(enum auto value) {
 
 ----
 
-#### Perf mantra
+#### `Perf mantra`
 <!-- .element: style="text-align:left" -->
 
 ```cpp
