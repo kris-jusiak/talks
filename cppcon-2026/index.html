@@ -163,7 +163,7 @@ CPU                      Intel        AMD          ARM
 
 ----
 
-#### Linux 7.x
+#### Linux 7.x [operating system]
 <!-- .element: style="text-align:left" -->
 
 <img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
@@ -545,7 +545,45 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 ----
 
-#### Hardware effects
+#### Hardware effects [code]
+<!-- .element: style="text-align:left" -->
+
+```cpp
+0x0100: void unused();                     // code layout
+
+0x0110: void fn(value) {
+0x0110:   push                             // stack
+
+0x0114:   for (...) {
+0x0118:     auto i = lookup_table[value];  // memory access
+0x011C:     if (i) {                       // branch prediction
+0x0120:         ...
+0x0124:     }
+0x0128:   }
+
+0x012C:   pop                              // stack
+        }
+
+0x1000: lookup_table:                      // data layout
+         ...
+```
+
+compiler + linker
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Hardware effects [asm]
+<!-- .element: style="text-align:left" -->
+
+```asm
+mov eax(%rdi) # memory load
+# ... todo
+```
+
+----
+
+#### Hardware effects [config]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -575,7 +613,7 @@ config = {
 
 ----
 
-#### Hardware effects
+#### Hardware effects [data]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -584,31 +622,6 @@ data = {
     "0x043244", 111,
     "rax": '432'
 }
-```
-
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-```cpp
-0x0100: void unused();                     // code layout
-
-0x0110: void fn(value) {
-0x0110:   push                             // stack
-
-0x0114:   for (...) {
-0x0118:     auto i = lookup_table[value];  // memory access
-0x011C:     if (i) {                       // branch prediction
-0x0120:         ...
-0x0124:     }
-0x0128:   }
-
-0x012C:   pop                              // stack
-        }
-
-0x1000: lookup_table:                      // data layout
-         ...
 ```
 
 ----
@@ -627,10 +640,10 @@ auto refresh(const void* addr) {
         flush(addr);                                // RAM
         fence();
         settle();
-        prefetch<Level>(addr);                      // .prefetcht1 hint
+        prefetch<Level>(addr);                      // prefetcht1 hint
     } else if constexpr (level == Level::L3) {
         load(addr);                                 // L1
-        demote(addr);                               // .cldemote hint
+        demote(addr);                               // cldemote hint
     } else {
         flush(addr);                                // RAM
         fence();
@@ -662,7 +675,7 @@ INTEL(R) XEON(R)
 ```
 
 ```cpp
-[flush]/{prefetch,cldemote}
+refresh:
   dL1:   4ns
   dL2:  13ns # cldemote -> 75ns
   dL3:  75ns # prefetch -> 13ns
