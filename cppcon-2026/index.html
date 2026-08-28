@@ -112,18 +112,18 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
+#### Modern CPUs primarily bottlenecks
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-Modern CPUs are primarily bottlenecked by
-
- - Instruction supply
-    - Wanna be fast has to be in the future
-
- - Data access
-    - Increasing {instructions, µops} per cycle
-
- - Branch prediction
-    - Reducing overall instruction count
+Data access
+Branch prediction
+Instruction supply
 ```
+
+<!--- todo Wanna be fast has to be in the future-->
+<!--- todo Increasing {instructions, µops} per cycle-->
+<!--- todo Reducing overall instruction count-->
 
 ----
 
@@ -237,12 +237,12 @@ perf record \
 
 ----
 
-#### latency vs. throughput
+#### Latency vs. Throughput
 <!-- .element: style="text-align:left" -->
 
 ```
 latency
-  └─ Time it takes for a single
+  └─ Time it takes for a single operation
 ```
 
 ```
@@ -251,9 +251,9 @@ throughput
 ```
 
 ```
-auto latency = time / operations;             // ns/op
-auto throughput = operations / seconds(time); // ops/s
-auto rthroughput = time / operations;         // ns/ops
+auto latency     = time / operations;          // ns/op
+auto throughput  = operations / seconds(time); // ops/s
+auto rthroughput = time / operations;          // ns/ops
 ```
 
 reciprocal throughput = inverse throughput
@@ -290,23 +290,23 @@ perf record -e exe:probe -aR sleep 1
 ```
 
 ```
-perf stat \
-    -e exe:probe \
-    -p $(pidof exe) \
+perf stat
+    -e exe:probe
+    -p $(pidof exe)
     -I 1000
 ```
 
 ```
-perf record \
-    --aux-sampe=32768 \
-    -e '{intel_pt//u,noretcomp=1/u,exe:probe}' \
-    -p $(pidof exe) \
+perf record
+    --aux-sampe=32768
+    -e '{intel_pt//u,noretcomp=1/u,exe:probe}'
+    -p $(pidof exe)
     -o perf.data
 ```
 
 ```
-perf report \
-    --itrace=10nsbg1024 \
+perf report
+    --itrace=10nsbg1024
     --cal-graph fractal
 ```
 
@@ -320,20 +320,25 @@ perf bench region hot_begin..hot_end
 ```
 
 ```
-perf bench func fn
+perf bench func send_order
 ```
 
 ```
-perf bench func fn  \
-    --mode latency  \
-    --config latency.json \
+perf bench func send_order
+    --mode latency
+    --config latency.json
     --config.memory.cache.dL1.hit_rate=25
-    --data data.json \
+    --data data.json
     --event cycles,instructions
+    --exec gcc16.out
 ```
 
 ```
-perf bench asm 'mov eax, 42'
+perf bench asm 'mov eax, 42' --march=skylake
+```
+
+```
+perf bench label send_order --file asm.s
 ```
 
 ----
@@ -350,13 +355,13 @@ http://www.qbaylogic.com
 ----
 
 ```cpp
-#define PERF_LABEL(name)                                \
-    asm volatile(                                       \
-        ".pushsection perf.label, \"aw?\", @progbits\n" \
-        ".quad 0f\n"                                    \
-        ".asciz \"" #name "\"\n"                        \
-        ".popsection\n"                                 \
-        "0:\n"                                          \
+#define PERF_LABEL(name)
+    asm volatile(
+        ".pushsection perf.label, \"aw?\", @progbits\n"
+        ".quad 0f\n"
+        ".asciz \"" #name "\"\n"
+        ".popsection\n"
+        "0:\n"
     ); name:
 ```
 
@@ -377,11 +382,15 @@ auto main() {
 ```
 0x000 main:
 0x000   push    rax
-0x000   lea     rdi, [rip + .L.str] <- hot_begin
-0x000   call    puts@PLT            <- hot_end
+0x000   lea     rdi, [rip + .L.str]
+0x000   call    puts@PLT
 0x000   xor     eax, eax
 0x000   pop     rcx
 0x000   ret
+```
+
+```
+objdump -sj .perf.label <file>
 ```
 
 ----
@@ -392,11 +401,6 @@ auto main() {
 ```
 perf info metadata a.out
 perf info cpu --topology
-```
-
-```
-# objdump -sj .perf.label <file>
-# objdump -R  .perf.label <file>
 ```
 
 ----
@@ -413,31 +417,35 @@ import perf
 
 ```
 df = perf.bench(exec="a.out",
-                target="fizz_buzz",
-                config=config, 
+                func="fizz_buzz",
+                config=config,
                 data=data)
 ```
 
 ----
 
-#### Benchmarking [harness]
+#### Latency [harness]
 <!-- .element: style="text-align:left" -->
 
-##### latency
-<!-- .element: style="text-align:left" -->
-
-```asm
-  # setup
-  rdtsc           # rdpmc ecx
-  mov r11, rax    # fine with < 1s
-
-  {code}
-
-  rdtscp
-  lfence
+```
+rdtsc
+mov r11, rax # fine with < 1s
+{code}
+rdtscp
+lfence
 ```
 
-##### throughput
+```cpp
+rdpmc
+clflush
+{code}
+rdpmc
+lfence
+```
+
+----
+
+##### Throughput [harness]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -709,14 +717,14 @@ constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
 ----
 
 ```cpp
-perf bench func enum_to_string -x gcc26.out 
+perf bench func enum_to_string -x gcc26.out
 ```
 
 ----
 
 ```cpp
 std::string_view v1::enum_to_string(enum auto value) {
-    template for (constexpr auto e : 
+    template for (constexpr auto e :
         std::define_static_array(std::meta::enumerators_of(^^E)))
         switch(value) {
             case [:e:]: return std::meta::identifier_of(e);
