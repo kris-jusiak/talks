@@ -357,10 +357,10 @@ perf microbench label send_order --file asm.s
 
 ----
 
-##### CPU vs. FPGA
+##### CPU vs. FPGA vs. GPU vs. TPU
 <!-- .element: style="text-align:left" -->
 
-<img src="images/fpga.gif" style="width: 100%; background:none; border:none; box-shadow:none;" />
+<img src="images/cpu_fpga_gpu_tpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 https://qbaylogic.com/cpu-vs-fpga
 <!-- .element: style="text-align:left; font-size:22px;" -->
@@ -788,7 +788,7 @@ constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
 ----
 
 ```cpp
-perf microbench func enum_to_string -x gcc26.out
+perf bench enum_to_string -x gcc26.out
 ```
 
 ----
