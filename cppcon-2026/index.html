@@ -51,22 +51,66 @@
 
 ----
 
-#### Performance Is Not a Number!
+### Motivation
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### `perf or nah`?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+Running with 'profiling/instrumenting/tracing' enabled?
+Running as a 'different user'?
+Enabling 'debug symbols' on optimized build?
+Adding 'unused function'?
+Adding a 'try/catch' that never throws?
+Adding a 'branch' which is never taken?
+Removing 'dead code'?
+...
+```
+
+Which ones affect performance?
+<!-- .element: style="text-align:left; font-size:28px;" -->
+
+----
+
+##### `"what if" rule`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+What if data regime changes?
+What if cache is not as hot?
+What if branch is not as predicted?
+What if code/data layout changes?
+What if ...?
+```
+
+What happens when the assumptions change?
+<!-- .element: style="text-align:left; font-size:28px;" -->
+
+----
+
+### Myth Busting
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Performance != a single number
 <!-- .element: style="text-align:left" -->
 
 <img src="images/metrics.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 ----
 
-#### Performance Is Not Normally Distributed!
+#### Performance != normally distributed
 <!-- .element: style="text-align:left" -->
 
 <img src="images/normal.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-<img src="images/baseline.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
 ----
 
-#### Performance No Longer Follows Dennard Scaling!
+#### Performance !=
 <!-- .element: style="text-align:left" -->
 
 <img src="images/dennard.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
@@ -76,7 +120,7 @@ https://www.singularity.com/charts
 
 ----
 
-### Why?
+### Rationale
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -134,24 +178,10 @@ https://makelinux.github.io/kernel/map
 
 ----
 
-#### Code [...]
+#### Implementation [details]
 <!-- .element: style="text-align:left" -->
 
-----
-
-#### Perf or Nah?
-<!-- .element: style="text-align:left" -->
-
-```cpp
-Running with 'profiling/instrumenting/tracing' enabled?
-Running as a 'different user'?
-Enabling 'debug symbols' on optimized build?
-Adding 'unused function'?
-Adding a 'try/catch' that never throws?
-Adding a 'branch' which is never taken?
-Removing 'dead code'?
-...
-```
+<img src="images/code.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -163,20 +193,6 @@ Removing 'dead code'?
 
 ----
 
-#### `"what if" rule`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-what if data regime changes?
-what if cache is not as hot?
-what if branch is not as predicted?
-what if code/data layout changes?
-what if ...?
-```
-<!-- .element: style="text-align:left;" -->
-
-----
-
 #### Profiling -> Benchmarking
 <!-- .element: style="text-align:left" -->
 
@@ -184,15 +200,6 @@ what if ...?
 
 ### How?
 <!-- .element: style="text-align:left" -->
-
-----
-
-### What?
-<!-- .element: style="text-align:left" -->
-
-```cpp
-What if we could measure "what if?"
-```
 
 ----
 
@@ -409,6 +416,21 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 
 ----
 
+Non-tuned vs. Tuned
+
+<img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
+
+```cpp
+// Measured vs. Documented
+// - instructions latency/rthroughput/...
+// - L1d/L2d/L3d load/store latency/bandwidth
+// - branch misprediction penalty
+// - max(µops/cycle) vs. dispatch width
+//  ...
+```
+
+----
+
 #### Latency [harness]
 <!-- .element: style="text-align:left" -->
 
@@ -556,6 +578,8 @@ perf info metadata a.out
 perf info cpu --topology
 ```
 
+<td><img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" /></td>
+
 ----
 
 ```
@@ -567,6 +591,15 @@ df = perf.microbench(exec="a.out",
                      func="fizz_buzz",
                      config=config,
                      data=data)
+```
+
+----
+
+### The 'Answer'?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+What if we could measure "what if?"
 ```
 
 ----
@@ -1023,6 +1056,34 @@ std::string_view v5::enum_to_string(enum auto value) {
 
 ```cpp
 Profile -> Benchmark -> Analyze -> Optimize
+```
+
+----
+
+#### `perf or nah`?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+Will this change performance?
+- Running with 'profiling/instrumenting/tracing' enabled?
+- Running as a 'different user'?
+- Enabling 'debug symbols' on optimized build?
+- Adding 'unused function'?
+- Adding a 'try/catch' that never throws?
+- Adding a 'branch' which is never taken?
+- Removing 'dead code'?
+- ...
+```
+
+#### `"what if" rule`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+what if data regime changes?
+what if cache is not as hot?
+what if branch is not as predicted?
+what if code/data layout changes?
+what if ...?
 ```
 
 ----
