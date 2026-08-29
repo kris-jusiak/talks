@@ -51,21 +51,21 @@
 
 ----
 
-#### `what if rule` [case for benchmarking]
+#### `"what if" rule`
 <!-- .element: style="text-align:left" -->
 
-<!--Chart - the volume will spike tomorrow - show some VIX charts-->
-
+```cpp
+- What if the data spikes or the regime shifts?
+- What if the code or data layout changes?
+- What if we run as a different user?
+- ...
 ```
-- what if get more data
-- what if get less data
-- what if get different data
-- what if unrelated code will change
-- what if instrumentation/profiling affects the results
-- what if ...
-```
-<!-- .element: style="text-align:left" -->
+<!-- .element: class="fragment" data-fragment-index="0" -->
 
+```cpp
+- What if we could measure "what if?"
+```
+<!-- .element: class="fragment" data-fragment-index="1" -->
 ----
 
 #### Disclaimer
@@ -92,14 +92,16 @@ https://github.com/perf-labs/perf
 (~) Frequency
   - Base:  3–5 GHz
   - Boost: 5–6 GHz
-  - Overclocked: ~9 GHz<br />
+  - Overclocked: ~9 GHz
+  </pre>
+  <pre style="font-size:18px">
 (⬆️) Transistors
   - More Cores
   - More Caches
   - Improved Execution
   - Improved Parallelism&nbsp;
   - ...<br />
-</code></pre>
+</pre>
   </td>
   <td>
     <img src="images/trend.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
@@ -163,7 +165,7 @@ CPU                      Intel        AMD          ARM
 
 ----
 
-#### Linux 7.x [operating system]
+#### Linux 7.x
 <!-- .element: style="text-align:left" -->
 
 <img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
@@ -349,7 +351,7 @@ perf bench label send_order --file asm.s
 <img src="images/fpga.gif" style="width: 49%; background:none; border:none; box-shadow:none;" />
 <img src="images/gpu.gif" style="width: 49%; background:none; border:none; box-shadow:none;" />
 
-http://www.qbaylogic.com
+https://qbaylogic.com/cpu-vs-fpga
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
@@ -530,7 +532,7 @@ testing
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-vector<{branch, cache}> cpus{64u};
+std::array<core<branch, cache>, 64u> cpus{};
 // numa
 
 int main() {
@@ -545,35 +547,30 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 ----
 
-#### Hardware effects [code]
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-0x0100: void unused();                     // code layout
+0x0080: void unused();                     // layout
 
-0x0110: void fn(value) {
-0x0110:   push                             // stack
+0x0110: void func(auto value) {            // alignment
+0x0112:   auto var = ...;                  // stack
 
-0x0114:   for (...) {
-0x0118:     auto i = lookup_table[value];  // memory access
-0x011C:     if (i) {                       // branch prediction
+0x0114:   for (...) {                      // alignment
+0x0118:     auto i = lookup_table[value];  // memory
+0x011C:     if (i == var) {                // branch
 0x0120:         ...
 0x0124:     }
 0x0128:   }
+0x0128: }                                  // stack
 
-0x012C:   pop                              // stack
-        }
-
-0x1000: lookup_table:                      // data layout
+0x1000: lookup_table:                      // layout
          ...
 ```
 
-compiler + linker
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
 ----
 
-#### Hardware effects [asm]
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```asm
@@ -583,28 +580,28 @@ mov eax(%rdi) # memory load
 
 ----
 
-#### Hardware effects [config]
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```
-config = {
-  "affinity": [0],
+latency = {
+  "affinity": [1], # pin to core 1
   "layout": {
-    "alignment": [8, 16],
-    "order": ["random"], # re-shuffle functions
+    "alignment": [16, 32],
+    "ordering": ["random"], # re-shuffle
   },
   "branch": ["predictable", "unpredictable"]
   "memory": {
     "heap": ["random"],
     "stack": ["random"],
     "cache": {
-      "dL1":  [{"hit_tate":[25, 50, 70]}],
-      "dL2":  [{"hit_tate":"50", "perf.data"}],
-      "dL3":  [{"hit_tate":"100"}],
-      "iL1":  [{"hit_tate":"100"}],
-      "iL2":  [{"hit_tate":"100"}],
-      "dTLB": [{"hit_tate":"100"}],
-      "iTLB": [{"hit_tate":"100"}],
+      "dL1":  [{"hit_tate":[25, 50, 75, 100]}],
+      "dL2":  [{"hit_tate":[75, 100]}],
+      "dL3":  [{"hit_tate":100}],
+      "iL1":  [{"hit_tate":100}],
+      "iL2":  [{"hit_tate":100}],
+      "dTLB": [{"hit_tate":100}],
+      "iTLB": [{"hit_tate":100}],
     }
   }
 }
@@ -613,14 +610,15 @@ config = {
 
 ----
 
-#### Hardware effects [data]
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```
 data = {
-    "0x043242", 121,
-    "0x043244", 111,
-    "rax": '432'
+    "rax":      "432"
+    "0x043242", "121",
+    "0x043244", "111",
+    "ip": # branch predictable
 }
 ```
 
@@ -632,7 +630,6 @@ data = {
 ```cpp
 template<Level level>
 auto refresh(const void* addr) {
-    assert(addr);
     if constexpr (level == Level::L1) {
         load(addr);                                 // L1
         fence();
@@ -658,7 +655,7 @@ PREFETCHNTA Non-temporal
 PREFETCHT0  Hint into all cache levels (L1 priority)
 PREFETCHT1  Hint into L2/L3, lower L1 priority
 PREFETCHT2  Hint into L2/L3 with even lower urgency
-CLDEMOTE    Hint into more distant level
+CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
@@ -675,11 +672,10 @@ INTEL(R) XEON(R)
 ```
 
 ```cpp
-refresh:
-  dL1:   4ns
-  dL2:  13ns # cldemote -> 75ns
-  dL3:  75ns # prefetch -> 13ns
-  RAM: 294ns
+dL1:   4ns
+dL2:  13ns
+dL3:  75ns
+RAM: 294ns
 ```
 
 ----
@@ -688,13 +684,26 @@ refresh:
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-std::vector<entry> btb(10'000);         // global per core
-                                        // (~10'000 1/0 branches)
-if (btb_hash(address_ptr)) {            // branch aliasing
-    btb.allocate(address_ptr);          // never used - no btb entry
-    if (no_history and is_fbackward) {  // for loops
+std::array<entry, branch> btb(10'000);           // global per core
+                                                   // (~10'000 1/0 branches)
+if (auto it = btb.find(address_ptr); it ! = btb.end()) {                       // branch aliasing
+    auto&& entry = it->allocate();      // never used - no btb entry
+    if (entry.empty() and entry().is_backward) [[likely]] {   // for loops
         // taken
     }
+}
+auto predict(uintptr_t ip) {
+    auto& entry = btb[hash(ip)];        // branch aliasing
+
+    if (entry.history.empty()) {
+        return NOT_TAKEN;
+    }
+
+    if (entry.is_backward) {
+        return TAKEN;
+    }
+
+    return entry.history.predict(ip);
 }
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -709,8 +718,10 @@ if (btb_hash(address_ptr)) {            // branch aliasing
 ```cpp
 int main() {
     while(...) {
-        auto x = enum_to_string(value);
+        auto x = str_to_id(value);
         if (x) {
+            if (str_to_id(value.subvalue) {
+            }
             trigger();
         }
     }
@@ -918,11 +929,9 @@ Profile -> Benchmark -> Analyze -> Optimize
 ##### Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
 
-<br />
-
 ---
 
-##### Citadel Securities 
+##### Citadel Securities
 <!-- .element: style="text-align:left; " -->
 
 #### https://citadelsecurities.com/careers/engineering
