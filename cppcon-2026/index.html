@@ -51,32 +51,37 @@
 
 ----
 
-#### Performance
+#### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
-<img src="images/metrics.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<img src="images/metrics.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
-https://grafana.com/docs/grafana/latest/visualizations
+----
+
+#### Performance Is Not Normally Distributed!
+<!-- .element: style="text-align:left" -->
+
+<img src="images/normal.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<img src="images/baseline.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+
+----
+
+#### Performance No Longer Follows Dennard Scaling!
+<!-- .element: style="text-align:left" -->
+
+<img src="images/dennard.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+
+https://www.singularity.com/charts
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-#### Disclaimer
+### Why?
 <!-- .element: style="text-align:left" -->
-
-```
-Focused on x86-64/linux
-Powered by linux-perf + extensions
-```
-<!-- .element: style="text-align:left" -->
-
-https://github.com/perf-labs/perf
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-
-#### [https://www.intel.com/.../articles/moores-law.html](https://www.intel.com/content/www/us/en/history/virtual-vault/articles/moores-law.html)
+#### Physics [limits]
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -103,27 +108,163 @@ https://github.com/perf-labs/perf
 </tr>
 </table>
 
+
 https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
+#### Hardware [effects]
+<!-- .element: style="text-align:left" -->
+
+<img src="images/zen5.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+
+https://chipsandcheese.com
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Operating System [noise]
+<!-- .element: style="text-align:left" -->
+
+<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+
+https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Code [...]
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Perf or Nah?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+Running with 'profiling/instrumenting/tracing' enabled?
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+Running as a 'different user'?
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+Enabling 'debug symbols' on optimized build?
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+Adding 'unused function'?
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+Adding a 'try/catch' that never throws?
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+Adding a 'branch' which is never taken?
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+Removing 'dead code'?
+```
+<!-- .element: class="fragment" -->
+
+```cpp
+...
+```
+<!-- .element: class="fragment" -->
+
+----
+
+#### "If You Can't Measure It, You Can't Improve It!"
+<!-- .element: style="text-align:left;" -->
+
+— Lord Kelvin (William Thomson)
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
 
 #### `"what if" rule`
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-- What if the data spikes or the regime shifts?
-- What if the code or data layout changes?
-- What if we run as a different user?
-- ...
+What if we could measure "what if?"
 ```
-<!-- .element: class="fragment" data-fragment-index="0" -->
 
 ```cpp
-- What if we could measure "what if?"
+what if data regime changes?
+what if cache is not as hot?
+what if branch is not predicted?
+what if data layout will change?
+what if ...?
 ```
-<!-- .element: class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;" -->
+
+----
+
+#### Profiling -> Benchmarking
+
+How?
+
+----
+
+What?
+
+
+----
+
+#### Latency vs. Throughput
+<!-- .element: style="text-align:left" -->
+
+<img src="images/fpga.gif" style="width: 100%; background:none; border:none; box-shadow:none;" />
+
+https://qbaylogic.com/cpu-vs-fpga
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```cpp
+└─ System
+      bcc      # https://github.com/iovisor/bcc
+      bpftrace # https://github.com/bpftrace/bpftrace
+      ...
+
+    └── Application
+
+          intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
+          amd-uprof   # https://www.amd.com/en/developer/uprof.html
+          linux-perf  # https://perf.wiki.kernel.org
+          likwid      # https://github.com/RRZE-HPC/likwid
+          dtrace      # https://github.com/opendtrace
+          tracy       # https://github.com/wolfpld/tracy
+          gperftools  # https://github.com/gperftools/gperftools
+          coz         # https://github.com/plasma-umass/coz
+          ...
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+#### Disclaimer
+<!-- .element: style="text-align:left" -->
+
+```
+Focused on x86-64/linux
+Powered by linux-perf + extensions
+```
+<!-- .element: style="text-align:left" -->
+
+pip install git+https://github.com/perf-labs/perf.git
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
 ----
 
 #### Modern CPUs primarily bottlenecks
@@ -138,16 +279,6 @@ Instruction supply
 <!--- todo Wanna be fast has to be in the future-->
 <!--- todo Increasing {instructions, µops} per cycle-->
 <!--- todo Reducing overall instruction count-->
-
-----
-
-#### AMD Zen5
-<!-- .element: style="text-align:left" -->
-
-<img src="images/cpu.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-
-https://chipsandcheese.com
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -174,16 +305,6 @@ CPU                      Intel        AMD          ARM
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
 ##### https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-
-----
-
-#### Linux 7.x
-<!-- .element: style="text-align:left" -->
-
-<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-
-https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -275,22 +396,57 @@ reciprocal throughput = inverse throughput
 
 ----
 
-#### [perf system]
+#### [perf tune]
 <!-- .element: style="text-align:left" -->
 
 ```
-perf system tune --latency
+perf tune latency
 ```
 
 ```
 # Address Space Layout Randomization (ASLR)
-perf system tune --latency --config.aslr=1
+perf tune latency --config.aslr=1
 ```
 
 <!--todo self checks measured vs documented (example. mca measured)-->
 
 https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Latency [harness]
+<!-- .element: style="text-align:left" -->
+
+```
+rdtsc
+mov r11, rax # fine with < 1s
+{code}
+rdtscp
+lfence
+```
+
+```cpp
+rdpmc
+clflush
+{code}
+rdpmc
+lfence
+```
+
+----
+
+##### Throughput [harness]
+<!-- .element: style="text-align:left" -->
+
+```
+asm Nx2000 - Nx1000
+```
+
+https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
@@ -357,16 +513,6 @@ perf microbench label send_order --file asm.s
 
 ----
 
-##### CPU vs. FPGA vs. GPU vs. TPU
-<!-- .element: style="text-align:left" -->
-
-<img src="images/cpu_fpga_gpu_tpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-
-https://qbaylogic.com/cpu-vs-fpga
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
 ```cpp
 #define PERF_LABEL(name)
     asm volatile(
@@ -418,57 +564,16 @@ perf info cpu --topology
 
 ----
 
-```md
-pip install git+https://github.com/perf-labs/perf.git
-```
-
-----
-
 ```
 import perf
 ```
 
 ```
-df = perf.bench(exec="a.out",
-                func="fizz_buzz",
-                config=config,
-                data=data)
+df = perf.microbench(exec="a.out",
+                     func="fizz_buzz",
+                     config=config,
+                     data=data)
 ```
-
-----
-
-#### Latency [harness]
-<!-- .element: style="text-align:left" -->
-
-```
-rdtsc
-mov r11, rax # fine with < 1s
-{code}
-rdtscp
-lfence
-```
-
-```cpp
-rdpmc
-clflush
-{code}
-rdpmc
-lfence
-```
-
-----
-
-##### Throughput [harness]
-<!-- .element: style="text-align:left" -->
-
-```
-asm Nx2000 - Nx1000
-```
-
-https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
