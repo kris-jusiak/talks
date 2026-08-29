@@ -263,16 +263,16 @@ reciprocal throughput = inverse throughput
 
 ----
 
-#### [perf tune]
+#### [perf system]
 <!-- .element: style="text-align:left" -->
 
 ```
-perf tune latency
+perf system tune --latency
 ```
 
 ```
 # Address Space Layout Randomization (ASLR)
-perf tune latency --config.latency.aslr=1
+perf system tune --latency --config.aslr=1
 ```
 
 <!--todo self checks measured vs documented (example. mca measured)-->
@@ -314,19 +314,19 @@ perf report
 
 ----
 
-#### [perf bench]
+#### [perf microbench]
 <!-- .element: style="text-align:left" -->
 
 ```
-perf bench region hot_begin..hot_end
+perf microbench region hot_begin..hot_end
 ```
 
 ```
-perf bench func send_order
+perf microbench func send_order
 ```
 
 ```
-perf bench func send_order
+perf microbench func send_order
     --mode latency
     --config latency.json
     --config.memory.cache.dL1.hit_rate=25
@@ -336,11 +336,11 @@ perf bench func send_order
 ```
 
 ```
-perf bench asm 'mov eax, 42' --march=skylake
+perf microbench asm 'mov eax, 42' --march=skylake
 ```
 
 ```
-perf bench label send_order --file asm.s
+perf microbench label send_order --file asm.s
 ```
 
 ----
@@ -777,7 +777,7 @@ constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
 ----
 
 ```cpp
-perf bench func enum_to_string -x gcc26.out
+perf microbench func enum_to_string -x gcc26.out
 ```
 
 ----
@@ -908,7 +908,7 @@ std::string_view v5::enum_to_string(enum auto value) {
 
 ----
 
-#### `Perf mantra`
+#### `"perf" mantra`
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -921,21 +921,21 @@ Profile -> Benchmark -> Analyze -> Optimize
 <!-- .element: style="text-align:left;" -->
 
 ##### Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
-<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
 ##### AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
-<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
 ##### ARM - https://developer.arm.com/documentation/ddi0487/latest
-<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
 ##### Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
-<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
 
 ---
 
-##### Citadel Securities
+##### Career Opportunities
 <!-- .element: style="text-align:left; " -->
 
-#### https://citadelsecurities.com/careers/engineering
-<!-- .element: style="text-align:left; margin: 5px 0; font-size:20px" -->
+#### Citadel Securities - https://citadelsecurities.com/careers/engineering
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
 
           </script>
         </section>
