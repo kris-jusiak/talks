@@ -144,43 +144,14 @@ https://makelinux.github.io/kernel/map
 
 ```cpp
 Running with 'profiling/instrumenting/tracing' enabled?
-```
-<!-- .element: class="fragment" -->
-
-```cpp
 Running as a 'different user'?
-```
-<!-- .element: class="fragment" -->
-
-```cpp
 Enabling 'debug symbols' on optimized build?
-```
-<!-- .element: class="fragment" -->
-
-```cpp
 Adding 'unused function'?
-```
-<!-- .element: class="fragment" -->
-
-```cpp
 Adding a 'try/catch' that never throws?
-```
-<!-- .element: class="fragment" -->
-
-```cpp
 Adding a 'branch' which is never taken?
-```
-<!-- .element: class="fragment" -->
-
-```cpp
 Removing 'dead code'?
-```
-<!-- .element: class="fragment" -->
-
-```cpp
 ...
 ```
-<!-- .element: class="fragment" -->
 
 ----
 
@@ -196,14 +167,10 @@ Removing 'dead code'?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-What if we could measure "what if?"
-```
-
-```cpp
 what if data regime changes?
 what if cache is not as hot?
-what if branch is not predicted?
-what if data layout will change?
+what if branch is not as predicted?
+what if code/data layout changes?
 what if ...?
 ```
 <!-- .element: style="text-align:left;" -->
@@ -211,13 +178,21 @@ what if ...?
 ----
 
 #### Profiling -> Benchmarking
-
-How?
+<!-- .element: style="text-align:left" -->
 
 ----
 
-What?
+### How?
+<!-- .element: style="text-align:left" -->
 
+----
+
+### What?
+<!-- .element: style="text-align:left" -->
+
+```cpp
+What if we could measure "what if?"
+```
 
 ----
 
@@ -231,6 +206,52 @@ https://qbaylogic.com/cpu-vs-fpga
 
 ----
 
+#### Always measure
+<!-- .element: style="text-align:left" -->
+
+```
+Performance Monitoring Unit (PMU)
+
+CPU                      Intel        AMD          ARM
+ ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+ ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+ ├─ Event Sampling       PEBS         IBS          SPE
+ ├─ Branch Recording     LBR          LBR          BRBE
+ └─ Processor Trace      PT           -            ETM (CoreSight)
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+<br />
+
+##### https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+##### https://docs.amd.com/v/u/en-US/40332-PUB_4.08
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+##### https://developer.arm.com/documentation/ddi0487/latest
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+##### https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
+
+----
+
+#### Always measure
+<!-- .element: style="text-align:left" -->
+
+<table>
+<tr>
+<td><img src="images/perf_map.png" style="width: 800px; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/bpf.png" style="width: 920px; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+</table>
+
+https://www.brendangregg.com
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### Always measure
+<!-- .element: style="text-align:left" -->
+
 ```cpp
 └─ System
       bcc      # https://github.com/iovisor/bcc
@@ -238,10 +259,9 @@ https://qbaylogic.com/cpu-vs-fpga
       ...
 
     └── Application
-
+          linux-perf  # https://perf.wiki.kernel.org
           intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
           amd-uprof   # https://www.amd.com/en/developer/uprof.html
-          linux-perf  # https://perf.wiki.kernel.org
           likwid      # https://github.com/RRZE-HPC/likwid
           dtrace      # https://github.com/opendtrace
           tracy       # https://github.com/wolfpld/tracy
@@ -249,7 +269,7 @@ https://qbaylogic.com/cpu-vs-fpga
           coz         # https://github.com/plasma-umass/coz
           ...
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
 
@@ -279,32 +299,6 @@ Instruction supply
 <!--- todo Wanna be fast has to be in the future-->
 <!--- todo Increasing {instructions, µops} per cycle-->
 <!--- todo Reducing overall instruction count-->
-
-----
-
-#### Performance Monitoring Unit (PMU)
-<!-- .element: style="text-align:left" -->
-
-```
-CPU                      Intel        AMD          ARM
- ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
- ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
- ├─ Event Sampling       PEBS         IBS          SPE
- ├─ Branch Recording     LBR          LBR          BRBE
- └─ Processor Trace      PT           -            ETM (CoreSight)
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-<br />
-
-##### https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-##### https://docs.amd.com/v/u/en-US/40332-PUB_4.08
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-##### https://developer.arm.com/documentation/ddi0487/latest
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-##### https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
 
 ----
 
