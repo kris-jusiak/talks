@@ -92,30 +92,28 @@ Running as a 'different user'?
 #### Performance?
 <!-- .element: style="text-align:left" -->
 
-
-<table>
+<table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
   <tr>
   <td>
-  <pre style="font-size:10px">
-(~) Frequency [Power Wall]
-  - Base:  3–5 GHz
-  - Boost: 5–6 GHz
-  - Overclocked: ~9 GHz
-  </pre>
-  <pre style="font-size:10px">
+  <pre style="font-size:14px">
+(~) Frequency
+ - Base:  3–5 GHz
+ - Boost: 5–6 GHz
+ - Overclocked: ~9 GHz</pre>
+  <pre style="font-size:14px">
 (⬆️) Transistors
-  - More Cores
-  - More Caches
-  - Improved Execution
-  - Improved Parallelism&nbsp;
-  - ...
+ - More Cores
+ - More Caches
+ - Improved Execution
+ - Improved Parallelism&nbsp;
+ - ...
 </pre>
   </td>
   <td>
-    <img src="images/metrics.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
-    <img src="images/normal.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
-    <img src="images/dennard.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
-    <img src="images/trend.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
+    <img src="images/metrics.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+    <img src="images/normal.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+    <img src="images/dennard.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+    <img src="images/trend.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
   </td>
 </tr>
 </table>
@@ -137,126 +135,104 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
-
-### Always measure!
+### Always measure?!
 <!-- .element: style="text-align:left" -->
+
+```
+- What?
+    - Latency vs. Throughput
+    - Data access
+    - Branch prediction
+    - Instruction supply
+```
+
+```
+- How?
+    - Sampling
+    - Instrumenting
+    - Tracing
+    - Simulating
+    - Benchmarking
+```
+
+```
+- When?
+    - Production
+    - Testing
+```
+
+----
+
+### Always measure?!
+<!-- .element: style="text-align:left" -->
+
+```cpp
+Performance Monitoring Unit
+  └─ CPU                     Intel        AMD          ARM
+     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+     ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+     ├─ Event Sampling       PEBS         IBS          SPE
+     ├─ Branch Recording     LBR          LBR          BRBE
+     └─ Processor Trace      PT           -            ETM (CoreSight)
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 <table>
 <tr>
-<td><img src="images/perf_map.png" style="width: 800px; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/perf_map.png" style="width: 80%; background:none; border:none; box-shadow:none;" /></td>
 <td><img src="images/bpf.png" style="width: 920px; background:none; border:none; box-shadow:none;" /></td>
 </tr>
 </table>
 
-https://www.brendangregg.com
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!--- What about noisy environments? What hardware I have to support?-->
+<!--- Multiple runs?-->
+<!--- Isolate bias?-->
+<!--- Wanna be fast has to be in the future-->
+<!--- Increasing {instructions, µops} per cycle-->
+<!--- Reducing overall instruction count-->
 
 ----
 
-### Always measure?
+#### Sampling
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-- What?
-    - Network, System, BigO?
-    - Latency vs. Throughput
-    - Modern CPUs primarily bottlenecks
-        - Data access
-        - Branch prediction
-        - Instruction supply
-
-- How?
-    - Sample? Instrument? Trace? Benchmark?
-    - What about noisy environments? What hardware I have to support?
-    - Multiple runs?
-    - Isolate bias?
-    - ...
-
-- Next?
-    - Wanna be fast has to be in the future
-    - Increasing {instructions, µops} per cycle
-    - Reducing overall instruction count
-```
-
-----
-
-#### Performance Monitoring Unit (PMU)
-<!-- .element: style="text-align:left" -->
-
-```
-CPU                      Intel        AMD          ARM
- ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
- ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
- ├─ Event Sampling       PEBS         IBS          SPE
- ├─ Branch Recording     LBR          LBR          BRBE
- └─ Processor Trace      PT           -            ETM (CoreSight)
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-<br />
-
-##### https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-##### https://docs.amd.com/v/u/en-US/40332-PUB_4.08
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-##### https://developer.arm.com/documentation/ddi0487/latest
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-##### https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:20px;" -->
-
-----
-
-#### Profiling
-<!-- .element: style="text-align:left" -->
-
-```cpp
-└─ Sampling
-     linux-perf  # https://perf.wiki.kernel.org
-     intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
-     amd-uprof   # https://www.amd.com/en/developer/uprof.html
-     ...
+ linux-perf  # https://perf.wiki.kernel.org
+ intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
+ amd-uprof   # https://www.amd.com/en/developer/uprof.html
+ dtrace      # https://github.com/opendtrace
+ gperftools  # https://github.com/gperftools/gperftools
+ bcc         # https://github.com/iovisor/bcc
+ coz         # https://github.com/plasma-umass/coz
+ ...
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
-     coz         # https://github.com/plasma-umass/coz
-    profiling
-        - regions/inline
-        good for monitoring - grafana
-        affects perf
-        xray -> jmp
-     dtrace      # https://github.com/opendtrace
-     gperftools  # https://github.com/gperftools/gperftools
-     bcc         # https://github.com/iovisor/bcc
-
-collecting
-- distrubutions # topdown -> benchmarking
-
-Profiling -> Benchmarking
-- by region - profile regions not functions
-- inlining  - inlined functions
-
 ```cpp
-# sampling (freq/period) | call-stack (LBR) | count
-main;parse;tokenize 5
-main;parse;analyze 3
-main;render 7
-```
-<!-- .element: style="text-align:left; font-size:22px;" -->
+Problems
+- regions not functions
+- affects performance
+- inlining
 
-https://github.com/brendangregg/FlameGraph
-<!-- .element: style="text-align:left; font-size:22px;" -->
+Good for
+- monitoring - grafana
+- collecting data distributions 
+```
 
 ----
 
-#### [https://www.intel.com/.../top-down-microarchitecture-analysis-method.html](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-1/top-down-microarchitecture-analysis-method.html)
-<!-- .element: style="text-align:left;font-size:28px;" -->
+#### Sampling
+<!-- .element: style="text-align:left" -->
 
 <img src="images/td.png" style="width: 80%; background:none; border:none; box-shadow:none;margin: 0 0;" />
 
-https://github.com/andikleen/pmu-tools/wiki/toplev-manual
+#### [https://www.intel.com/.../top-down-microarchitecture-analysis-method.html](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-1/top-down-microarchitecture-analysis-method.html)
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
+
+#### Sampling
+<!-- .element: style="text-align:left" -->
 
 ```
 perf stat --topdown -I 1000 ./a.out
@@ -270,7 +246,6 @@ perf report \
     --stop-address=0x7f1234002000
 ```
 
-
 ----
 
 #### Instrumenting
@@ -279,35 +254,34 @@ perf report \
 ```cpp
 └─ ...
     rdtsc/rdtscp
+    tracy       # https://github.com/wolfpld/tracy
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
-     tracy       # https://github.com/wolfpld/tracy
-     xray -> jmp
 
-     ```cpp
-          function:
-            // nop # -fxray-instrument
-            ret
-            // nop # -fxray-instrument
+ ```cpp
+      function:
+        // nop # -fxray-instrument
+        ret
+        // nop # -fxray-instrument
 
-          int main() {
-            // ...
-            auto handler = [](int func_id, XRayEntryType entry) {
-              if (entry == XRayEntryType::ENTRY) {
-                profiler.start();
-              } else {
-                profiler.stop();
-              }
-            };
-            __xray_set_handler(+handler);
-            __xray_patch(); // nop -> jmp &handler
+      int main() {
+        // ...
+        auto handler = [](int func_id, XRayEntryType entry) {
+          if (entry == XRayEntryType::ENTRY) {
+            profiler.start();
+          } else {
+            profiler.stop();
           }
-    ```
+        };
+        __xray_set_handler(+handler);
+        __xray_patch(); // nop -> jmp &handler
+      }
+```
 <!-- .element: style="font-size:21px;" -->
 
 ```sh
-        clang++ -fxray-instrument -fxray-function-list=function.txt ...
+clang++ -fxray-instrument -fxray-function-list=function.txt ...
 ```
 
 ----
@@ -315,13 +289,10 @@ perf report \
 #### Tracing
 <!-- .element: style="text-align:left" -->
 
-#### perf probe
-<!-- .element: style="text-align:left" -->
-
 ```
-perf probe -x file --funcs
-perf probe -x --add"..."
-perf record -e exe:probe -aR sleep 1
+perf probe --exec a.out --funcs
+perf probe --exec --add"..."
+perf record -e a.out:probe -aR sleep 1
 ```
 
 ```
@@ -337,6 +308,10 @@ perf record
     -e '{intel_pt//u,noretcomp=1/u,exe:probe}'
     -p $(pidof exe)
     -o perf.data
+
+  -e cycles:u \
+  --snapshot \
+  -m 64,8192 \
 ```
 
 ```
@@ -347,29 +322,17 @@ perf report
 
 ----
 
-```
-perf record \
-  -e intel_pt//u,cyc=1,tsc=1,mtc=1 \
-  -e cycles:u \
-  --snapshot \
-  -m 64,8192 \
-  -o perf.data \
-  -- ./a.out
-```
-
-
-----
-
 ##### `"what if" rule`
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-What if data regime changes?
-What if cache is not as hot?
-What if branch is not as predicted?
+What if data bursts?
+What if cache will not be hot?
+What if branch will not be predicted?
 What if code/data layout changes?
 What if ...?
 ```
+<!-- .element: class="fragment" data-fragment-index="0" -->
 
 What happens when the assumptions change?
 <!-- .element: style="text-align:left; font-size:28px;" -->
@@ -380,22 +343,23 @@ What happens when the assumptions change?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+Google Benchmark - https://github.com/google/benchmark
+Nanobench        - https://github.com/martinus/nanobench
+Celero           - https://github.com/DigitalInBlue/Celero
+likwid           - https://github.com/RRZE-HPC/likwid
+```
+
+```cpp
 /**
-* Iteration speed     # cost
-* Isolation/Coverage  # what if?
-* Understanding       # hardware effects
-* Tuning              # optimizations
+* Iteration speed
+* Isolation/Coverage
+* Understanding
+* Tuning
 * correlation issues
 * hard (latency vs throughput, nosie, bias, hardware effects)
 */
 auto bench(auto code) -> measurements;
 ```
-
-     // Google Benchmark - https://github.com/google/benchmark
-     // Nanobench        - https://github.com/martinus/nanobench
-     // Celero           - https://github.com/DigitalInBlue/Celero
-     // ...
-     likwid      # https://github.com/RRZE-HPC/likwid
 
 ----
 
@@ -421,9 +385,8 @@ sudo apt install -y linux-tools-$(uname -r)
 <!-- .element: style="text-align:right; font-size:20px; margin: 5px 0px;" -->
 pip install --user git+https://github.com/perf-labs/perf.git
 <!-- .element: style="text-align:right; font-size:20px; margin: 5px 0px;" -->
-
 https://github.com/angr/angr
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+<!-- .element: style="text-align:right; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
@@ -434,7 +397,7 @@ https://github.com/angr/angr
 Step0: Ability to benchmarking
     Performance counters slides
 Step1: Ability to pick harness
-    Latency vs Throughput
+    Latency vs. Throughput
     FPGA
 Step2: Abiliity to bench any assembly
     - can't be don in c++ reliably (c++ fights it)
@@ -503,7 +466,7 @@ reciprocal throughput = inverse throughput
 
 ----
 
-<img src="images/cpu_fpga_gpu_tpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+<img src="images/fpga.gif" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 https://qbaylogic.com/cpu-vs-fpga
 <!-- .element: style="text-align:left; font-size:22px;" -->
@@ -774,12 +737,12 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 <img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
 
 ```cpp
-// Measured vs. Documented
-// - instructions latency/rthroughput/...
-// - L1d/L2d/L3d load/store latency/bandwidth
-// - branch misprediction penalty
-// - max(µops/cycle) vs. dispatch width
-//  ...
+Measured vs. Documented
+- instructions latency/rthroughput/...
+- dL1/dL2/dL3 load/store latency/bandwidth
+- branch misprediction penalty
+- max(µops/cycle) vs. dispatch width
+ ...
 ```
 
 ----
