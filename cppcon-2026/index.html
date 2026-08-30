@@ -56,66 +56,51 @@
 
 ----
 
-#### `perf or nah`?
+<!--#### `perf or nah`?-->
+#### What affects performance?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-Running with 'profiling/instrumenting/tracing' enabled?
+Running with 'profiling, instrumentation, tracing' enabled?
 Running as a 'different user'?
-Enabling 'debug symbols' on optimized build?
-Adding 'unused function'?
+Enabling 'debug symbols' in an optimized build?
+Adding an 'unused function'?
 Adding a 'try/catch' that never throws?
-Adding a 'branch' which is never taken?
+Adding a 'branch' that is never taken?
 Removing 'dead code'?
 ...
 ```
 
-Which ones affect performance?
-<!-- .element: style="text-align:left; font-size:28px;" -->
+----
+
+#### "If You Can't Measure It, You Can't Improve It!"
+<!-- .element: style="text-align:left;" -->
+
+— Lord Kelvin (William Thomson)
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-##### `"what if" rule`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-What if data regime changes?
-What if cache is not as hot?
-What if branch is not as predicted?
-What if code/data layout changes?
-What if ...?
-```
-
-What happens when the assumptions change?
-<!-- .element: style="text-align:left; font-size:28px;" -->
-
-----
-
-### Myth Busting
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Performance != a single number
+#### Performance is Not a Number
 <!-- .element: style="text-align:left" -->
 
 <img src="images/metrics.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 ----
 
-#### Performance != normally distributed
+#### Performance is Not Normally Distributed
 <!-- .element: style="text-align:left" -->
 
 <img src="images/normal.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
 ----
 
-#### Performance !=
+#### Performance is Not Scaling with Transistors Size
 <!-- .element: style="text-align:left" -->
 
 <img src="images/dennard.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
-https://www.singularity.com/charts
+["Moore's Law and Dennard Scaling" - Gropp, William](https://wgropp.cs.illinois.edu/courses/cs598-s15/lectures/lecture15.pdf)
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
@@ -152,9 +137,11 @@ https://www.singularity.com/charts
 </tr>
 </table>
 
+[Power Wall in Computer Architecture](https://www.scribd.com/document/533160476/PA1-Solution-34993)
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
 
 https://github.com/karlrupp/microprocessor-trend-data
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
 
 ----
 
@@ -182,14 +169,6 @@ https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left" -->
 
 <img src="images/code.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
-
-----
-
-#### "If You Can't Measure It, You Can't Improve It!"
-<!-- .element: style="text-align:left;" -->
-
-— Lord Kelvin (William Thomson)
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -570,11 +549,11 @@ objdump -sj .perf.label <file>
 
 ----
 
-#### [perf info]
+#### perf info
 <!-- .element: style="text-align:left" -->
 
 ```
-perf info metadata a.out
+perf info metadata --exec a.out
 perf info cpu --topology
 ```
 
@@ -592,6 +571,22 @@ df = perf.microbench(exec="a.out",
                      config=config,
                      data=data)
 ```
+
+----
+
+##### `"what if" rule`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+What if data regime changes?
+What if cache is not as hot?
+What if branch is not as predicted?
+What if code/data layout changes?
+What if ...?
+```
+
+What happens when the assumptions change?
+<!-- .element: style="text-align:left; font-size:28px;" -->
 
 ----
 
@@ -728,10 +723,10 @@ mov eax(%rdi) # memory load
 
 ```
 latency = {
-  "affinity": [1], # pin to core 1
-  "layout": {
+  "affinity": [1],
+  "function": {
     "alignment": [16, 32],
-    "ordering": ["random"], # re-shuffle
+    "layout": ["random"],
   },
   "branch": ["predictable", "unpredictable"]
   "memory": {
@@ -1065,12 +1060,12 @@ Profile -> Benchmark -> Analyze -> Optimize
 
 ```cpp
 Will this change performance?
-- Running with 'profiling/instrumenting/tracing' enabled?
+- Running with 'profiling, instrumentation, tracing' enabled?
 - Running as a 'different user'?
-- Enabling 'debug symbols' on optimized build?
-- Adding 'unused function'?
+- Enabling 'debug symbols' in an optimized build?
+- Adding an 'unused function'?
 - Adding a 'try/catch' that never throws?
-- Adding a 'branch' which is never taken?
+- Adding a 'branch' that is never taken?
 - Removing 'dead code'?
 - ...
 ```
