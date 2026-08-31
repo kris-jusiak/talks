@@ -327,6 +327,18 @@ What if we could measure "what if?"
 
 ----
 
+#### Symbolic Benchmarking
+<!-- .element: style="text-align:left" -->
+
+```cpp
+... → assembly → analyze → control → execute
+```
+
+c++, rust, zig, ...
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
 ### Disclaimer
 <!-- .element: style="text-align:left" -->
 
@@ -341,15 +353,47 @@ pip install --user git+https://github.com/perf-labs/perf.git
 
 ----
 
-#### Symbolic Benchmarking
-<!-- .element: style="text-align:left" -->
+```
+perf info cpu --topology
+```
+
+<img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
+
+```
+12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
+```
+<!-- .element: style="text-align:left;font-size:14px" -->
+
+##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
+<!-- .element: style="font-size:22px; text-align:left; margin: 0px 5px;" -->
+
+----
+
+```
+perf tune latency
+```
+
+<!--```-->
+<!--# Address Space Layout Randomization (ASLR)-->
+<!--perf tune latency --config.aslr=1-->
+<!--```-->
+
+<img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
 
 ```cpp
-- assembly
-- analysis
-- control
-- execution
+Measured vs. Documented
+- instructions latency/rthroughput/...
+- dL1/dL2/dL3 load/store latency/bandwidth
+- branch misprediction penalty
+- max(µops/cycle) vs. dispatch width
+ ...
 ```
+
+<!--todo self checks measured vs documented (example. mca measured)-->
+
+https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
 
 ----
 
@@ -359,7 +403,9 @@ pip install --user git+https://github.com/perf-labs/perf.git
 ----
 
 ```cpp
-perf bench asm:'mov eax, 42'
+perf bench asm 'mov eax, 42'
+    --march sapphirerapids
+    --event cycles
 ```
 
 ```cpp
@@ -371,36 +417,6 @@ mov eax, 42 latency     100.0  0.11404  0.002010  0.112  0.112  0.116  0.116  0.
 
 https://uops.info/table.html
 <!-- .element: style="text-align:left; font-size: 22px;" -->
-
-----
-
-#### `binary`
-
-```
-perf bench region hot_begin..hot_end
-```
-
-```
-perf bench func send_order
-```
-
-```
-perf bench func send_order
-    --mode latency
-    --config latency.json
-    --config.memory.cache.dL1.hit_rate=25
-    --data data.json
-    --event cycles,instructions
-    --exec gcc16.out
-```
-
-```
-perf bench asm 'mov eax, 42' --march=skylake
-```
-
-```
-perf bench label send_order --file asm.s
-```
 
 ----
 
@@ -427,7 +443,14 @@ int main() {
 ----
 
 ```cpp
-// can't affect binary
+perf bench func send_msg
+    --exec gcc16.out
+    --event cycles,instructions
+```
+
+----
+
+```cpp
 #define PERF_LABEL(name)
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
@@ -438,20 +461,18 @@ int main() {
     ); name:
 ```
 
-```cpp
-auto main() {
-  // ...
-  PERF_LABEL(hot_begin);
-  puts("hello world")
-  PERF_LABEL(hot_end);
-  // ...
-}
-```
+can't affect binary
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
+```cpp
+PERF_LABEL(hot_begin);
+puts("hello world")
+PERF_LABEL(hot_end);
 ```
-0x000 main:
+
+```
 0x000   push    rax
 0x000   lea     rdi, [rip + .L.str]
 0x000   call    puts@PLT
@@ -466,8 +487,16 @@ objdump -sj .perf.label <file>
 
 ----
 
+```
+perf bench region hot_begin..hot_end
+```
+
+----
+
 ##### `analysis`
 <!-- .element: style="text-align:left" -->
+
+----
 
 ```cpp
 from -> to
@@ -495,38 +524,14 @@ https://github.com/angr/angr
 
 <!--[noise, bias, implementation details]-->
 
-<table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
-  <tr>
-  <td>
-    <img src="images/zen5.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-  </td>
-  <td>
-    <img src="images/linux.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-  </td>
-  <td>
-    <img src="images/code.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
-  </td>
-</tr>
-</table>
+<img src="images/zen5.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+<img src="images/linux.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
+<img src="images/code.png" style="width: 26%; background:none; border:none; box-shadow:none;" />
 
-https://chipsandcheese.com | https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-```cpp
-std::array<core<branch, cache>, 64u> cpus{};
-// numa
-
-int main() {
-    // ...
-}
-```
-
-<!--todo question what about noise enviornments-->
-
-https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
+https://chipsandcheese.com
+<!-- .element: style="text-align:left; font-size:16px; margin: 5px 0px;" -->
+https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; font-size:16px; margin: 5px 0px" -->
 
 ----
 
@@ -553,43 +558,19 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 ----
 
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
+```cpp
+std::array<core<branch, cache>, 64u> cpus{};
+// numa
 
-```asm
-mov eax(%rdi) # memory load
-# ... todo
-```
-
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-```
-latency = {
-  "affinity": [1],
-  "function": {
-    "alignment": [16, 32],
-    "layout": ["random"],
-  },
-  "branch": ["predictable", "unpredictable"]
-  "memory": {
-    "heap": ["random"],
-    "stack": ["random"],
-    "cache": {
-      "dL1":  [{"hit_tate":[25, 50, 75, 100]}],
-      "dL2":  [{"hit_tate":[75, 100]}],
-      "dL3":  [{"hit_tate":100}],
-      "iL1":  [{"hit_tate":100}],
-      "iL2":  [{"hit_tate":100}],
-      "dTLB": [{"hit_tate":100}],
-      "iTLB": [{"hit_tate":100}],
-    }
-  }
+int main() {
+    // ...
 }
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+
+<!--todo question what about noise enviornments-->
+
+https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -628,9 +609,6 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
-https://www.akkadia.org/drepper/cpumemory.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
 ----
 
 #### Cache effects
@@ -649,6 +627,9 @@ RAM: 294ns
 
 memory effects (heap pollution)
 <!-- .element: style="text-align:left; font-size:20px;" -->
+
+https://www.akkadia.org/drepper/cpumemory.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -675,69 +656,82 @@ perf bench snippet.s:add --data data.json
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-std::array<entry, branch> btb(10'000);           // global per core
-                                                   // (~10'000 1/0 branches)
-if (auto it = btb.find(address_ptr); it ! = btb.end()) {                       // branch aliasing
-    auto&& entry = it->allocate();      // never used - no btb entry
-    if (entry.empty() and entry().is_backward) [[likely]] {   // for loops
-        // taken
-    }
-}
-auto predict(uintptr_t ip) {
-    auto& entry = btb[hash(ip)];        // branch aliasing
+std::array<Branch<10'000'>, 1 << 12> btb{}; // per core
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
-    if (entry.history.empty()) {
-        return NOT_TAKEN;
+```cpp
+auto predict(Branch branch) {
+    if (auto& entry = btb[hash(branch.ip)]; // branch aliasing
+        entry.valid end entry.tag == branch.ip) {
+        return e.history.predict();
     }
-
-    if (entry.is_backward) {
-        return TAKEN;
-    }
-
-    return entry.history.predict(ip);
+    return branch.target < branch.ip ? TAKEN : NOT_TAKEN;
 }
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
-<!-- todo for different data each iteration-->
+```cpp
+auto update(Branch branch, bool taken) {
+    auto& entry = btb[hash(br.ip)];
+    if (not entry.valid or entry.tag != branch.ip) {
+        if (not taken) {
+            return; // no BTB entry needed
+        }
+
+        entry = {.valid = true, .ip = branch.ip, target = branch.target};
+    }
+    entry.history.update(taken);
+}
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+----
+
+```cpp
+measure(repeat(vary(fn))
+```
 
 ----
 
 #### Layout effects
+<!-- .element: style="text-align:left" -->
 
+```cpp
 unused functions
-
 re-shuffle
+```
 
 ----
 
-#### Control
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```
-perf tune latency
+# latency.json
+{
+  "affinity": [1],
+  "function": {
+    "alignment": [16, 32],
+    "layout": ["random"],
+  },
+  "branch": ["predictable", "unpredictable"]
+  "memory": {
+    "heap": ["random"],
+    "stack": ["random"],
+    "cache": {
+      "dL1":  [{"hit_tate":[25, 50, 75, 100]}],
+      "dL2":  [{"hit_tate":[75, 100]}],
+      "dL3":  [{"hit_tate":100}],
+      "iL1":  [{"hit_tate":100}],
+      "iL2":  [{"hit_tate":100}],
+      "dTLB": [{"hit_tate":100}],
+      "iTLB": [{"hit_tate":100}],
+    }
+  }
+}
 ```
-
-<!--```-->
-<!--# Address Space Layout Randomization (ASLR)-->
-<!--perf tune latency --config.aslr=1-->
-<!--```-->
-
-<img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
-
-```cpp
-Measured vs. Documented
-- instructions latency/rthroughput/...
-- dL1/dL2/dL3 load/store latency/bandwidth
-- branch misprediction penalty
-- max(µops/cycle) vs. dispatch width
- ...
-```
-
-<!--todo self checks measured vs documented (example. mca measured)-->
-
-https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -762,24 +756,18 @@ Performance Monitoring Unit (PMU)
 #### Latency vs. Throughput
 <!-- .element: style="text-align:left" -->
 
-```
-latency
-  └─ Time it takes for a single operation
-```
-
-```
-throughput
-  └─ Total number of operations
+```cpp
+Latency
+ ├─ Time it takes for a single operation to complete
+ └─ ns/op
 ```
 
+```cpp
+Throughput
+ ├─ Total number of operations completed in a given amount of time
+ ├─ ops/s, Gb/s, ...
+ └─ ns/ops - reciprocal throughput = inverse throughput
 ```
-auto latency     = time / operations;          // ns/op
-auto throughput  = operations / seconds(time); // ops/s
-auto rthroughput = time / operations;          // ns/ops
-```
-
-rthroughput = reciprocal throughput = inverse throughput
-<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -793,7 +781,7 @@ https://qbaylogic.com/cpu-vs-fpga
 
 ----
 
-#### Benchmarking harness
+#### Latency vs. Throughput
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -817,43 +805,26 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 ----
 
-#### perf info
-<!-- .element: style="text-align:left" -->
-
-```
-perf info metadata --exec a.out
-perf info cpu --topology
-```
-
-<td><img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" /></td>
-
-----
-
-#### [perf plot] # ECDF
+#### perf plot
 <!-- .element: style="text-align:left" -->
 
 ```
 perf view
-perf plot --baseline
+perf plot --baseline # ECDF
 ```
-
-<!--todo ecdf-->
 
 ----
 
-#### Analyzing/Testing
+#### Analysis / Testing
 <!-- .element: style="text-align:left" -->
 
-```cpp
-jupyter notebook
-analyzing (mca,uica)
-    asm/timeline/resource_pressure
-```
+<img src="images/notebook.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
 
-```cpp
-testing
-    perf.bench(asm).instrucitons < 10
-```
+<!--asm/timeline/resource_pressure-->
+<!--perf.bench(asm).instrucitons < 10-->
+
+https://jupyter.org
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
@@ -861,7 +832,7 @@ testing
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-Profile → Benchmark → Analyze → Optimize ↻
+profile → benchmark → analyze → optimize ↻
 ```
 
 ----
