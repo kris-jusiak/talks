@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <title>If You Can't Measure It, You Can't Improve It</title>
+    <title>if you can't measure it, you can't improve it</title>
 
     <link rel="stylesheet" href="reveal.js/css/reveal.css">
     <link rel="stylesheet" href="reveal.js/css/theme/white.css" id="theme">
@@ -17,11 +17,11 @@
     </style>
 
     <script>
-      var link = document.createElement( 'link' );
+      var link = document.createelement( 'link' );
       link.rel = 'stylesheet';
       link.type = 'text/css';
       link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
-      document.getElementsByTagName( 'head' )[0].appendChild( link );
+      document.getelementsbytagname( 'head' )[0].appendchild( link );
 
       function set_address(self, remote, local) {
         if (window.location.search.match("local")) {
@@ -51,27 +51,21 @@
 
 ----
 
-### Motivation
+### motivation
 <!-- .element: style="text-align:left" -->
 
 ----
 
 
-##### "`Perf or Nah`?"
-<!-- .element: style="text-align:left;" -->
+##### "`perf or nah`?" <span style="font-size:0.5em;">what affects performance? if so, how much and why?</span>
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - What affects performance? If so, how much and why?
-<!-- .element: style="text-align:left; font-size: 20px;" -->
+<!-- .element: style="text-align:left;" -->
 
 ```cpp
 Adding a 'try/catch' that never throws?
 Adding a 'branch' that is never taken?
 Adding an 'unused function'?
 Removing 'dead code'?
-```
-<!-- .element: class="fragment" data-fragment-index="1" -->
-
-```cpp
 Enabling 'debug symbols' in an optimized build?
 Running with 'instrumentation, tracing, profiling' enabled?
 Running as a 'different user'?
@@ -82,23 +76,23 @@ Running as a 'different user'?
 
 ----
 
-#### Performance?
+#### performance?
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
   <tr>
   <td>
   <pre style="font-size:14px">
-(~) Frequency
- - Base:  3–5 GHz
- - Boost: 5–6 GHz
- - Overclocked: ~9 GHz</pre>
+(~) frequency
+ - base:  3–5 ghz
+ - boost: 5–6 ghz
+ - overclocked: ~9 ghz</pre>
   <pre style="font-size:14px">
-(⬆️) Transistors
- - More Cores
- - More Caches
- - Improved Execution
- - Improved Parallelism&nbsp;
+(⬆️) transistors
+ - more cores
+ - more caches
+ - improved execution
+ - improved parallelism&nbsp;
  - ...
 </pre>
   </td>
@@ -111,82 +105,122 @@ Running as a 'different user'?
 </tr>
 </table>
 
-<!--#### Performance is Not a Number-->
-<!--#### Performance is Not Normally Distributed-->
-<!--#### Performance is Not Scaling with Transistors Size-->
+<!--#### performance is not a number-->
+<!--#### performance is not normally distributed-->
+<!--#### performance is not scaling with transistors size-->
 
 https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
 
 ----
 
-#### "If You Can't Measure It, You Can't Improve It!"
+#### "if you can't measure it, you can't improve it!"
 <!-- .element: style="text-align:left;" -->
 
-— Lord Kelvin (William Thomson)
+— lord kelvin (william thomson)
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-### Always measure?!
+### always measure?!
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-- What? How? When?
+- what? how? when?
 ```
 
 <table>
 <tr>
 <td><img src="images/perf_map.png" style="width: 2100px; background:none; border:none; box-shadow:none;" /></td>
 <td><img src="images/bpf.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
 </tr>
 </table>
 
 https://www.brendangregg.com
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
-<!--- What about noisy environments? What hardware I have to support?-->
-<!--- Multiple runs?-->
-<!--- Isolate bias?-->
-<!--- Wanna be fast has to be in the future-->
-<!--- Increasing {instructions, µops} per cycle-->
-<!--- Reducing overall instruction count-->
+<!--- what about noisy environments? what hardware i have to support?-->
+<!--- multiple runs?-->
+<!--- isolate bias?-->
+<!--- wanna be fast has to be in the future-->
+<!--- increasing {instructions, µops} per cycle-->
+<!--- reducing overall instruction count-->
 
 ----
 
-### Always measure?!
+### always measure?!
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-- Sampling
-- Instrumenting
-- Tracing
-- Simulating
-- Benchmarking
-- ...
+├─ Top-down Microarchitecture Analysis Method
+├─ Sampling
+├─ Instrumenting
+├─ Tracing
+├─ Simulating
+├─ Benchmarking
+└─ ...
 ```
+<!-- .element: style="text-align:left; font-size:19px;" -->
+
+```cpp
+Performance Monitoring Unit
+  └─ CPU                     intel        amd          arm
+     ├─ timestamp Counter    rdtsc/rdtscp rdtsc/rdtscp cntvct_el0/cntpct_el0
+     ├─ Performance Counters rdpmc        rdpmc        pmccntr_el0/pmevcntrn_el0
+     ├─ Event sampling       pebs         ibs          spe
+     ├─ Branch Recording     lbr          lbr          brbe
+     └─ processor Trace      pt           -            etm (coresight)
+```
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
 
-#### Sampling
+#### top-down microarchitecture analysis method
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/td.png" style="width: 55%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+</p>
+
+
+```
+perf stat --topdown -i 1000 ./a.out
+perf record -e cycles:ppp -- ./a.out
+perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
+```
+
+#### [https://www.intel.com/.../top-down-microarchitecture-analysis-method.html](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-1/top-down-microarchitecture-analysis-method.html)
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### sampling
 <!-- .element: style="text-align:left;" -->
 
 ```
 auto sample(binary, frequency(1000)) -> samples;
 ```
 
-----
-
-#### Sampling
-<!-- .element: style="text-align:left;" -->
 
 ```cpp
-Performance Monitoring Unit
-  └─ CPU                     Intel        AMD          ARM
-     ├─ Event Sampling       PEBS         IBS          SPE
-     └─ Branch Recording     LBR          LBR          BRBE
+perf record
 ```
-<!-- .element: style="text-align:left; font-size:19px;" -->
+
+```cpp
+- affects performance
+- regions not functions
+- inlining
+- collecting data distributions
+```
+
+```cpp
+# sampling (freq/period) | call-stack (lbr) | count
+main;parse;tokenize 5
+main;parse;analyze 3
+main;render 7
+```
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 **linux-perf**  - https://perf.wiki.kernel.org
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
@@ -201,67 +235,11 @@ gperftools  - https://github.com/gperftools/gperftools
 
 ----
 
-#### Sampling
+#### instrumentation
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-Problems
-- regions not functions
-- affects performance
-- inlining
-
-Good for
-- monitoring - grafana
-- collecting data distributions
-```
-
-----
-
-<img src="images/flamegraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
-
-```cpp
-# sampling (freq/period) | call-stack (LBR) | count
-main;parse;tokenize 5
-main;parse;analyze 3
-main;render 7
-```
-<!-- .element: style="text-align:left" -->
-
-https://github.com/brendangregg/FlameGraph
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Top-down Microarchitecture Analysis Method
-<!-- .element: style="text-align:left" -->
-
-<img src="images/td.png" style="width: 75%; background:none; border:none; box-shadow:none;margin: 0 0;" />
-
-#### [https://www.intel.com/.../top-down-microarchitecture-analysis-method.html](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-1/top-down-microarchitecture-analysis-method.html)
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-```
-perf stat --topdown -I 1000 ./a.out
-```
-
-```
-perf record -e cycles:ppp -- ./a.out
-
-perf report \
-    --start-address=0x7f1234000000
-    --stop-address=0x7f1234002000
-```
-
-----
-
-#### Instrumenting
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-rdtsc()
-rdtscp()
+rdtsc() / rdtscp()
 ```
 
 ```cpp
@@ -270,19 +248,6 @@ function:
 ret
 // nop
 ```
-
-----
-
-#### Instrumenting
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-Performance Monitoring Unit
-  └─ CPU                     Intel        AMD          ARM
-     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
-     └─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
-```
-<!-- .element: style="text-align:left; font-size:19px;" -->
 
 llvm-xray   - https://llvm.org/docs/xray.html
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
@@ -295,59 +260,37 @@ coz         - https://github.com/plasma-umass/coz
 
 ----
 
-#### Instrumenting
+#### simulating
 <!-- .element: style="text-align:left;" -->
 
-----
-
-#### Simulating
-<!-- .element: style="text-align:left;" -->
+```cpp
+llvm-mca example
+uica example
+callgrind
+```
 
 callgrind   - https://valgrind.org/docs/manual/cl-manual.html
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-llvm-mca    - https://llvm.org/docs/CommandGuide/llvm-mca.html
+llvm-mca    - https://llvm.org/docs/commandguide/llvm-mca.html
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-osaca       - https://github.com/RRZE-HPC/OSACA
+osaca       - https://github.com/rrze-hpc/osaca
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
 uica        - https://uica.uops.info
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
 
 ----
 
-#### Simulating
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-```
-
-----
-
-#### Tracing
-<!-- .element: style="text-align:left" -->
-
-```cpp
-Performance Monitoring Unit
-  └─ CPU                     Intel        AMD          ARM
-     └─ Processor Trace      PT           -            ETM (CoreSight)
-```
-<!-- .element: style="text-align:left; font-size:19px;" -->
-
-linux-perf - https://perf.wiki.kernel.org
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-
-----
-
-#### Tracing
+#### tracing
 <!-- .element: style="text-align:left" -->
 
 ```
 perf probe --exec a.out --funcs
 perf probe --exec --add"..."
-perf record -e a.out:probe -aR sleep 1
+perf record -e a.out:probe -ar sleep 1
 ```
 
 ```
-perf stat -e exe:probe -p $(pidof exe) -I 1000
+perf stat -e exe:probe -p $(pidof exe) -i 1000
 ```
 
 ```
@@ -366,81 +309,78 @@ perf report --itrace=10nsbg1024 --call-graph fractal
 
 ----
 
-##### `"what if" rule`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-What if cache will not be hot?
-What if branch will not be predicted?
-What if code/data layout changes?
-What if data spikes?
-What if ...?
-```
-
-----
-
-#### Benchmarking
+#### benchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 auto bench(auto code) -> measurements;
 ```
 
+```
+- iteration speed
+- isolation
+- understanding
+- tuning
+- correlation issues
+- hard (latency vs throughput, noise, bias, hardware effects)
+```
+
 linux-perf - https://perf.wiki.kernel.org
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-likwid           - https://github.com/RRZE-HPC/likwid
+likwid           - https://github.com/rrze-hpc/likwid
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
 
-Google Benchmark - https://github.com/google/benchmark
+google benchmark - https://github.com/google/benchmark
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-Nanobench        - https://github.com/martinus/nanobench
+nanobench        - https://github.com/martinus/nanobench
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-Celero           - https://github.com/DigitalInBlue/Celero
+celero           - https://github.com/digitalinblue/celero
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
 
 ----
 
-#### Benchmarking
-<!-- .element: style="text-align:left" -->
-
-```
-- Iteration speed
-- Isolation
-- Understanding
-- Tuning
-- Correlation issues
-- Hard (latency vs throughput, noise, bias, hardware effects)
-```
-
-----
-
-### Solution?
+##### `"what if" rule`
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-What if we could measure "what if?"
+what if cache will not be hot?
+what if branch will not be predicted?
+what if code/data layout changes?
+what if data spikes?
+what if ...?
 ```
 
 ----
 
-#### Symbolic Benchmarking
+
+### solution?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-... → assembly → analyze → control → execute
+what if we could measure "what if?"
 ```
-
-`cpp, rust, zig, ...`
-<!-- .element: style="text-align:right; font-size:18px;" -->
 
 ----
 
-### Disclaimer
+#### symbolic benchmarking
+<!-- .element: style="text-align:left" -->
+
+```cpp
+machine code // cpp, rust, zig, ...
+  → symbolic execution
+      → solver-guided inputs generation
+          → bias-mitigated native execution
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+----
+
+### disclaimer
 <!-- .element: style="text-align:left" -->
 
 ```
-Focused on x86-64/linux
-Powered by linux-perf + perf-labs/perf
+focused on x86-64/linux
+powered by linux-perf + perf-labs/perf
 ```
 <!-- .element: style="text-align:left" -->
 
@@ -449,135 +389,42 @@ pip install --user git+https://github.com/perf-labs/perf.git
 
 ----
 
-##### `assembly`
+##### `symbolic execution`
 <!-- .element: style="text-align:left" -->
-
-----
-
-```cpp
-perf bench asm 'mov eax, 42'
-    --march sapphirerapids
-    --event cycles
-```
-
-```cpp
-target      mode
-mov eax, 42 latency     100.0  0.11404  0.002010  0.112  0.112  0.116  0.116  0.116
-            throughput  100.0  0.11436  0.001977  0.112  0.112  0.116  0.116  0.116
-```
-<!-- .element: style="text-align:left; font-size: 19px;" -->
-
-https://uops.info/table.html
-<!-- .element: style="text-align:left; font-size: 22px;" -->
-
-----
-
-```cpp
-auto fizz_buzz(auto n) {
-    // ..
-}
-```
-
-```cpp
-template auto fizz_buzz(int) -> int;
-```
-
-----
-
-```cpp
-perf bench func send_msg
-    --exec gcc16.out
-    --event cycles,instructions
-```
-
-----
-
-```cpp
-#define PERF_LABEL(name)
-    asm volatile(
-        ".pushsection perf.label, \"aw?\", @progbits\n"
-        ".quad 0f\n"
-        ".asciz \"" #name "\"\n"
-        ".popsection\n"
-        "0:\n"
-    ); name:
-```
-
-can't affect binary
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-```cpp
-PERF_LABEL(hot_begin);
-puts("hello world")
-PERF_LABEL(hot_end);
-```
-
-```
-0x000   push    rax
-0x000   lea     rdi, [rip + .L.str]
-0x000   call    puts@PLT
-0x000   xor     eax, eax
-0x000   pop     rcx
-0x000   ret
-```
-
-```
-objdump -sj .perf.label <file>
-```
-
-```
-perf info metadata --exec <file>
-- hot_begin
-- hot_end
-- foo
-```
-
-----
-
-```
-perf bench region hot_begin..hot_end
-```
-
-----
-
-##### `analysis`
-<!-- .element: style="text-align:left" -->
-
-```
-Symbolic Execution
-```
 
 ----
 
 ```cpp
 const char* check_value(int x) {
     if (x > 10) {
-        return "Greater";
+        return "greater";
     } else {
-        return "Lesser or Equal";
+        return "lesser or equal";
     }
 }
-// Path 1: X > 10 leading to the result “Greater”
-// Path 2: X <= 10 leading to the result “Lesser or Equal”
+// path 1: x > 10 leading to the result “greater”
+// path 2: x <= 10 leading to the result “lesser or equal”
 ```
 
 ```cpp
-void helloWorld() {
-    printf("Hello, World!\n");
+void helloworld() {
+    printf("hello, world!\n");
 }
-void firstCall(uint32_t num) {
+void firstcall(uint32_t num) {
     if (num > 50 && num <100)
-        HelloWorld();
+        helloworld();
 }
 ```
+
+https://gitlab.com/x86-psabis/x86-64-abi/-/jobs/artifacts/master/raw/x86-64-abi/abi.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
 ```python
 def analyze(project, start, end):
     state = project.factory.blank_state(addr=start)
+    mem = {}
 
     def on_mem_read(state):
         mem["mem_read"] = (addr, length, expr)
@@ -585,31 +432,39 @@ def analyze(project, start, end):
     def on_mem_write(state):
         mem["mem_write"] = (addr, length, expr)
 
-    state.inspect.b("mem_read",  when=BP_AFTER, action=on_mem_read)
-    state.inspect.b("mem_write", when=BP_BEFORE, action=on_mem_write)
+    state.inspect.b("mem_read",  when=bp_after,  action=on_mem_read)
+    state.inspect.b("mem_write", when=bp_before, action=on_mem_write)
 
     simgr = project.factory.simgr(state)
     simgr.explore(find=end)
 
-    return mem, simgr.found + simgr.active + simgr.deadended:
+    return simgr.found + simgr.active + simgr.deadended, mem
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
-
-https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 https://docs.angr.io/en/latest/core-concepts/symbolic.html
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
+##### `state-guided setup`
+<!-- .element: style="text-align:left" -->
+
+----
+
 ```python
-obj = Elf(project.loader)
+obj = elf(project.loader)
 obj.map_elf()
 obj.setup_stack()
+page = mmap.mmap(
+    -1,
+    len(code),
+    prot=prot_read | prot_write | prot_exec,
+    flags=map_private | map_anonymous
+)
+```
 
-page = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC, flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS)
-
+```python
 solutions = analyze(project, start, end)
 for solution in solutions:
     for name, sym in solution["reg"].items():
@@ -620,11 +475,6 @@ for solution in solutions:
 ```cpp
 assumptions: use perf.data
 ```
-
-----
-
-##### `control`
-<!-- .element: style="text-align:left" -->
 
 ----
 
@@ -843,45 +693,22 @@ lfence
 ```
 
 ```
-asm Nx2000 - Nx1000
+add mov eax, 42            add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42     -      add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42
+add mov eax, 42
+add mov eax, 42
+add mov eax, 42
 ```
 
 https://github.com/andreas-abel/nanoBench
 <!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 <!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-
-----
-
-#### perf plot
-<!-- .element: style="text-align:left" -->
-
-```
-perf view
-perf plot --baseline # ECDF
-```
-
-----
-
-#### Analysis / Testing
-<!-- .element: style="text-align:left" -->
-
-<img src="images/notebook.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
-
-<!--asm/timeline/resource_pressure-->
-<!--perf.bench(asm).instrucitons < 10-->
-
-https://jupyter.org
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-
-----
-
-#### `"perf" mantra`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-profile → benchmark → analyze → optimize ↻
-```
 
 ----
 
@@ -937,6 +764,94 @@ perf tune latency # controlled chaos
 
 https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```cpp
+perf bench asm 'mov eax, 42'
+    --march sapphirerapids
+    --event cycles
+```
+
+```cpp
+target      mode
+mov eax, 42 latency     100.0  0.11404  0.002010  0.112  0.112  0.116  0.116  0.116
+            throughput  100.0  0.11436  0.001977  0.112  0.112  0.116  0.116  0.116
+```
+<!-- .element: style="text-align:left; font-size: 19px;" -->
+
+https://uops.info/table.html
+<!-- .element: style="text-align:left; font-size: 22px;" -->
+
+----
+
+```cpp
+auto fizz_buzz(auto n) {
+    // ..
+}
+```
+
+```cpp
+template auto fizz_buzz(int) -> int;
+```
+
+----
+
+```cpp
+perf bench func send_msg
+    --exec gcc16.out
+    --event cycles,instructions
+```
+
+----
+
+```cpp
+#define PERF_LABEL(name)
+    asm volatile(
+        ".pushsection perf.label, \"aw?\", @progbits\n"
+        ".quad 0f\n"
+        ".asciz \"" #name "\"\n"
+        ".popsection\n"
+        "0:\n"
+    ); name:
+```
+
+can't affect binary
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```cpp
+PERF_LABEL(hot_begin);
+puts("hello world")
+PERF_LABEL(hot_end);
+```
+
+```
+0x000   push    rax
+0x000   lea     rdi, [rip + .L.str]
+0x000   call    puts@PLT
+0x000   xor     eax, eax
+0x000   pop     rcx
+0x000   ret
+```
+
+```
+objdump -sj .perf.label <file>
+```
+
+```
+perf info metadata --exec <file>
+- hot_begin
+- hot_end
+- foo
+```
+
+----
+
+```
+perf bench region hot_begin..hot_end
+```
 
 ----
 
@@ -1003,6 +918,16 @@ constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
 
 ```cpp
 perf bench enum_to_string -x gcc26.out
+```
+
+----
+
+#### perf plot
+<!-- .element: style="text-align:left" -->
+
+```
+perf view
+perf plot --baseline # ECDF
 ```
 
 ----
@@ -1129,6 +1054,28 @@ std::string_view v5::enum_to_string(enum auto value) {
     // policy
     // [[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
 }
+```
+
+----
+
+#### Analysis / Testing
+<!-- .element: style="text-align:left" -->
+
+<img src="images/notebook.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
+
+<!--asm/timeline/resource_pressure-->
+<!--perf.bench(asm).instrucitons < 10-->
+
+https://jupyter.org
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+
+----
+
+#### `"perf" mantra`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+profile → benchmark → analyze → optimize ↻
 ```
 
 ----
