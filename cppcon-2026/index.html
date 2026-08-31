@@ -171,15 +171,38 @@ https://www.brendangregg.com
 #### Sampling
 <!-- .element: style="text-align:left;" -->
 
+```
+auto sample(binary, frequency(1000)) -> samples;
+```
+
+----
+
+#### Sampling
+<!-- .element: style="text-align:left;" -->
+
 ```cpp
-linux-perf  - https://perf.wiki.kernel.org
-intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
-amd-uprof   - https://www.amd.com/en/developer/uprof.html
-dtrace      - https://github.com/opendtrace
-gperftools  - https://github.com/gperftools/gperftools
-...
+Performance Monitoring Unit
+  └─ CPU                     Intel        AMD          ARM
+     ├─ Event Sampling       PEBS         IBS          SPE
+     └─ Branch Recording     LBR          LBR          BRBE
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
+
+**linux-perf**  - https://perf.wiki.kernel.org
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+amd-uprof   - https://www.amd.com/en/developer/uprof.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+dtrace      - https://github.com/opendtrace
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+gperftools  - https://github.com/gperftools/gperftools
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+
+----
+
+#### Sampling
+<!-- .element: style="text-align:left;" -->
 
 ```cpp
 Problems
@@ -191,6 +214,21 @@ Good for
 - monitoring - grafana
 - collecting data distributions
 ```
+
+----
+
+<img src="images/flamegraph.png" style="width: 75%; height=600px; background:none; border:none; box-shadow:none;" />
+
+```cpp
+# sampling (freq/period) | call-stack (LBR) | count
+main;parse;tokenize 5
+main;parse;analyze 3
+main;render 7
+```
+<!-- .element: style="text-align:left" -->
+
+https://github.com/brendangregg/FlameGraph
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -222,39 +260,80 @@ perf report \
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-llvm-xray   - https://llvm.org/docs/xray.html
-tracy       - https://github.com/wolfpld/tracy
-bcc         - https://github.com/iovisor/bcc
-coz         - https://github.com/plasma-umass/coz
-...
+rdtsc()
+rdtscp()
+```
+
+```cpp
+function:
+// nop 
+ret
+// nop
+```
+
+----
+
+#### Instrumenting
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+Performance Monitoring Unit
+  └─ CPU                     Intel        AMD          ARM
+     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+     └─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
+llvm-xray   - https://llvm.org/docs/xray.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+tracy       - https://github.com/wolfpld/tracy
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+bcc         - https://github.com/iovisor/bcc
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+coz         - https://github.com/plasma-umass/coz
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
 
- ```cpp
-      function:
-        // nop # -fxray-instrument
-        ret
-        // nop # -fxray-instrument
+----
 
-      int main() {
-        // ...
-        auto handler = [](int func_id, XRayEntryType entry) {
-          if (entry == XRayEntryType::ENTRY) {
-            profiler.start();
-          } else {
-            profiler.stop();
-          }
-        };
-        __xray_set_handler(+handler);
-        __xray_patch(); // nop -> jmp &handler
-      }
+#### Instrumenting
+<!-- .element: style="text-align:left;" -->
+
+----
+
+#### Simulating
+<!-- .element: style="text-align:left;" -->
+
+callgrind   - https://valgrind.org/docs/manual/cl-manual.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+llvm-mca    - https://llvm.org/docs/CommandGuide/llvm-mca.html
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+osaca       - https://github.com/RRZE-HPC/OSACA
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+uica        - https://uica.uops.info
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+
+----
+
+#### Simulating
+<!-- .element: style="text-align:left;" -->
+
+```cpp
 ```
-<!-- .element: style="font-size:21px;" -->
 
-```sh
-clang++ -fxray-instrument -fxray-function-list=function.txt ...
+----
+
+#### Tracing
+<!-- .element: style="text-align:left" -->
+
+```cpp
+Performance Monitoring Unit
+  └─ CPU                     Intel        AMD          ARM
+     └─ Processor Trace      PT           -            ETM (CoreSight)
 ```
+<!-- .element: style="text-align:left; font-size:19px;" -->
+
+linux-perf - https://perf.wiki.kernel.org
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
 
 ----
 
@@ -268,10 +347,7 @@ perf record -e a.out:probe -aR sleep 1
 ```
 
 ```
-perf stat
-    -e exe:probe
-    -p $(pidof exe)
-    -I 1000
+perf stat -e exe:probe -p $(pidof exe) -I 1000
 ```
 
 ```
@@ -285,9 +361,7 @@ perf record
 ```
 
 ```
-perf report
-    --itrace=10nsbg1024
-    --cal-graph fractal
+perf report --itrace=10nsbg1024 --call-graph fractal
 ```
 
 ----
@@ -296,10 +370,10 @@ perf report
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-What if data bursts?
 What if cache will not be hot?
 What if branch will not be predicted?
 What if code/data layout changes?
+What if data spikes?
 What if ...?
 ```
 
@@ -309,11 +383,25 @@ What if ...?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-likwid           - https://github.com/RRZE-HPC/likwid
-Google Benchmark - https://github.com/google/benchmark
-Nanobench        - https://github.com/martinus/nanobench
-Celero           - https://github.com/DigitalInBlue/Celero
+auto bench(auto code) -> measurements;
 ```
+
+linux-perf - https://perf.wiki.kernel.org
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+likwid           - https://github.com/RRZE-HPC/likwid
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+
+Google Benchmark - https://github.com/google/benchmark
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+Nanobench        - https://github.com/martinus/nanobench
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+Celero           - https://github.com/DigitalInBlue/Celero
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
+
+----
+
+#### Benchmarking
+<!-- .element: style="text-align:left" -->
 
 ```
 - Iteration speed
@@ -322,10 +410,6 @@ Celero           - https://github.com/DigitalInBlue/Celero
 - Tuning
 - Correlation issues
 - Hard (latency vs throughput, noise, bias, hardware effects)
-```
-
-```cpp
-auto bench(auto code) -> measurements;
 ```
 
 ----
@@ -514,7 +598,7 @@ def analyze(project, start, end):
 https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
-https://github.com/angr/angr
+https://docs.angr.io/en/latest/core-concepts/symbolic.html
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
@@ -714,19 +798,6 @@ re-shuffle
 
 ##### `execution`
 <!-- .element: style="text-align:left" -->
-
-----
-
-```cpp
-Performance Monitoring Unit (PMU)
-  └─ CPU                     Intel        AMD          ARM
-     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
-     ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
-     ├─ Event Sampling       PEBS         IBS          SPE
-     ├─ Branch Recording     LBR          LBR          BRBE
-     └─ Processor Trace      PT           -            ETM (CoreSight)
-```
-<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
 
