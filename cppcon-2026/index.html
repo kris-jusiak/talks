@@ -56,8 +56,12 @@
 
 ----
 
-#### "Perf or Nah"?
-<!-- .element: style="text-align:left" -->
+
+##### "`Perf or Nah`?"
+<!-- .element: style="text-align:left;" -->
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - What affects performance? If so, how much and why?
+<!-- .element: style="text-align:left; font-size: 18px;" -->
 
 ```cpp
 Adding a 'try/catch' that never throws?
@@ -71,11 +75,10 @@ Removing 'dead code'?
 Enabling 'debug symbols' in an optimized build?
 Running with 'instrumentation, tracing, profiling' enabled?
 Running as a 'different user'?
+...
 ```
-<!-- .element: class="fragment" data-fragment-index="3" -->
+<!-- .element: class="fragment" data-fragment-index="2" -->
 
-#### What affects performance? If so, how much and why?
-<!-- .element: style="text-align:left; font-size:26px;" -->
 
 ----
 
@@ -129,9 +132,7 @@ https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-- What?
-- How?
-- When?
+- What? How? When?
 ```
 
 <table>
@@ -153,17 +154,30 @@ https://www.brendangregg.com
 
 ----
 
+### Always measure?!
+<!-- .element: style="text-align:left;" -->
+
 ```cpp
-└─ Sampling
-     linux-perf  - https://perf.wiki.kernel.org
-     intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
-     amd-uprof   - https://www.amd.com/en/developer/uprof.html
-     dtrace      - https://github.com/opendtrace
-     gperftools  - https://github.com/gperftools/gperftools
-     likwid      - https://github.com/RRZE-HPC/likwid
-     bcc         - https://github.com/iovisor/bcc
-     coz         - https://github.com/plasma-umass/coz
-     ...
+- Sampling
+- Instrumenting
+- Tracing
+- Simulating
+- Benchmarking
+- ...
+```
+
+----
+
+#### Sampling
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+linux-perf  - https://perf.wiki.kernel.org
+intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+amd-uprof   - https://www.amd.com/en/developer/uprof.html
+dtrace      - https://github.com/opendtrace
+gperftools  - https://github.com/gperftools/gperftools
+...
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
@@ -190,9 +204,6 @@ Good for
 
 ----
 
-#### Sampling
-<!-- .element: style="text-align:left" -->
-
 ```
 perf stat --topdown -I 1000 ./a.out
 ```
@@ -207,11 +218,15 @@ perf report \
 
 ----
 
+#### Instrumenting
+<!-- .element: style="text-align:left;" -->
+
 ```cpp
-└─ Instrumenting
-     llvm-xray    - https://llvm.org/docs/xray.html
-     tracy        - https://github.com/wolfpld/tracy
-     ...
+llvm-xray   - https://llvm.org/docs/xray.html
+tracy       - https://github.com/wolfpld/tracy
+bcc         - https://github.com/iovisor/bcc
+coz         - https://github.com/plasma-umass/coz
+...
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
@@ -287,10 +302,6 @@ What if branch will not be predicted?
 What if code/data layout changes?
 What if ...?
 ```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-What happens when the assumptions change?
-<!-- .element: style="text-align:left; font-size:28px;" -->
 
 ----
 
@@ -298,6 +309,7 @@ What happens when the assumptions change?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+likwid           - https://github.com/RRZE-HPC/likwid
 Google Benchmark - https://github.com/google/benchmark
 Nanobench        - https://github.com/martinus/nanobench
 Celero           - https://github.com/DigitalInBlue/Celero
@@ -334,8 +346,8 @@ What if we could measure "what if?"
 ... → assembly → analyze → control → execute
 ```
 
-c++, rust, zig, ...
-<!-- .element: style="text-align:left; font-size:22px;" -->
+`cpp, rust, zig, ...`
+<!-- .element: style="text-align:right; font-size:18px;" -->
 
 ----
 
@@ -350,50 +362,6 @@ Powered by linux-perf + perf-labs/perf
 
 pip install --user git+https://github.com/perf-labs/perf.git
 <!-- .element: style="text-align:left; font-size:16px;" -->
-
-----
-
-```
-perf info cpu --topology
-```
-
-<img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
-
-```
-12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
-```
-<!-- .element: style="text-align:left;font-size:14px" -->
-
-##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="font-size:22px; text-align:left; margin: 0px 5px;" -->
-
-----
-
-```
-perf tune latency
-```
-
-<!--```-->
-<!--# Address Space Layout Randomization (ASLR)-->
-<!--perf tune latency --config.aslr=1-->
-<!--```-->
-
-<img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
-
-```cpp
-Measured vs. Documented
-- instructions latency/rthroughput/...
-- dL1/dL2/dL3 load/store latency/bandwidth
-- branch misprediction penalty
-- max(µops/cycle) vs. dispatch width
- ...
-```
-
-<!--todo self checks measured vs documented (example. mca measured)-->
-
-https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
 
 ----
 
@@ -421,23 +389,13 @@ https://uops.info/table.html
 ----
 
 ```cpp
-auto fizz_buzz(int n) -> const char* {
-  if (n % 15 == 0) {
-    return "FizzBuzz";
-  } else if (n % 3 == 0) {
-    return "Fizz";
-  } else if (n % 5 == 0) {
-    return "Buzz";
-  } else {
-    return "Unknown";
-  }
+auto fizz_buzz(auto n) {
+    // ..
 }
 ```
 
 ```cpp
-int main() {
-    fizz_buzz(42);
-}
+template auto fizz_buzz(int) -> int;
 ```
 
 ----
@@ -485,6 +443,13 @@ PERF_LABEL(hot_end);
 objdump -sj .perf.label <file>
 ```
 
+```
+perf info metadata --exec <file>
+- hot_begin
+- hot_end
+- foo
+```
+
 ----
 
 ```
@@ -496,21 +461,81 @@ perf bench region hot_begin..hot_end
 ##### `analysis`
 <!-- .element: style="text-align:left" -->
 
+```
+Symbolic Execution
+```
+
 ----
 
 ```cpp
-from -> to
-record memory addresses, registers
-output
-emulation from specific state
-    - use perf.data
+const char* check_value(int x) {
+    if (x > 10) {
+        return "Greater";
+    } else {
+        return "Lesser or Equal";
+    }
+}
+// Path 1: X > 10 leading to the result “Greater”
+// Path 2: X <= 10 leading to the result “Lesser or Equal”
 ```
 
-https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
+```cpp
+void helloWorld() {
+    printf("Hello, World!\n");
+}
+void firstCall(uint32_t num) {
+    if (num > 50 && num <100)
+        HelloWorld();
+}
+```
 
+----
+
+```python
+def analyze(project, start, end):
+    state = project.factory.blank_state(addr=start)
+
+    def on_mem_read(state):
+        mem["mem_read"] = (addr, length, expr)
+
+    def on_mem_write(state):
+        mem["mem_write"] = (addr, length, expr)
+
+    state.inspect.b("mem_read",  when=BP_AFTER, action=on_mem_read)
+    state.inspect.b("mem_write", when=BP_BEFORE, action=on_mem_write)
+
+    simgr = project.factory.simgr(state)
+    simgr.explore(find=end)
+
+    return mem, simgr.found + simgr.active + simgr.deadended:
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
+
 https://github.com/angr/angr
 <!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```python
+obj = Elf(project.loader)
+obj.map_elf()
+obj.setup_stack()
+
+page = mmap.mmap(-1, len(code), prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC, flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS)
+
+solutions = analyze(project, start, end)
+for solution in solutions:
+    for name, sym in solution["reg"].items():
+        values.append(solver.eval(sym))
+```
+
+
+```cpp
+assumptions: use perf.data
+```
 
 ----
 
@@ -614,8 +639,10 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 #### Cache effects
 <!-- .element: style="text-align:left" -->
 
-```
-INTEL(R) XEON(R)
+```cpp
+perf bench asm 'addq (%rax), %r11'
+    --march sapphirerapids
+    --config.memory.cache.dlL1=100
 ```
 
 ```cpp
@@ -630,25 +657,6 @@ memory effects (heap pollution)
 
 https://www.akkadia.org/drepper/cpumemory.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-```json
-# snippet.s
-add:
-    addq (%rax), %r11 # memory read
-```
-
-```json
-# data.json
-{
-    "rax": 0
-}
-```
-
-```cpp
-perf bench snippet.s:add --data data.json
-```
 
 ----
 
@@ -701,37 +709,6 @@ measure(repeat(vary(fn))
 unused functions
 re-shuffle
 ```
-
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-```
-# latency.json
-{
-  "affinity": [1],
-  "function": {
-    "alignment": [16, 32],
-    "layout": ["random"],
-  },
-  "branch": ["predictable", "unpredictable"]
-  "memory": {
-    "heap": ["random"],
-    "stack": ["random"],
-    "cache": {
-      "dL1":  [{"hit_tate":[25, 50, 75, 100]}],
-      "dL2":  [{"hit_tate":[75, 100]}],
-      "dL3":  [{"hit_tate":100}],
-      "iL1":  [{"hit_tate":100}],
-      "iL2":  [{"hit_tate":100}],
-      "dTLB": [{"hit_tate":100}],
-      "iTLB": [{"hit_tate":100}],
-    }
-  }
-}
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -833,6 +810,254 @@ https://jupyter.org
 
 ```cpp
 profile → benchmark → analyze → optimize ↻
+```
+
+----
+
+#### Case study
+<!-- .element: style="text-align:left" -->
+
+```cpp
+Modern CPUs are primarily bottlenecked by
+ - Instruction supply
+ - Data access
+ - Branch prediction
+```
+
+----
+
+```
+perf info cpu --topology # lstopo
+```
+
+<img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
+
+```
+12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
+```
+<!-- .element: style="text-align:left;font-size:14px" -->
+
+##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
+<!-- .element: style="font-size:22px; text-align:left; margin: 0px 5px;" -->
+
+----
+
+```
+perf tune latency # controlled chaos
+```
+
+<!--```-->
+<!--# Address Space Layout Randomization (ASLR)-->
+<!--perf tune latency --config.aslr=1-->
+<!--```-->
+
+<img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
+
+#### Sanity check - Measured vs. Documented
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+```cpp
+- instructions latency/rthroughput/...
+- dL1/dL2/dL3 load/store latency/bandwidth
+- branch misprediction penalty
+- max(µops/cycle) vs. dispatch width
+ ...
+```
+
+https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```cpp
+g++ -O3 -std=c++26 case_study.cpp
+```
+
+```cpp
+perf stat --topdown -I 1000 ./a.out
+```
+
+----
+
+```
+# latency.json
+{
+  "affinity": [1],
+  "function": {
+    "alignment": [16, 32],
+    "layout": ["random"],
+  },
+  "branch": ["predictable", "unpredictable"]
+  "memory": {
+    "heap": ["random"],
+    "stack": ["random"],
+    "cache": {
+      "dL1":  [{"hit_tate":[25, 50, 75, 100]}],
+      "dL2":  [{"hit_tate":[75, 100]}],
+      "dL3":  [{"hit_tate":100}], # perf.data
+      "iL1":  [{"hit_tate":100}],
+      "iL2":  [{"hit_tate":100}],
+      "dTLB": [{"hit_tate":100}],
+      "iTLB": [{"hit_tate":100}],
+    }
+  }
+}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+<!--template void enum_to_string(color);-->
+
+```cpp
+constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
+    template for (constexpr auto e :
+        define_static_array(meta::enumerators_of(^^E))) {
+        if (value == [:e:]) {
+            return meta::identifier_of(e);
+        }
+    }
+    return {};
+}
+```
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+```
+"enum_to_string"_test = [] constexpr {
+    expect(enum_to_string());
+};
+```
+
+----
+
+```cpp
+perf bench enum_to_string -x gcc26.out
+```
+
+----
+
+```cpp
+std::string_view v1::enum_to_string(enum auto value) {
+    template for (constexpr auto e :
+        std::define_static_array(std::meta::enumerators_of(^^E)))
+        switch(value) {
+            case [:e:]: return std::meta::identifier_of(e);
+        }
+    return {};
+}
+```
+
+----
+
+```cpp
+std::string_view v2::enum_to_string(enum auto value) {
+    static const auto map = [] {
+        std::unordered_map<E, std::string_view> m;
+        template for (constexpr auto e :
+            std::define_static_array(std::meta::enumerators_of(^^E))) {
+            m.emplace([:e:], std::meta::identifier_of(e));
+        }
+        return m;
+    }();
+
+    if (auto it = map.find(value); it != map.end()) {
+        return it->second;
+    }
+
+    return {};
+}
+```
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```cpp
+std::string_view enum_to_string_v1(enum auto value) {
+    // pext
+}
+```
+
+----
+
+```cpp
+std::string_view enum_to_string_v1(enum auto value) {
+    // pext
+    // simd - collisions
+}
+```
+
+----
+
+#### Minimal perfect hashing
+<!-- .element: style="text-align:left" -->
+
+<img src="images/hashing.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
+
+----
+
+```cpp
+enum uri { ftp = 0, file = 1, http = 2, ws = 3, wss = 4, };
+```
+
+```cpp
+std::string_view enum_to_string_v1(enum auto value) {
+  // mph
+  constexpr auto nbits = /*bits*/
+  constexpr auto shift = sizeof(T) * CHAR_BIT - nbits; // 29
+  constexpr auto mask  = (1u << nbits) - 1u;           // 0b111
+  constexpr auto [magic, lut] = magic_lut(mask, shift, MaxAttempts);
+  auto&& value = to<T>(key);
+  return (lut >> ((value * magic) >> shift)) & mask;
+}
+```
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+https://godbolt.org/z/3j8qcabsj # find hash at compile-time (constexpr gpu)
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+#### `enum_to_string`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+[1]: #uOps    [2]: Latency   [3]: RThroughput
+[4]: MayLoad  [5]: MayStore  [6]: HasSideEffects (U)
+```
+
+<pre><code data-trim>
+[1] [2] [3]  [4] [5] [6]   Instructions:
+ 1   1  0.50               shl  edi, 3
+ 2   5  0.50  *            bzhi eax, dword ptr [rsi], edi
+ 1   3  1.00               imul eax, eax, 2893426669   /*magic*/
+ 1   1  0.50               shr  eax, 29                /*shift*/
+ 1   1  0.50               mov  ecx, 0b001100000010011 /*lut*/
+ 1   1  0.50               shrx eax, ecx, eax
+ 1   1  0.25               and  eax, 0b111             /*mask*/
+ 1   5  0.50          U    ret
+</code></pre>
+
+```
+no lookup table (stored directly in a register)
+```
+
+----
+
+```cpp
+std::string_view v4::enum_to_string(enum auto value) {
+    // mask
+    // pext
+    // simd
+}
+```
+
+----
+
+```cpp
+std::string_view v5::enum_to_string(enum auto value) {
+    // policy
+    // [[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
+}
 ```
 
 ----
