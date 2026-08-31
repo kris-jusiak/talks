@@ -63,22 +63,12 @@
 Adding a 'try/catch' that never throws?
 Adding a 'branch' that is never taken?
 Adding an 'unused function'?
-```
-<!-- .element: class="fragment" data-fragment-index="0" -->
-
-```cpp
-Removing an 'unused function'?
 Removing 'dead code'?
 ```
 <!-- .element: class="fragment" data-fragment-index="1" -->
 
 ```cpp
 Enabling 'debug symbols' in an optimized build?
-Stripping 'debug symbols' from an optimized build?
-```
-<!-- .element: class="fragment" data-fragment-index="2" -->
-
-```cpp
 Running with 'instrumentation, tracing, profiling' enabled?
 Running as a 'different user'?
 ```
@@ -138,51 +128,21 @@ https://github.com/karlrupp/microprocessor-trend-data
 ### Always measure?!
 <!-- .element: style="text-align:left" -->
 
-```
-- What?
-    - Latency vs. Throughput
-    - Data access
-    - Branch prediction
-    - Instruction supply
-```
-
-```
-- How?
-    - Sampling
-    - Instrumenting
-    - Tracing
-    - Simulating
-    - Benchmarking
-```
-
-```
-- When?
-    - Production
-    - Testing
-```
-
-----
-
-### Always measure?!
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-Performance Monitoring Unit
-  └─ CPU                     Intel        AMD          ARM
-     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
-     ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
-     ├─ Event Sampling       PEBS         IBS          SPE
-     ├─ Branch Recording     LBR          LBR          BRBE
-     └─ Processor Trace      PT           -            ETM (CoreSight)
+- What?
+- How?
+- When?
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
 
 <table>
 <tr>
-<td><img src="images/perf_map.png" style="width: 80%; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/bpf.png" style="width: 920px; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/perf_map.png" style="width: 2100px; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/bpf.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
 </tr>
 </table>
+
+https://www.brendangregg.com
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 <!--- What about noisy environments? What hardware I have to support?-->
 <!--- Multiple runs?-->
@@ -193,18 +153,17 @@ Performance Monitoring Unit
 
 ----
 
-#### Sampling
-<!-- .element: style="text-align:left" -->
-
 ```cpp
- linux-perf  # https://perf.wiki.kernel.org
- intel-vtune # https://www.intel.com/content/www/us/en/docs/vtune-profiler
- amd-uprof   # https://www.amd.com/en/developer/uprof.html
- dtrace      # https://github.com/opendtrace
- gperftools  # https://github.com/gperftools/gperftools
- bcc         # https://github.com/iovisor/bcc
- coz         # https://github.com/plasma-umass/coz
- ...
+└─ Sampling
+     linux-perf  - https://perf.wiki.kernel.org
+     intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
+     amd-uprof   - https://www.amd.com/en/developer/uprof.html
+     dtrace      - https://github.com/opendtrace
+     gperftools  - https://github.com/gperftools/gperftools
+     likwid      - https://github.com/RRZE-HPC/likwid
+     bcc         - https://github.com/iovisor/bcc
+     coz         - https://github.com/plasma-umass/coz
+     ...
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
@@ -216,15 +175,15 @@ Problems
 
 Good for
 - monitoring - grafana
-- collecting data distributions 
+- collecting data distributions
 ```
 
 ----
 
-#### Sampling
+#### Top-down Microarchitecture Analysis Method
 <!-- .element: style="text-align:left" -->
 
-<img src="images/td.png" style="width: 80%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+<img src="images/td.png" style="width: 75%; background:none; border:none; box-shadow:none;margin: 0 0;" />
 
 #### [https://www.intel.com/.../top-down-microarchitecture-analysis-method.html](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-1/top-down-microarchitecture-analysis-method.html)
 <!-- .element: style="text-align:left; font-size:22px;" -->
@@ -248,13 +207,11 @@ perf report \
 
 ----
 
-#### Instrumenting
-<!-- .element: style="text-align:left" -->
-
 ```cpp
-└─ ...
-    rdtsc/rdtscp
-    tracy       # https://github.com/wolfpld/tracy
+└─ Instrumenting
+     llvm-xray    - https://llvm.org/docs/xray.html
+     tracy        - https://github.com/wolfpld/tracy
+     ...
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
@@ -307,11 +264,9 @@ perf record
     --aux-sampe=32768
     -e '{intel_pt//u,noretcomp=1/u,exe:probe}'
     -p $(pidof exe)
+    -m 64,8192 \
+    --snapshot \
     -o perf.data
-
-  -e cycles:u \
-  --snapshot \
-  -m 64,8192 \
 ```
 
 ```
@@ -346,18 +301,18 @@ What happens when the assumptions change?
 Google Benchmark - https://github.com/google/benchmark
 Nanobench        - https://github.com/martinus/nanobench
 Celero           - https://github.com/DigitalInBlue/Celero
-likwid           - https://github.com/RRZE-HPC/likwid
+```
+
+```
+- Iteration speed
+- Isolation
+- Understanding
+- Tuning
+- Correlation issues
+- Hard (latency vs throughput, noise, bias, hardware effects)
 ```
 
 ```cpp
-/**
-* Iteration speed
-* Isolation/Coverage
-* Understanding
-* Tuning
-* correlation issues
-* hard (latency vs throughput, nosie, bias, hardware effects)
-*/
 auto bench(auto code) -> measurements;
 ```
 
@@ -381,12 +336,8 @@ Powered by linux-perf + perf-labs/perf
 ```
 <!-- .element: style="text-align:left" -->
 
-sudo apt install -y linux-tools-$(uname -r)
-<!-- .element: style="text-align:right; font-size:20px; margin: 5px 0px;" -->
 pip install --user git+https://github.com/perf-labs/perf.git
-<!-- .element: style="text-align:right; font-size:20px; margin: 5px 0px;" -->
-https://github.com/angr/angr
-<!-- .element: style="text-align:right; font-size:20px; margin: 5px 0px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -394,139 +345,171 @@ https://github.com/angr/angr
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-Step0: Ability to benchmarking
-    Performance counters slides
-Step1: Ability to pick harness
-    Latency vs. Throughput
-    FPGA
-Step2: Abiliity to bench any assembly
-    - can't be don in c++ reliably (c++ fights it)
-    llvm-exergeis nano-bench
-    perf bench asm 'mov eax, 42'
-Step3: Aiblity to get assemlby from executable in process
-    funtions
-    PERF_LABEL / can't affect binary
-Step4: Ability to control biases
-    Info/Tune first [controlled chaos]
-    Hardware effects
-        AMD
-        cache effects
-        branch effects
-        memory effects (heap pollution)
-        layout effects (code data layout) - re-shuffle
-Step5: Symbolic execution
-    Custom data
-    Find what affects
-        - what influences the output (registers, memory)
-        - emulation from specific state
-            https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
-        - profiling date for help (distributions)
-            profiling -> benchmarking
-Step6: Benchmark
-    Combine all
-Step7: Analyze
-    views / jupyter notebooks
+- assembly
+- analysis
+- control
+- execution
 ```
-<!-- .element: style="font-size:16px;" -->
 
 ----
 
-
-#### Step0: Ability to benchmarking
+##### `assembly`
 <!-- .element: style="text-align:left" -->
 
 ----
 
-#### Step1: Ability to benchmark
-
-#### Latency vs. Throughput
-<!-- .element: style="text-align:left" -->
-
-#### Latency vs. Throughput
-<!-- .element: style="text-align:left" -->
-
-```
-latency
-  └─ Time it takes for a single operation
+```cpp
+perf bench asm:'mov eax, 42'
 ```
 
+```cpp
+target      mode
+mov eax, 42 latency     100.0  0.11404  0.002010  0.112  0.112  0.116  0.116  0.116
+            throughput  100.0  0.11436  0.001977  0.112  0.112  0.116  0.116  0.116
 ```
-throughput
-  └─ Total number of operations
-```
+<!-- .element: style="text-align:left; font-size: 19px;" -->
 
-```
-auto latency     = time / operations;          // ns/op
-auto throughput  = operations / seconds(time); // ops/s
-auto rthroughput = time / operations;          // ns/ops
-```
-
-reciprocal throughput = inverse throughput
-<!-- .element: style="text-align:left; font-size:20px;" -->
+https://uops.info/table.html
+<!-- .element: style="text-align:left; font-size: 22px;" -->
 
 ----
 
-<img src="images/fpga.gif" style="width: 100%; background:none; border:none; box-shadow:none;" />
+#### `binary`
 
-https://qbaylogic.com/cpu-vs-fpga
+```
+perf bench region hot_begin..hot_end
+```
+
+```
+perf bench func send_order
+```
+
+```
+perf bench func send_order
+    --mode latency
+    --config latency.json
+    --config.memory.cache.dL1.hit_rate=25
+    --data data.json
+    --event cycles,instructions
+    --exec gcc16.out
+```
+
+```
+perf bench asm 'mov eax, 42' --march=skylake
+```
+
+```
+perf bench label send_order --file asm.s
+```
+
+----
+
+```cpp
+auto fizz_buzz(int n) -> const char* {
+  if (n % 15 == 0) {
+    return "FizzBuzz";
+  } else if (n % 3 == 0) {
+    return "Fizz";
+  } else if (n % 5 == 0) {
+    return "Buzz";
+  } else {
+    return "Unknown";
+  }
+}
+```
+
+```cpp
+int main() {
+    fizz_buzz(42);
+}
+```
+
+----
+
+```cpp
+// can't affect binary
+#define PERF_LABEL(name)
+    asm volatile(
+        ".pushsection perf.label, \"aw?\", @progbits\n"
+        ".quad 0f\n"
+        ".asciz \"" #name "\"\n"
+        ".popsection\n"
+        "0:\n"
+    ); name:
+```
+
+```cpp
+auto main() {
+  // ...
+  PERF_LABEL(hot_begin);
+  puts("hello world")
+  PERF_LABEL(hot_end);
+  // ...
+}
+```
+
+----
+
+```
+0x000 main:
+0x000   push    rax
+0x000   lea     rdi, [rip + .L.str]
+0x000   call    puts@PLT
+0x000   xor     eax, eax
+0x000   pop     rcx
+0x000   ret
+```
+
+```
+objdump -sj .perf.label <file>
+```
+
+----
+
+##### `analysis`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+from -> to
+record memory addresses, registers
+output
+emulation from specific state
+    - use perf.data
+```
+
+https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf
+
+<!-- .element: style="text-align:left; font-size:22px;" -->
+https://github.com/angr/angr
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-#### Latency [harness]
-<!-- .element: style="text-align:left" -->
-
-```
-rdtsc
-mov r11, rax # fine with < 1s
-{code}
-rdtscp
-lfence
-```
-
-```cpp
-rdpmc
-clflush
-{code}
-rdpmc
-lfence
-```
-
-----
-
-##### Throughput [harness]
-<!-- .element: style="text-align:left" -->
-
-```
-asm Nx2000 - Nx1000
-```
-
-https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-
-
-----
-
-#### Step4: Ability to control biases
+##### `control`
 <!-- .element: style="text-align:left" -->
 
 ----
 
-#### Bias [controlled chaos]
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
-----
+<!--[noise, bias, implementation details]-->
 
-#### Hardware effects [noise, bias, implementation details]
+<table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
+  <tr>
+  <td>
+    <img src="images/zen5.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  </td>
+  <td>
+    <img src="images/linux.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+  </td>
+  <td>
+    <img src="images/code.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
+  </td>
+</tr>
+</table>
 
-<img src="images/zen5.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
-<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-<img src="images/code.png" style="width: 50%; background:none; border:none; box-shadow:none;" />
-
-https://chipsandcheese.com
-https://makelinux.github.io/kernel/map
+https://chipsandcheese.com | https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
@@ -610,20 +593,6 @@ latency = {
 
 ----
 
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-```
-data = {
-    "rax":      "432"
-    "0x043242", "121",
-    "0x043244", "111",
-    "ip": # branch predictable
-}
-```
-
-----
-
 #### Cache effects
 <!-- .element: style="text-align:left" -->
 
@@ -678,6 +647,28 @@ dL3:  75ns
 RAM: 294ns
 ```
 
+memory effects (heap pollution)
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+```json
+# snippet.s
+add:
+    addq (%rax), %r11 # memory read
+```
+
+```json
+# data.json
+{
+    "rax": 0
+}
+```
+
+```cpp
+perf bench snippet.s:add --data data.json
+```
+
 ----
 
 #### Branch effects
@@ -712,27 +703,25 @@ auto predict(uintptr_t ip) {
 
 ----
 
-#### [perf tune]
+#### Layout effects
+
+unused functions
+
+re-shuffle
+
+----
+
+#### Control
 <!-- .element: style="text-align:left" -->
 
 ```
 perf tune latency
 ```
 
-```
-# Address Space Layout Randomization (ASLR)
-perf tune latency --config.aslr=1
-```
-
-<!--todo self checks measured vs documented (example. mca measured)-->
-
-https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Non-tuned vs. Tuned
-<!-- .element: style="text-align:left" -->
+<!--```-->
+<!--# Address Space Layout Randomization (ASLR)-->
+<!--perf tune latency --config.aslr=1-->
+<!--```-->
 
 <img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
 
@@ -745,77 +734,86 @@ Measured vs. Documented
  ...
 ```
 
+<!--todo self checks measured vs documented (example. mca measured)-->
+
+https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
 ----
 
-#### [perf bench]
+##### `execution`
+<!-- .element: style="text-align:left" -->
+
+----
+
+```cpp
+Performance Monitoring Unit (PMU)
+  └─ CPU                     Intel        AMD          ARM
+     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+     ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+     ├─ Event Sampling       PEBS         IBS          SPE
+     ├─ Branch Recording     LBR          LBR          BRBE
+     └─ Processor Trace      PT           -            ETM (CoreSight)
+```
+<!-- .element: style="text-align:left; font-size:19px;" -->
+
+----
+
+#### Latency vs. Throughput
 <!-- .element: style="text-align:left" -->
 
 ```
-perf bench region hot_begin..hot_end
+latency
+  └─ Time it takes for a single operation
 ```
 
 ```
-perf bench func send_order
+throughput
+  └─ Total number of operations
 ```
 
 ```
-perf bench func send_order
-    --mode latency
-    --config latency.json
-    --config.memory.cache.dL1.hit_rate=25
-    --data data.json
-    --event cycles,instructions
-    --exec gcc16.out
+auto latency     = time / operations;          // ns/op
+auto throughput  = operations / seconds(time); // ops/s
+auto rthroughput = time / operations;          // ns/ops
 ```
 
-```
-perf bench asm 'mov eax, 42' --march=skylake
-```
-
-```
-perf bench label send_order --file asm.s
-```
+rthroughput = reciprocal throughput = inverse throughput
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
-```cpp
-#define PERF_LABEL(name)
-    asm volatile(
-        ".pushsection perf.label, \"aw?\", @progbits\n"
-        ".quad 0f\n"
-        ".asciz \"" #name "\"\n"
-        ".popsection\n"
-        "0:\n"
-    ); name:
-```
+#### Latency vs. Throughput
+<!-- .element: style="text-align:left" -->
+
+<img src="images/cpu_fpga_gpu_tpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+
+https://qbaylogic.com/cpu-vs-fpga
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-```cpp
-#include <perf/perf.hpp>
-
-auto main() {
-  // ...
-  PERF_LABEL(hot_begin);
-  puts("hello world")
-  PERF_LABEL(hot_end);
-  // ...
-}
-```
+#### Benchmarking harness
+<!-- .element: style="text-align:left" -->
 
 ```
-0x000 main:
-0x000   push    rax
-0x000   lea     rdi, [rip + .L.str]
-0x000   call    puts@PLT
-0x000   xor     eax, eax
-0x000   pop     rcx
-0x000   ret
+# latency                                   # throughput
+rdtsc
+mov r11, rax
+{code}
+rdtscp
+rdpmcs...
+lfence
 ```
 
 ```
-objdump -sj .perf.label <file>
+asm Nx2000 - Nx1000
 ```
+
+https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
@@ -831,7 +829,7 @@ perf info cpu --topology
 
 ----
 
-#### [perf plot] # ECDF, flamegraph
+#### [perf plot] # ECDF
 <!-- .element: style="text-align:left" -->
 
 ```
