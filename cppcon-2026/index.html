@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <title>if you can't measure it, you can't improve it</title>
+    <title>If You Can't Measure It, You Can't Improve It</title>
 
     <link rel="stylesheet" href="reveal.js/css/reveal.css">
     <link rel="stylesheet" href="reveal.js/css/theme/white.css" id="theme">
@@ -65,8 +65,10 @@
  Adding a 'try/catch' that never throws?
  Adding a 'branch' that is never taken?
  Adding an 'unused function'?
+
  Removing 'dead code'?
  Enabling 'debug symbols' in an optimized build?
+
  Running with 'instrumentation, tracing, profiling' enabled?
  Running as a 'different user'?
  ...
@@ -77,7 +79,7 @@ What affects performance? if so, how much and why?
 
 ----
 
-#### Performance?
+#### Performance
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
@@ -99,7 +101,7 @@ What affects performance? if so, how much and why?
   </td>
   <td>
     <img src="images/metrics.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
-    <img src="images/normal.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+    <img src="images/normal.png" style="width: 49%; border:none; box-shadow:none;" />
     <img src="images/dennard.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
     <img src="images/trend.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
   </td>
@@ -123,106 +125,114 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
-### Always Measure?!
+### Always Measure
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 - what? how? when?
 ```
 
-<table>
-<tr>
-    <td><img src="images/cpu_fpga_gpu_tpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-    <td><img src="images/flamegraph.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-    <td><img src="images/perf_map.png" style="width: 90%; background:none; border:none; box-shadow:none;" /></td>
-    <td><img src="images/bpf.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
-<tr>
-</tr>
-</table>
-
-<!--https://www.brendangregg.com-->
-<!--[> .element: style="text-align:left; font-size:20px;" <]-->
-
 <!--- what about noisy environments? what hardware i have to support?-->
-<!--- multiple runs?-->
 <!--- isolate bias?-->
 <!--- wanna be fast has to be in the future-->
 <!--- increasing {instructions, µops} per cycle-->
 <!--- reducing overall instruction count-->
 
+<table>
+<tr>
+    <td colspan="2"><img src="images/cpu_fpga_gpu_tpu.png" style="width: 45%; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+<tr>
+    <td><img src="images/perf_map.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+    <td><img src="images/bpf.png" style="width: 65%; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+</table>
+
 ----
 
-### Always Measure?!
+### Always Measure
 <!-- .element: style="text-align:left;" -->
 
-```cpp
-├─ Top-down Microarchitecture Analysis Method
+```
+├─ Top down Microarchitecture Analysis Method
 ├─ Sampling
-├─ Instrumentation
 ├─ Tracing
 ├─ Simulation
+├─ Instrumentation
 ├─ Benchmarking
 └─ ...
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
-```cpp
+```
 Performance Monitoring Unit
-  └─ CPU                     intel        amd          arm
-     ├─ timestamp Counter    rdtsc/rdtscp rdtsc/rdtscp cntvct_el0/cntpct_el0
-     ├─ Performance Counters rdpmc        rdpmc        pmccntr_el0/pmevcntrn_el0
-     ├─ Event sampling       pebs         ibs          spe
-     ├─ Branch Recording     lbr          lbr          brbe
-     └─ processor Trace      pt           -            etm (coresight)
+  └─ CPU                     Intel        Amd          Arm
+     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+     ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+     ├─ Event sampling       PEBS         IBS          SPE
+     ├─ Branch Recording     LBR          LBR          BRBE
+     └─ Processor Trace      PT           -            ETM (CoreSight)
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
-```cpp
-linux-perf  - https://perf.wiki.kernel.org                                      osaca       - https://github.com/rrze-hpc/osaca
-intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler       uica        - https://uica.uops.info
-amd-uprof   - https://www.amd.com/en/developer/uprof.html                       llvm-xray   - https://llvm.org/docs/xray.html
-dtrace      - https://github.com/opendtrace                                     tracy       - https://github.com/wolfpld/tracy
-likwid      - https://github.com/rrze-hpc/likwid                                nanobench   - https://github.com/martinus/nanobench
-gperftools  - https://github.com/gperftools/gperftools                          llvm-mca    - https://llvm.org/docs/commandguide/llvm-mca.html
-callgrind   - https://valgrind.org/docs/manual/cl-manual.html                   gbench      - https://github.com/google/benchmark
-bcc         - https://github.com/iovisor/bcc                                    celero      - https://github.com/digitalinblue/celero
-coz         - https://github.com/plasma-umass/coz                               ...
+```asm
+ linux-perf  - https://perf.wiki.kernel.org                                      osaca       - https://github.com/rrze-hpc/osaca
+ intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler       uica        - https://uica.uops.info
+ amd-uprof   - https://www.amd.com/en/developer/uprof.html                       llvm-xray   - https://llvm.org/docs/xray.html
+ dtrace      - https://github.com/opendtrace                                     tracy       - https://github.com/wolfpld/tracy
+ likwid      - https://github.com/rrze-hpc/likwid                                nanobench   - https://github.com/martinus/nanobench
+ gperftools  - https://github.com/gperftools/gperftools                          llvm-mca    - https://llvm.org/docs/commandguide/llvm-mca.html
+ callgrind   - https://valgrind.org/docs/manual/cl-manual.html                   gbench      - https://github.com/google/benchmark
+ bcc         - https://github.com/iovisor/bcc                                    celero      - https://github.com/digitalinblue/celero
+ coz         - https://github.com/plasma-umass/coz                               ...
 ```
 <!-- .element: style="text-align:left; font-size:11px;" -->
 
 ----
 
-#### top-down microarchitecture analysis method
+#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
 <!-- .element: style="text-align:left" -->
 
-<p align="left">
-<img src="images/td.png" style="width: 55%; background:none; border:none; box-shadow:none;margin: 0 0;" />
-</p>
-
+<table>
+<tr>
+<td>
+<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+<td>
+<pre style="font-size:12px;margin: 0 0;"><code>[Level] Category    Desktop Server HPC
+------------------- ------- ------ ------
+[1] Retiring         20–50% 10–30% 30–70%
+[1] Bad Speculation  05–10% 05–10% 01–05%
+[1] Front-End Bound  05–10% 10–25% 05–10%
+[1] Back-End Bound   20–40% 20–60% 20–40%</code></pre>
+</td>
+</tr>
+</table>
 
 ```
 perf stat --topdown -i 1000 ./a.out
 perf record -e cycles:ppp -- ./a.out
 perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
-#### [https://www.intel.com/.../top-down-microarchitecture-analysis-method.html](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2023-1/top-down-microarchitecture-analysis-method.html)
-<!-- .element: style="text-align:left; font-size:22px;" -->
+```
+perf stat   --control=fifo:/dev/shm/perf --delay=-1 ...
+perf record --control=fifo:/dev/shm/perf --delay=-1 ...
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+https://github.com/andikleen/pmu-tools/wiki/toplev-manual
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 ----
 
 #### Sampling
 <!-- .element: style="text-align:left;" -->
 
-```
-auto sample(binary, frequency(1000)) -> samples;
-```
-
-
 ```cpp
 perf record
 ```
+
 
 ```cpp
 - affects performance
@@ -231,40 +241,23 @@ perf record
 - collecting data distributions
 ```
 
-```cpp
-# sampling (freq/period) | call-stack (lbr) | count
+<table>
+<tr>
+</tr>
+
+<table>
+<tr>
+    <td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+    <td>
+<pre style="font-size:14px;margin: 0 0;"><code># sampling (freq/period) | call-stack (lbr) | count
 main;parse;tokenize 5
 main;parse;analyze 3
-main;render 7
-```
+main;render 7</code></pre></td>
+</tr>
+</table>
+
+https://www.brendangregg.com
 <!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Instrumentation
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-rdtsc() / rdtscp()
-```
-
-```cpp
-function:
-// nop
-ret
-// nop
-```
-
-----
-
-#### Simulation
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-llvm-mca example
-uica example
-callgrind
-```
 
 ----
 
@@ -297,20 +290,60 @@ perf report --itrace=10nsbg1024 --call-graph fractal
 
 ----
 
+#### Simulation
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+llvm-mca example
+uica example
+callgrind
+```
+
+----
+
+#### Instrumentation
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+rdtsc() / rdtscp()
+```
+
+```cpp
+function:
+// nop todo instruction
+ret
+// nop
+```
+
+```cpp
+affects performance
+```
+
+----
+
 #### Benchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto bench(auto code) -> measurements;
+auto bench(invocable auto code, integral auto iterations) {
+    const auto start = now();
+    for (auto i = 0u; i < iterations; ++i) {
+        keep(code());
+    }
+    const auto end = now();
+    return end - start;
+}
 ```
 
 ```
+- C++ is limiting the factor - it tries to optimize
 - iteration speed
 - isolation
 - understanding
 - tuning
 - correlation issues
 - hard (latency vs throughput, noise, bias, hardware effects)
+multiple runs?
 ```
 
 ----
@@ -329,7 +362,7 @@ What if ...?
 ----
 
 
-### Solution?
+### Solution
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -342,12 +375,16 @@ What if we could measure "what if?"
 <!-- .element: style="text-align:left" -->
 
 ```python
-machine code # cpp, rust, zig, ...
+machine code [*]
   → symbolic execution
       → solver-guided data synthesis
           → bias-controlled native execution
 ```
 <!-- .element: style="text-align:left;" -->
+
+
+[*] binary/assembly -> cpp, rust, zig, ...
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -373,15 +410,15 @@ pip install git+https://github.com/perf-labs/perf.git
 ----
 
 ```cpp
-const char* check_value(int x) {
-    if (x > 10) {
-        return "greater";
-    } else {
-        return "lesser or equal";
-    }
+[[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
+       if (n % 15 == 0) { return "FizzBuzz"; }
+  else if (n % 3  == 0) { return "Fizz";     }
+  else if (n % 5  == 0) { return "Buzz";     }
+  return "Unknown";
 }
 // path 1: x > 10 leading to the result “greater”
 // path 2: x <= 10 leading to the result “lesser or equal”
+
 ```
 
 ```cpp
@@ -425,7 +462,7 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 
 ----
 
-##### `solver-guided inputs generation`
+##### `Solver-guided data synthesis`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -456,7 +493,7 @@ assumptions: use perf.data
 
 ----
 
-##### bias-mitigated native execution
+##### `Bias-Controlled Native Execution`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -512,28 +549,21 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 #### Hardware effects
 <!-- .element: style="text-align:left" -->
 
-<img src="images/zen5.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<table style="width:110%;border-collapse:collapse; border-spacing:0; margin:0; padding:0;">
+<tr style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;">
+    <td style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;"><img src="images/zen5.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+    <td style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;"><img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+    <td style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;"><img src="images/code.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+</table>
+
+
 
 https://chipsandcheese.com
 <!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
 
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-
 https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
-
-
-----
-
-#### Hardware effects
-<!-- .element: style="text-align:left" -->
-
-<img src="images/code.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -711,7 +741,9 @@ Modern CPUs are primarily bottlenecked by
 perf info cpu --topology # lstopo
 ```
 
+<p align="left">
 <img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ```
 12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
@@ -732,14 +764,17 @@ perf tune latency # controlled chaos
 <!--perf tune latency --config.aslr=1-->
 <!--```-->
 
+<p align="left">
 <img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
+</p>
 
 ----
 
-#### Sanity check - Measured vs. Spec
+#### Sanity check
 <!-- .element: style="text-align:left; " -->
 
 ```cpp
+Measured vs. Spec
 - instructions latency/rthroughput/...
 - dL1/dL2/dL3 load/store latency/bandwidth
 - branch misprediction penalty
@@ -766,13 +801,11 @@ https://uops.info/table.html
 ----
 
 ```cpp
-auto fizz_buzz(auto n) {
-    // ..
-}
+auto enum_to_string(enum auto value) -> std::string_view;
 ```
 
 ```cpp
-template auto fizz_buzz(int) -> int;
+template auto enum_to_string(color) -> std::string_view;
 ```
 
 ----
@@ -786,7 +819,7 @@ perf bench func send_msg
 ----
 
 ```cpp
-#define PERF_LABEL(name)
+#define PERF_LABEL(name) // can't affect binary
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
         ".quad 0f\n"
@@ -796,28 +829,32 @@ perf bench func send_msg
     ); name:
 ```
 
-can't affect binary
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-```cpp
-PERF_LABEL(hot_begin);
-puts("hello world")
-PERF_LABEL(hot_end);
-```
-
-```
-0x000   push    rax
+<table>
+<tr>
+<td>
+<pre><code>
+int main() {
+    PERF_LABEL(hot_begin);
+    puts("hello world")
+    PERF_LABEL(hot_end);
+}
+</code></pre>
+</td>
+<td>
+    <pre><code>0x000   push    rax
 0x000   lea     rdi, [rip + .L.str]
 0x000   call    puts@PLT
 0x000   xor     eax, eax
 0x000   pop     rcx
-0x000   ret
-```
+0x000   ret</code></pre>
+</td>
+</tr>
+</table>
 
-```
-objdump -sj .perf.label <file>
+----
+
+```cpp
+g++ -O3 -std=c++26 case_study.cpp
 ```
 
 ```
@@ -827,20 +864,18 @@ perf info metadata --exec <file>
 - foo
 ```
 
-----
-
 ```
-perf bench region hot_begin..hot_end
+objdump -sj .perf.label <file>
 ```
 
 ----
-
-```cpp
-g++ -O3 -std=c++26 case_study.cpp
-```
 
 ```cpp
 perf stat --topdown -I 1000 ./a.out
+```
+
+```
+perf bench region hot_begin..hot_end
 ```
 
 ----
@@ -1039,7 +1074,7 @@ std::string_view v5::enum_to_string(enum auto value) {
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
-<img src="images/notebook.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
+<img src="images/study.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
 </p>
 
 <!--asm/timeline/resource_pressure-->
@@ -1062,13 +1097,13 @@ profile → benchmark → analyze → optimize ↻
 #### Further readings
 <!-- .element: style="text-align:left;" -->
 
-##### Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+##### - Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
-##### AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
+##### - AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
-##### ARM - https://developer.arm.com/documentation/ddi0487/latest
+##### - ARM - https://developer.arm.com/documentation/ddi0487/latest
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
-##### Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
+##### - Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
 
 ---
@@ -1076,7 +1111,7 @@ profile → benchmark → analyze → optimize ↻
 ##### Careers
 <!-- .element: style="text-align:left; " -->
 
-#### Citadel Securities - https://citadelsecurities.com/careers/engineering
+#### - Citadel Securities - https://citadelsecurities.com/careers/engineering
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:24px" -->
 
           </script>
