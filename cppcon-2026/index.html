@@ -51,47 +51,49 @@
 
 ----
 
-### motivation
+### Motivation
 <!-- .element: style="text-align:left" -->
 
 ----
 
 
-##### "`perf or nah`?" <span style="font-size:0.6em;">what affects performance? if so, how much and why?</span>
+##### "`perf or nah`?"
 
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-Adding a 'try/catch' that never throws?
-Adding a 'branch' that is never taken?
-Adding an 'unused function'?
-Removing 'dead code'?
-Enabling 'debug symbols' in an optimized build?
-Running with 'instrumentation, tracing, profiling' enabled?
-Running as a 'different user'?
-...
+ Adding a 'try/catch' that never throws?
+ Adding a 'branch' that is never taken?
+ Adding an 'unused function'?
+ Removing 'dead code'?
+ Enabling 'debug symbols' in an optimized build?
+ Running with 'instrumentation, tracing, profiling' enabled?
+ Running as a 'different user'?
+ ...
 ```
 
+What affects performance? if so, how much and why?
+<!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
-#### performance?
+#### Performance?
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
   <tr>
   <td>
   <pre style="font-size:14px">
-(~) frequency
- - base:  3–5 ghz
- - boost: 5–6 ghz
- - overclocked: ~9 ghz</pre>
+(~) Frequency
+ - Base:  3–5 ghz
+ - Boost: 5–6 ghz
+ - Overclocked: ~9 ghz</pre>
   <pre style="font-size:14px">
-(⬆️) transistors
- - more cores
- - more caches
- - improved execution
- - improved parallelism&nbsp;
+(⬆️) Transistors
+ - More Cores
+ - More Caches
+ - Improved Execution
+ - Improved Parallelism&nbsp;
  - ...
 </pre>
   </td>
@@ -113,35 +115,34 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
-#### "if you can't measure it, you can't improve it!"
+#### "If You Can't Measure It, You Can't Improve It!"
 <!-- .element: style="text-align:left;" -->
 
-— lord kelvin (william thomson)
+— Lord Kelvin (William Thomson)
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-### always measure?!
+### Always Measure?!
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 - what? how? when?
 ```
 
-
 <table>
 <tr>
-<td><img src="images/cpu_fpga_gpu_tpu.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/flamegraph.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
+    <td><img src="images/cpu_fpga_gpu_tpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+    <td><img src="images/flamegraph.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
 </tr>
-<td><img src="images/perf_map.png" style="width: 90%; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/bpf.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
+    <td><img src="images/perf_map.png" style="width: 90%; background:none; border:none; box-shadow:none;" /></td>
+    <td><img src="images/bpf.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
 <tr>
 </tr>
 </table>
 
-https://www.brendangregg.com
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!--https://www.brendangregg.com-->
+<!--[> .element: style="text-align:left; font-size:20px;" <]-->
 
 <!--- what about noisy environments? what hardware i have to support?-->
 <!--- multiple runs?-->
@@ -152,15 +153,15 @@ https://www.brendangregg.com
 
 ----
 
-### always measure?!
+### Always Measure?!
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
 ├─ Top-down Microarchitecture Analysis Method
 ├─ Sampling
-├─ Instrumenting
+├─ Instrumentation
 ├─ Tracing
-├─ Simulating
+├─ Simulation
 ├─ Benchmarking
 └─ ...
 ```
@@ -211,7 +212,7 @@ perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
 
 ----
 
-#### sampling
+#### Sampling
 <!-- .element: style="text-align:left;" -->
 
 ```
@@ -240,7 +241,7 @@ main;render 7
 
 ----
 
-#### instrumentation
+#### Instrumentation
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -256,7 +257,7 @@ ret
 
 ----
 
-#### simulating
+#### Simulation
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -267,7 +268,7 @@ callgrind
 
 ----
 
-#### tracing
+#### Tracing
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -296,7 +297,7 @@ perf report --itrace=10nsbg1024 --call-graph fractal
 
 ----
 
-#### benchmarking
+#### Benchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -318,39 +319,39 @@ auto bench(auto code) -> measurements;
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-what if cache will not be hot?
-what if branch will not be predicted?
-what if code/data layout changes?
-what if data spikes?
-what if ...?
+What if cache will not be hot?
+What if branch will not be predicted?
+What if code/data layout changes?
+What if data spikes?
+What if ...?
 ```
 
 ----
 
 
-### solution?
+### Solution?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-what if we could measure "what if?"
+What if we could measure "what if?"
 ```
 
 ----
 
-#### symbolic benchmarking
+#### Symbolic Benchmarking
 <!-- .element: style="text-align:left" -->
 
-```cpp
-machine code // cpp, rust, zig, ...
+```python
+machine code # cpp, rust, zig, ...
   → symbolic execution
-      → solver-guided inputs generation
-          → bias-mitigated native execution
+      → solver-guided data synthesis
+          → bias-controlled native execution
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left;" -->
 
 ----
 
-### disclaimer
+#### Disclaimer
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -358,15 +359,15 @@ Focused on x86-64/linux
 Powered by linux-perf + perf-labs/perf
 ```
 
-```
-sudo apt install linux-tools-common linux-tools-$(uname -r)
-pip install --user git+https://github.com/perf-labs/perf.git
+```asm
+apt install linux-tools-common linux-tools-$(uname -r)
+pip install git+https://github.com/perf-labs/perf.git
 ```
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:16px;" -->
 
 ----
 
-##### `symbolic execution`
+##### `Symbolic Execution`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -511,20 +512,28 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 #### Hardware effects
 <!-- .element: style="text-align:left" -->
 
-<!--[noise, bias, implementation details]-->
-
-<table>
-<tr>
-<td><img src="images/zen5.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/code.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-</table>
+<img src="images/zen5.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
 https://chipsandcheese.com
 <!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+
 https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px" -->
+<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
+
+
+----
+
+#### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+<img src="images/code.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -715,7 +724,7 @@ perf info cpu --topology # lstopo
 ----
 
 ```
-perf tune latency
+perf tune latency # controlled chaos
 ```
 
 <!--```-->
@@ -723,10 +732,7 @@ perf tune latency
 <!--perf tune latency --config.aslr=1-->
 <!--```-->
 
-<img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
-
-controlled chaos
-<!-- .element: style="text-align:left; font-size: 22px;" -->
+<img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
 
 ----
 
