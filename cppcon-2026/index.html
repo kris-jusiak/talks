@@ -85,12 +85,12 @@ What affects performance? if so, how much and why?
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
   <tr>
   <td>
-  <pre style="font-size:14px">
+  <pre style="font-size:12px">
 (~) Frequency
  - Base:  3–5 ghz
  - Boost: 5–6 ghz
  - Overclocked: ~9 ghz</pre>
-  <pre style="font-size:14px">
+  <pre style="font-size:12px">
 (⬆️) Transistors
  - More Cores
  - More Caches
@@ -140,11 +140,11 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 <table>
 <tr>
-    <td colspan="2"><img src="images/cpu_fpga_gpu_tpu.png" style="width: 45%; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-<tr>
     <td><img src="images/perf_map.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
     <td><img src="images/bpf.png" style="width: 65%; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+<tr>
+    <td colspan="2"><img src="images/cpu_fpga_gpu_tpu.png" style="width: 40%; background:none; border:none; box-shadow:none;" /></td>
 </tr>
 </table>
 
@@ -153,7 +153,7 @@ https://github.com/karlrupp/microprocessor-trend-data
 ### Always Measure
 <!-- .element: style="text-align:left;" -->
 
-```
+```java
 ├─ Top down Microarchitecture Analysis Method
 ├─ Sampling
 ├─ Tracing
@@ -175,7 +175,7 @@ Performance Monitoring Unit
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
-```asm
+```python
  linux-perf  - https://perf.wiki.kernel.org                                      osaca       - https://github.com/rrze-hpc/osaca
  intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler       uica        - https://uica.uops.info
  amd-uprof   - https://www.amd.com/en/developer/uprof.html                       llvm-xray   - https://llvm.org/docs/xray.html
@@ -383,7 +383,7 @@ machine code [*]
 <!-- .element: style="text-align:left;" -->
 
 
-[*] binary/assembly -> cpp, rust, zig, ...
+[*] binary/assembly: cpp, rust, zig, ...
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
