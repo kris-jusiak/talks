@@ -57,7 +57,7 @@
 ----
 
 
-##### "`perf or nah`?" <span style="font-size:0.5em;">what affects performance? if so, how much and why?</span>
+##### "`perf or nah`?" <span style="font-size:0.6em;">what affects performance? if so, how much and why?</span>
 
 <!-- .element: style="text-align:left;" -->
 
@@ -71,7 +71,6 @@ Running with 'instrumentation, tracing, profiling' enabled?
 Running as a 'different user'?
 ...
 ```
-<!-- .element: class="fragment" data-fragment-index="2" -->
 
 
 ----
@@ -129,16 +128,20 @@ https://github.com/karlrupp/microprocessor-trend-data
 - what? how? when?
 ```
 
+
 <table>
 <tr>
-<td><img src="images/perf_map.png" style="width: 2100px; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/bpf.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-<td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/cpu_fpga_gpu_tpu.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/flamegraph.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+<td><img src="images/perf_map.png" style="width: 90%; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/bpf.png" style="width: 70%; background:none; border:none; box-shadow:none;" /></td>
+<tr>
 </tr>
 </table>
 
 https://www.brendangregg.com
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 <!--- what about noisy environments? what hardware i have to support?-->
 <!--- multiple runs?-->
@@ -173,6 +176,19 @@ Performance Monitoring Unit
      └─ processor Trace      pt           -            etm (coresight)
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
+
+```cpp
+linux-perf  - https://perf.wiki.kernel.org                                      osaca       - https://github.com/rrze-hpc/osaca
+intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler       uica        - https://uica.uops.info
+amd-uprof   - https://www.amd.com/en/developer/uprof.html                       llvm-xray   - https://llvm.org/docs/xray.html
+dtrace      - https://github.com/opendtrace                                     tracy       - https://github.com/wolfpld/tracy
+likwid      - https://github.com/rrze-hpc/likwid                                nanobench   - https://github.com/martinus/nanobench
+gperftools  - https://github.com/gperftools/gperftools                          llvm-mca    - https://llvm.org/docs/commandguide/llvm-mca.html
+callgrind   - https://valgrind.org/docs/manual/cl-manual.html                   gbench      - https://github.com/google/benchmark
+bcc         - https://github.com/iovisor/bcc                                    celero      - https://github.com/digitalinblue/celero
+coz         - https://github.com/plasma-umass/coz                               ...
+```
+<!-- .element: style="text-align:left; font-size:11px;" -->
 
 ----
 
@@ -222,17 +238,6 @@ main;render 7
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
-**linux-perf**  - https://perf.wiki.kernel.org
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-amd-uprof   - https://www.amd.com/en/developer/uprof.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-dtrace      - https://github.com/opendtrace
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-gperftools  - https://github.com/gperftools/gperftools
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-
 ----
 
 #### instrumentation
@@ -249,15 +254,6 @@ ret
 // nop
 ```
 
-llvm-xray   - https://llvm.org/docs/xray.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-tracy       - https://github.com/wolfpld/tracy
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-bcc         - https://github.com/iovisor/bcc
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-coz         - https://github.com/plasma-umass/coz
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-
 ----
 
 #### simulating
@@ -268,15 +264,6 @@ llvm-mca example
 uica example
 callgrind
 ```
-
-callgrind   - https://valgrind.org/docs/manual/cl-manual.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-llvm-mca    - https://llvm.org/docs/commandguide/llvm-mca.html
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-osaca       - https://github.com/rrze-hpc/osaca
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-uica        - https://uica.uops.info
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
 
 ----
 
@@ -325,18 +312,6 @@ auto bench(auto code) -> measurements;
 - hard (latency vs throughput, noise, bias, hardware effects)
 ```
 
-linux-perf - https://perf.wiki.kernel.org
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-likwid           - https://github.com/rrze-hpc/likwid
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-
-google benchmark - https://github.com/google/benchmark
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-nanobench        - https://github.com/martinus/nanobench
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-celero           - https://github.com/digitalinblue/celero
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:18px;" -->
-
 ----
 
 ##### `"what if" rule`
@@ -379,13 +354,15 @@ machine code // cpp, rust, zig, ...
 <!-- .element: style="text-align:left" -->
 
 ```
-focused on x86-64/linux
-powered by linux-perf + perf-labs/perf
+Focused on x86-64/linux
+Powered by linux-perf + perf-labs/perf
 ```
-<!-- .element: style="text-align:left" -->
 
+```
+sudo apt install linux-tools-common linux-tools-$(uname -r)
 pip install --user git+https://github.com/perf-labs/perf.git
-<!-- .element: style="text-align:left; font-size:16px;" -->
+```
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:16px;" -->
 
 ----
 
@@ -447,7 +424,7 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 
 ----
 
-##### `state-guided setup`
+##### `solver-guided inputs generation`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -478,19 +455,76 @@ assumptions: use perf.data
 
 ----
 
+##### bias-mitigated native execution
+<!-- .element: style="text-align:left" -->
+
+----
+
+```cpp
+Latency
+ ├─ Time it takes for a single operation to complete
+ └─ ns/op
+```
+
+<p align="left">
+<img src="images/lt.png" style="width: 35%; background:white; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+Throughput
+ ├─ Total number of operations completed in a given amount of time
+ ├─ ops/s, Gb/s, ...
+ └─ ns/ops - reciprocal throughput = inverse throughput
+```
+
+----
+
+#### Latency
+<!-- .element: style="text-align:left" -->
+
+```
+add mov eax, 42            add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42     -      add mov eax, 42
+add mov eax, 42            add mov eax, 42
+add mov eax, 42
+add mov eax, 42
+add mov eax, 42
+add mov eax, 42
+```
+
+https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+
+----
+
+#### Throughput
+<!-- .element: style="text-align:left" -->
+
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+
+----
+
 #### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 <!--[noise, bias, implementation details]-->
 
-<img src="images/zen5.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
-<img src="images/linux.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
-<img src="images/code.png" style="width: 26%; background:none; border:none; box-shadow:none;" />
+<table>
+<tr>
+<td><img src="images/zen5.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+<td><img src="images/code.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+</tr>
+</table>
 
 https://chipsandcheese.com
-<!-- .element: style="text-align:left; font-size:16px; margin: 5px 0px;" -->
+<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
 https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; font-size:16px; margin: 5px 0px" -->
+<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px" -->
 
 ----
 
@@ -515,19 +549,6 @@ https://makelinux.github.io/kernel/map
          ...
 ```
 
-----
-
-```cpp
-std::array<core<branch, cache>, 64u> cpus{};
-// numa
-
-int main() {
-    // ...
-}
-```
-
-<!--todo question what about noise enviornments-->
-
 https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
@@ -535,6 +556,22 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 #### Cache effects
 <!-- .element: style="text-align:left" -->
+
+```cpp
+auto value = lut[i];
+```
+
+```cpp
+perf bench asm 'addq (%rax), %r11'
+  --march sapphirerapids
+  --config.memory.cache.dlL1=100
+```
+
+----
+
+#### Cache effects
+<!-- .element: style="text-align:left" -->
+
 
 ```cpp
 template<Level level>
@@ -557,7 +594,7 @@ auto refresh(const void* addr) {
     settle();
 }
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```asm
 PREFETCHNTA Non-temporal
@@ -644,71 +681,8 @@ unused functions
 re-shuffle
 ```
 
-----
-
-##### `execution`
-<!-- .element: style="text-align:left" -->
-
-----
-
-#### Latency vs. Throughput
-<!-- .element: style="text-align:left" -->
-
-```cpp
-Latency
- ├─ Time it takes for a single operation to complete
- └─ ns/op
-```
-
-```cpp
-Throughput
- ├─ Total number of operations completed in a given amount of time
- ├─ ops/s, Gb/s, ...
- └─ ns/ops - reciprocal throughput = inverse throughput
-```
-
-----
-
-#### Latency vs. Throughput
-<!-- .element: style="text-align:left" -->
-
-<img src="images/cpu_fpga_gpu_tpu.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-
-https://qbaylogic.com/cpu-vs-fpga
+https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Latency vs. Throughput
-<!-- .element: style="text-align:left" -->
-
-```
-# latency                                   # throughput
-rdtsc
-mov r11, rax
-{code}
-rdtscp
-rdpmcs...
-lfence
-```
-
-```
-add mov eax, 42            add mov eax, 42
-add mov eax, 42            add mov eax, 42
-add mov eax, 42            add mov eax, 42
-add mov eax, 42            add mov eax, 42
-add mov eax, 42     -      add mov eax, 42
-add mov eax, 42            add mov eax, 42
-add mov eax, 42
-add mov eax, 42
-add mov eax, 42
-add mov eax, 42
-```
-
-https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
@@ -741,7 +715,7 @@ perf info cpu --topology # lstopo
 ----
 
 ```
-perf tune latency # controlled chaos
+perf tune latency
 ```
 
 <!--```-->
@@ -751,8 +725,13 @@ perf tune latency # controlled chaos
 
 <img src="images/tune.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
 
-#### Sanity check - Measured vs. Documented
-<!-- .element: style="text-align:left; font-size:22px;" -->
+controlled chaos
+<!-- .element: style="text-align:left; font-size: 22px;" -->
+
+----
+
+#### Sanity check - Measured vs. Spec
+<!-- .element: style="text-align:left; " -->
 
 ```cpp
 - instructions latency/rthroughput/...
@@ -762,21 +741,16 @@ perf tune latency # controlled chaos
  ...
 ```
 
-https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
 ```cpp
-perf bench asm 'mov eax, 42'
+perf bench instr 'mov'
     --march sapphirerapids
     --event cycles
 ```
 
 ```cpp
-target      mode
-mov eax, 42 latency     100.0  0.11404  0.002010  0.112  0.112  0.116  0.116  0.116
-            throughput  100.0  0.11436  0.001977  0.112  0.112  0.116  0.116  0.116
+instr   mode
+mov     latency     100.0  0.11404  0.002010  0.112  0.112  0.116  0.116  0.116
+        throughput  100.0  0.11436  0.001977  0.112  0.112  0.116  0.116  0.116
 ```
 <!-- .element: style="text-align:left; font-size: 19px;" -->
 
@@ -922,9 +896,6 @@ perf bench enum_to_string -x gcc26.out
 
 ----
 
-#### perf plot
-<!-- .element: style="text-align:left" -->
-
 ```
 perf view
 perf plot --baseline # ECDF
@@ -984,7 +955,7 @@ std::string_view enum_to_string_v1(enum auto value) {
 
 ----
 
-#### Minimal perfect hashing
+#### Hashing
 <!-- .element: style="text-align:left" -->
 
 <img src="images/hashing.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
@@ -1061,7 +1032,9 @@ std::string_view v5::enum_to_string(enum auto value) {
 #### Analysis / Testing
 <!-- .element: style="text-align:left" -->
 
+<p align="left">
 <img src="images/notebook.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
+</p>
 
 <!--asm/timeline/resource_pressure-->
 <!--perf.bench(asm).instrucitons < 10-->
