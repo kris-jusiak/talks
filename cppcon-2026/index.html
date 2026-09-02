@@ -129,24 +129,29 @@ https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-- what? how? when?
+how? when?
 ```
 
-<!--- what about noisy environments? what hardware i have to support?-->
-<!--- isolate bias?-->
-<!--- wanna be fast has to be in the future-->
-<!--- increasing {instructions, µops} per cycle-->
-<!--- reducing overall instruction count-->
+<img src="images/cpu_fpga_gpu_tpu.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+<img src="images/jitter.png" style="width: 32%; background:none; border:none; box-shadow:none;" />
 
-<table>
-<tr>
-    <td><img src="images/perf_map.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-    <td><img src="images/bpf.png" style="width: 65%; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-<tr>
-    <td colspan="2"><img src="images/cpu_fpga_gpu_tpu.png" style="width: 40%; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-</table>
+http://www.qbaylogic.com
+<!-- .element: style="text-align:left; font-size:19px;" -->
+
+----
+
+### Always Measure
+<!-- .element: style="text-align:left" -->
+
+```cpp
+what?
+```
+
+<img src="images/perf_map.png" style="width: 43%; background:none; border:none; box-shadow:none;" />
+<img src="images/bpf.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+
+https://github.com/iovisor/bcc
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
 
@@ -198,12 +203,12 @@ Performance Monitoring Unit
 <td>
 <img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none;margin: 0 0;" />
 <td>
-<pre style="font-size:12px;margin: 0 0;"><code>[Level] Category    Desktop Server HPC
-------------------- ------- ------ ------
-[1] Retiring         20–50% 10–30% 30–70%
-[1] Bad Speculation  05–10% 05–10% 01–05%
-[1] Front-End Bound  05–10% 10–25% 05–10%
-[1] Back-End Bound   20–40% 20–60% 20–40%</code></pre>
+<pre style="font-size:12px;margin: 0 0;"><code>Level Category Desktop(%) Server(%) HPC(%)
+----- -------- ---------- --------- ------
+1 Retiring          20–50     10–30  30–70
+1 Bad Speculation    5–10      5–10    1–5
+1 Front-End Bound    5–10     10–25   5–10
+1 Back-End Bound    20–40     20–60  20–40</code></pre>
 </td>
 </tr>
 </table>
@@ -310,7 +315,7 @@ rdtsc() / rdtscp()
 
 ```cpp
 function:
-// nop todo instruction
+// nop
 ret
 // nop
 ```
@@ -498,22 +503,35 @@ assumptions: use perf.data
 
 ----
 
-```cpp
-Latency
+<table>
+<tr>
+<td>
+<img src="images/lat.png" style="width: 200px; background:white; border:none; box-shadow:none;" />
+</td>
+<td>
+<pre><code>Latency
  ├─ Time it takes for a single operation to complete
  └─ ns/op
-```
+</code></pre>
+</td>
+</tr>
+</table>
 
-<p align="left">
-<img src="images/lt.png" style="width: 35%; background:white; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-Throughput
- ├─ Total number of operations completed in a given amount of time
+<table>
+<tr>
+<td>
+<img src="images/thr.png" style="width: 200px; background:white; border:none; box-shadow:none;" />
+</td>
+<td>
+<pre><code>Throughput
+ ├─ Total number of operations
+ ├  completed in a given amount of time
  ├─ ops/s, Gb/s, ...
  └─ ns/ops - reciprocal throughput = inverse throughput
-```
+</code></pre>
+</td>
+</tr>
+</table>
 
 ----
 
@@ -756,7 +774,7 @@ perf info cpu --topology # lstopo
 ----
 
 ```
-perf tune latency # controlled chaos
+perf tune latency
 ```
 
 <!--```-->
@@ -767,6 +785,9 @@ perf tune latency # controlled chaos
 <p align="left">
 <img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
 </p>
+
+#### Non-tuned vs. tuned
+<!-- .element: style="font-size:22px; text-align:left;" -->
 
 ----
 
