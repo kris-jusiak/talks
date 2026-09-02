@@ -564,23 +564,34 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 ----
 
-#### Hardware effects
+#### Hardware effects [bias: cache, branch]
 <!-- .element: style="text-align:left" -->
 
-<table style="width:110%;border-collapse:collapse; border-spacing:0; margin:0; padding:0;">
-<tr style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;">
-    <td style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;"><img src="images/zen5.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-    <td style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;"><img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-    <td style="border-collapse:collapse; border-spacing:0; margin:0; padding:0;"><img src="images/code.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-</tr>
-</table>
-
-
+<img src="images/zen5.png" style="width: 82%; background:none; border:none; box-shadow:none;" />
 
 https://chipsandcheese.com
 <!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
 
+----
+
+#### Hardware effects [noise: jitter]
+<!-- .element: style="text-align:left" -->
+
+<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+
 https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
+
+----
+
+#### Hardware effects [opt: codegen]
+<!-- .element: style="text-align:left" -->
+
+<img src="images/code.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+
+```cpp
+objdump -d -s <file>
+```
 <!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
 
 ----
