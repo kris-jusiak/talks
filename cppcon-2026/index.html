@@ -535,7 +535,7 @@ assumptions: use perf.data
 
 ----
 
-#### Latency
+#### Latency [single instruction]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -543,7 +543,7 @@ add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
-add mov eax, 42     -      add mov eax, 42
+add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
 add mov eax, 42
 add mov eax, 42
@@ -773,7 +773,7 @@ Modern CPUs are primarily bottlenecked by
 ----
 
 ```
-perf info cpu --topology # lstopo
+perf info cpu --topology --id # lstopo
 ```
 
 <p align="left">
@@ -791,7 +791,7 @@ perf info cpu --topology # lstopo
 ----
 
 ```
-perf tune latency
+perf tune latency --verify
 ```
 
 <!--```-->
@@ -808,7 +808,7 @@ Non-tuned vs. tuned
 <!-- .element: style="font-size:22px; text-align:left;" -->
 
 ```cpp
-perf bench asm "rdtsc"
+perf bench asm rdtsc
 ```
 
 ----
@@ -926,7 +926,7 @@ perf bench region hot_begin..hot_end
 ```
 # latency.json
 {
-  "affinity": ["all"],
+  "affinity": ["pinned"],
   "function": {
     "alignment": [16, 32, 64],
     "layout": ["original", "random"],
