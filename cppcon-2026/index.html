@@ -381,7 +381,7 @@ What if we could measure "what if?"
 
 ```python
 machine code [*]
-  → symbolic execution
+  → symbolic analysis
       → solver-guided data synthesis
           → bias-controlled native execution
 ```
@@ -409,7 +409,7 @@ pip install git+https://github.com/perf-labs/perf.git
 
 ----
 
-##### `Symbolic Execution`
+##### `Symbolic Analysis`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -622,7 +622,7 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 ----
 
-#### Cache effects
+#### Hardware effects [Cache]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -630,14 +630,17 @@ auto value = lut[i];
 ```
 
 ```cpp
-perf bench asm 'addq (%rax), %r11'
+perf bench asm 'add r11, [rax]'
   --march sapphirerapids
-  --config.memory.cache.dlL1=100
+  --config.memory.cache.dL1=100
+  --data.r11=0
+  --data.rax=0x4000
+  --data.memory.0x4000=1234
 ```
 
 ----
 
-#### Cache effects
+#### Hardware effects [Cache]
 <!-- .element: style="text-align:left" -->
 
 
@@ -675,13 +678,16 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 
 ----
 
-#### Cache effects
+#### Hardware effects [Cache]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf bench asm 'addq (%rax), %r11'
-    --march sapphirerapids
-    --config.memory.cache.dlL1=100
+perf bench asm 'add r11, [rax]'
+  --march sapphirerapids
+  --config.memory.cache.dL1="hit_rate:100"
+  --data.r11=0
+  --data.rax=0x4000
+  --data.memory.0x4000=1234
 ```
 
 ```cpp
@@ -699,7 +705,7 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 
 ----
 
-#### Branch effects
+#### Hardware effects [Branch]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -741,7 +747,7 @@ measure(repeat(vary(fn))
 
 ----
 
-#### Layout effects
+#### Hardware effects [CodeGen]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -792,13 +798,18 @@ perf tune latency
 <!--# Address Space Layout Randomization (ASLR)-->
 <!--perf tune latency --config.aslr=1-->
 <!--```-->
+<br />
 
 <p align="left">
 <img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
 </p>
 
-#### Non-tuned vs. tuned
+Non-tuned vs. tuned
 <!-- .element: style="font-size:22px; text-align:left;" -->
+
+```cpp
+perf bench asm "rdtsc"
+```
 
 ----
 
@@ -915,23 +926,23 @@ perf bench region hot_begin..hot_end
 ```
 # latency.json
 {
-  "affinity": [1],
+  "affinity": ["all"],
   "function": {
-    "alignment": [16, 32],
-    "layout": ["random"],
+    "alignment": [16, 32, 64],
+    "layout": ["original", "random"],
   },
-  "branch": ["predictable", "unpredictable"]
+  "branch": ["predictable", "unpredictable"],
   "memory": {
     "heap": ["random"],
     "stack": ["random"],
     "cache": {
-      "dL1":  [{"hit_tate":[25, 50, 75, 100]}],
-      "dL2":  [{"hit_tate":[75, 100]}],
-      "dL3":  [{"hit_tate":100}], # perf.data
-      "iL1":  [{"hit_tate":100}],
-      "iL2":  [{"hit_tate":100}],
-      "dTLB": [{"hit_tate":100}],
-      "iTLB": [{"hit_tate":100}],
+      "dL1":  [{"hit_rate":[25, 50, 75, 100]}],
+      "dL2":  [{"hit_rate":[75, 100]}],
+      "dL3":  [{"hit_rate":"perf.data"}],
+      "iL1":  [{"hit_rate":100}],
+      "iL2":  [{"hit_rate":100}],
+      "dTLB": [{"hit_rate":100}],
+      "iTLB": [{"hit_rate":100}],
     }
   }
 }
