@@ -295,13 +295,100 @@ perf report --itrace=10nsbg1024 --call-graph fractal
 
 ----
 
-#### Simulation
+#### Simulation [llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html)
 <!-- .element: style="text-align:left;" -->
 
+```asm
+add_loop:
+  add     eax, dword ptr [rdi + 4*rcx - 4]
+  inc     rcx
+  cmp     rcx, rsi
+  jb      add_loop
+```
+
+```
+llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
+```
+
+----
+
+#### llvm-mca — [Timeline](https://llvm.org/docs/commandguide/llvm-mca.html#timeline-view)
+<!-- .element: style="text-align:left;" -->
+
+<pre><code data-trim>
+[1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    [10]   [11]   [12]
+RESOURCE-pressure           port0  port1  port2A  port2B  port3   port4   port5   port6   port7   port2D
+[0]    add_loop:
+[1]    add      eax, dword ptr [rdi+4*rcx-4]   1      .      .       .       .      0.50    0.50     .      .       .
+[2]    inc      rcx                             1      .      .       .       .       .       .       .      .       .
+[3]    cmp      rcx, rsi                        1      .      .       .       .       .       .       .      .       .
+[4]    jb       add_loop                        .      .      .       .       .       .       .       .      .       .
+Instructions:    4
+Total Cycles:    4
+Block RThroughput: 1.5
+</code></pre>
+<!-- .element: style="font-size:14px;" -->
+
+----
+
+#### llvm-mca — [Resource Pressure](https://llvm.org/docs/commandguide/llvm-mca.html#resource-pressure-view)
+<!-- .element: style="text-align:left;" -->
+
+<pre><code data-trim>
+[1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    [10]   [11]   [12]
+RESOURCE-pressure           port0  port1  port2A  port2B  port3   port4   port5   port6   port7   port2D
+[0]    add_loop:
+[1]    add      eax, dword ptr [rdi+4*rcx-4]   1      .      .       .       .      0.50    0.50     .      .       .
+[2]    inc      rcx                             1      .      .       .       .       .       .       .      .       .
+[3]    cmp      rcx, rsi                        1      .      .       .       .       .       .       .      .       .
+[4]    jb       add_loop                        .      .      .       .       .       .       .       .      .       .
+-        -       -       -       -       -       -       -       -       -
+1.00     -       -       -       -      0.50    0.50     -       -       -
+Total unsustainable Resource Pressure Cycles: 2
+</code></pre>
+<!-- .element: style="font-size:14px;" -->
+
+----
+
+#### llvm-mca — [pext](https://www.felixcloutier.com/x86/pext) [enum_to_string](https://godbolt.org/z/3j8qcabsj)
+<!-- .element: style="text-align:left;" -->
+
+```asm
+shl     edi, 3
+bzhi    eax, dword ptr [rsi], edi
+imul    eax, eax, 2893426669
+shr     eax, 29
+mov     ecx, 0b001100000010011
+shrx    eax, ecx, eax
+and     eax, 0b111
+ret
+```
+
+```
+llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure enum.s
+```
+
+----
+
+#### llvm-mca — Options
+<!-- .element: style="text-align:left;" -->
+
+```
+-mcpu=<cpu>             target cpu (skylake, sapphirerapids, zen4, ...)
+-timeline               show timeline view
+-resource-pressure      show resource pressure view
+-show-encoding          show instruction encoding
+-tab-size=<n>           tab size (default: 4)
+-iterations=<n>         number of iterations to simulate (default: 100)
+-analysis-only          only run the analysis, no output
+-stats                  print statistics
+```
+
 ```cpp
-llvm-mca example
-uica example
-callgrind
+// useful for comparing microarchitectures:
+llvm-mca -mcpu=sapphirerapids -timeline input.s   // intel
+llvm-mca -mcpu=znver4       -timeline input.s   // amd
+llvm-mca -mcpu=cortex-x4    -timeline input.s   // arm
 ```
 
 ----
