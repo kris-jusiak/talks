@@ -1007,28 +1007,28 @@ clang++ -O2 ...
 ```
 
 ```
-perf bench func | perf plot -p ecdf
+perf microbench func ... | perf microbench plot -p ecdf
 ```
 
 ----
 
 ```
-perf bench fizz_buzz -- 0
-perf bench fizz_buzz -- 1
-perf bench fizz_buzz -- 2
+perf microbench fizz_buzz -- 0
+perf microbench fizz_buzz -- 1
+perf microbench fizz_buzz -- 2
 ...
 ```
 
 ----
 
 ```
-perf plot # trend
+perf microbench plot # trend
 ```
 
 ----
 
 ```cpp
-perf bench func send_msg
+perf microbench func send_msg
     --exec gcc16.out
     --event cycles,instructions
 ```
@@ -1149,14 +1149,14 @@ constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
 ----
 
 ```cpp
-perf bench func enum_to_string -x gcc26.out
+perf microbench func enum_to_string -x gcc26.out
 ```
 
 ----
 
 ```
-perf view
-perf plot --baseline # ECDF
+perf microbench view --compare
+perf microbench plot -p ecdf # doesn't loose values
 ```
 
 ----
