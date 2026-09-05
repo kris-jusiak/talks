@@ -467,15 +467,11 @@ What if we could measure "what if?"
 <!-- .element: style="text-align:left" -->
 
 ```python
-machine code [*]
-  → symbolic analysis
-      → solver-guided data synthesis
-          → bias-controlled native execution
+machine code                    # binary/assembly: cpp, rust, zig, ...
+  → symbolic exploration        # 
+      → data synthesis          # solver-guided
+          → native execution    # bias-controlled
 ```
-<!-- .element: style="text-align:left;" -->
-
-
-[*] binary/assembly: cpp, rust, zig, ...
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
@@ -496,7 +492,7 @@ pip install git+https://github.com/perf-labs/perf.git
 
 ----
 
-##### `Symbolic Analysis`
+##### `Symbolic Exploration`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -529,7 +525,7 @@ https://gitlab.com/x86-psabis/x86-64-abi/-/jobs/artifacts/master/raw/x86-64-abi/
 ----
 
 ```python
-def analyze(project, start, end):
+def explore(project, start, end):
     state = project.factory.blank_state(addr=start)
     mem = {}
 
@@ -572,7 +568,7 @@ page = mmap.mmap(
 ```
 
 ```python
-solutions = analyze(project, start, end)
+solutions = explore(project, start, end)
 for solution in solutions:
     for name, sym in solution["reg"].items():
         values.append(solver.eval(sym))
@@ -930,6 +926,15 @@ https://uops.info/table.html
 
 ----
 
+```
+backend_bound
+bad_speculation
+frontend_bound
+retiring
+```
+
+----
+
 ```cpp
 auto enum_to_string(enum auto value) -> std::string_view;
 ```
@@ -937,6 +942,26 @@ auto enum_to_string(enum auto value) -> std::string_view;
 ```cpp
 template auto enum_to_string(color) -> std::string_view;
 ```
+
+----
+
+g++ -O3 ...
+g++ -O2 ...
+clang++ -O3 ...
+clang++ -O2 ...
+
+perf bench func | perf plot -p ecdf
+
+----
+
+perf bench fizz_buzz -- 0
+perf bench fizz_buzz -- 1
+perf bench fizz_buzz -- 2
+...
+
+----
+
+perf plot # over time
 
 ----
 
@@ -1062,7 +1087,7 @@ constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
 ----
 
 ```cpp
-perf bench enum_to_string -x gcc26.out
+perf bench func enum_to_string -x gcc26.out
 ```
 
 ----
