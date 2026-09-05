@@ -65,14 +65,21 @@
  Adding a 'try/catch' that never throws?
  Adding a 'branch' that is never taken?
  Adding an 'unused function'?
+```
+<!-- .element: class="fragment" -->
 
+```cpp
  Removing 'dead code'?
  Enabling 'debug symbols' in an optimized build?
+```
+<!-- .element: class="fragment" -->
 
+```cpp
  Running with 'instrumentation, tracing, profiling' enabled?
  Running as a 'different user'?
  ...
 ```
+<!-- .element: class="fragment" -->
 
 What affects performance? if so, how much and why?
 <!-- .element: style="text-align:right; font-size:22px;" -->
@@ -85,12 +92,7 @@ What affects performance? if so, how much and why?
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
   <tr>
   <td>
-  <pre style="font-size:12px">
-(~) Frequency
- - Base:  3–5 ghz
- - Boost: 5–6 ghz
- - Overclocked: ~9 ghz</pre>
-  <pre style="font-size:12px">
+  <pre style="font-size:14px">
 (⬆️) Transistors
  - More Cores
  - More Caches
@@ -100,10 +102,7 @@ What affects performance? if so, how much and why?
 </pre>
   </td>
   <td>
-    <img src="images/metrics.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
-    <img src="images/normal.png" style="width: 49%; border:none; box-shadow:none;" />
-    <img src="images/dennard.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
-    <img src="images/trend.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+    <img src="images/trend.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
 </tr>
 </table>
@@ -113,6 +112,46 @@ What affects performance? if so, how much and why?
 <!--#### performance is not scaling with transistors size-->
 
 https://github.com/karlrupp/microprocessor-trend-data
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
+
+----
+
+#### Performance
+<!-- .element: style="text-align:left" -->
+
+<table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
+  <tr>
+  <td>
+  <pre style="font-size:14px">
+(~) Frequency
+ - Base:  3–5 ghz
+ - Boost: 5–6 ghz
+ - Overclocked: ~9 ghz</pre>
+  <pre style="font-size:12px">
+</pre>
+  </td>
+  <td>
+    <img src="images/dennard.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  </td>
+</tr>
+</table>
+
+[Moore’s Law and Dennard Scaling](https://wgropp.cs.illinois.edu/courses/cs598-s15/lectures/lecture15.pdf)
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
+
+----
+
+#### Performance
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/metrics.png" style="width: 45%; border:none; box-shadow:none;" />
+</p>
+<p align="right">
+<img src="images/normal.png" style="width: 60%; border:none; box-shadow:none;" />
+</p>
+
+... Is Not a Number!
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
 
 ----
