@@ -57,7 +57,7 @@
 ----
 
 
-##### "`perf or nah`?"
+##### "`Perf or Nah`?"
 
 <!-- .element: style="text-align:left;" -->
 
@@ -86,7 +86,7 @@ What affects performance? if so, how much and why?
 
 ----
 
-#### Performance
+#### Performance [Transistors]
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
@@ -116,7 +116,7 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
-#### Performance
+#### Performance [Frequency]
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
@@ -141,18 +141,10 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
-#### Performance
+#### Performance [Is Not a Number]
 <!-- .element: style="text-align:left" -->
 
-<p align="left">
-<img src="images/metrics.png" style="width: 45%; border:none; box-shadow:none;" />
-</p>
-<p align="right">
-<img src="images/normal.png" style="width: 60%; border:none; box-shadow:none;" />
-</p>
-
-... Is Not a Number!
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
+<img src="images/num.png" style="width: 100%; border:none; box-shadow:none;" />
 
 ----
 
@@ -524,7 +516,7 @@ Powered by linux-perf + perf-labs/perf
 ```
 
 ```asm
-apt install linux-tools-common linux-tools-$(uname -r)
+apt install linux-tools-$(uname -r)
 pip install git+https://github.com/perf-labs/perf.git
 ```
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:16px;" -->
@@ -895,12 +887,18 @@ Modern CPUs are primarily bottlenecked by
 ----
 
 ```
-perf info cpu --topology --id # lstopo
+perf info cpu --topology # lstopo
 ```
 
 <p align="left">
 <img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
 </p>
+
+----
+
+```
+perf info cpu --id
+```
 
 ```
 12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
@@ -916,28 +914,6 @@ perf info cpu --topology --id # lstopo
 perf tune latency --verify
 ```
 
-<!--```-->
-<!--# Address Space Layout Randomization (ASLR)-->
-<!--perf tune latency --config.aslr=1-->
-<!--```-->
-<br />
-
-<p align="left">
-<img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
-</p>
-
-Non-tuned vs. tuned
-<!-- .element: style="font-size:22px; text-align:left;" -->
-
-```cpp
-perf bench asm rdtsc
-```
-
-----
-
-#### Sanity check
-<!-- .element: style="text-align:left; " -->
-
 ```cpp
 Measured vs. Spec
 - instructions latency/rthroughput/...
@@ -946,6 +922,28 @@ Measured vs. Spec
 - max(µops/cycle) vs. dispatch width
  ...
 ```
+
+<!--```-->
+<!--# Address Space Layout Randomization (ASLR)-->
+<!--perf tune latency --config.aslr=1-->
+<!--```-->
+<br />
+
+----
+
+```cpp
+perf bench asm 'rdtsc' | perf plot -p box
+```
+
+<p align="left">
+<img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
+</p>
+
+Non-tuned vs. tuned
+<!-- .element: style="font-size:22px; text-align:left;" -->
+
+----
+
 
 ```cpp
 perf bench instr 'mov'
