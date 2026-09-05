@@ -117,6 +117,20 @@ What affects performance? if so, how much and why?
 
 ----
 
+##### `"what if" rule`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+What if data spikes?
+What if cache will not be hot?
+What if branch will not be predicted?
+Whaf if code/data layout changes?
+What if ...?
+```
+<!-- .element: class="fragment" -->
+
+----
+
 #### Performance [Transistors]
 <!-- .element: style="text-align:left" -->
 
@@ -171,7 +185,47 @@ https://github.com/karlrupp/microprocessor-trend-data
 #### Performance [Is Not a Number]
 <!-- .element: style="text-align:left" -->
 
-<img src="images/num.png" style="width: 100%; border:none; box-shadow:none;" />
+<p align="left">
+<img src="images/num.jpg" style="width: 90%; border:none; box-shadow:none;" />
+</p>
+
+----
+
+#### Performance [bias]
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/zen5.png" style="width: 79%; background:none; border:none; box-shadow:none;" />
+</p>
+
+https://chipsandcheese.com
+<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
+
+----
+
+#### Performance [noise]
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+</p>
+
+https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
+
+----
+
+#### Performance [leakage]
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/code.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+</p>
+
+```cpp
+objdump -d -s <file>
+```
+<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
 
 ----
 
@@ -201,17 +255,6 @@ https://github.com/iovisor/bcc
 ### Always Measure
 <!-- .element: style="text-align:left;" -->
 
-```java
-├─ Top down Microarchitecture Analysis Method
-├─ Sampling
-├─ Tracing
-├─ Simulation
-├─ Instrumentation
-├─ Benchmarking
-└─ ...
-```
-<!-- .element: style="text-align:left; font-size:19px;" -->
-
 ```
 Performance Monitoring Unit
   └─ CPU                     Intel        Amd          Arm
@@ -235,6 +278,15 @@ Performance Monitoring Unit
  coz         - https://github.com/plasma-umass/coz                               ...
 ```
 <!-- .element: style="text-align:left; font-size:11px;" -->
+
+----
+
+```cpp
+Modern CPUs are primarily bottlenecked by
+ - Data access
+ - Branch prediction
+ - Instruction supply
+```
 
 ----
 
@@ -295,8 +347,8 @@ perf record
 
 <table>
 <tr>
-    <td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-    <td>
+<td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
+<td>
 <pre style="font-size:14px;margin: 0 0;"><code># sampling (freq/period) | call-stack (lbr) | count
 main;parse;tokenize 5
 main;parse;analyze 3
@@ -465,8 +517,8 @@ auto bench(invocable auto code, integral auto iterations) {
     for (auto i = 0u; i < iterations; ++i) {
         keep(code());
     }
-    const auto end = now();
-    return end - start;
+    const auto stop = now();
+    return stop - start;
 }
 ```
 
@@ -479,19 +531,6 @@ auto bench(invocable auto code, integral auto iterations) {
 - correlation issues
 - hard (latency vs throughput, noise, bias, hardware effects)
 multiple runs?
-```
-
-----
-
-##### `"what if" rule`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-What if data spikes?
-What if cache will not be hot?
-What if branch will not be predicted?
-Whaf if code/data layout changes?
-What if ...?
 ```
 
 ----
@@ -509,10 +548,10 @@ What if we could measure "what if?"
 <!-- .element: style="text-align:left" -->
 
 ```python
-machine code                    # binary/assembly: cpp, rust, zig, ...
-  → symbolic exploration        #
-      → data synthesis          # solver-guided
-          → native execution    # bias-controlled
+Machine Code                  # binary/assembly: cpp, rust, zig, ...
+  → Symbolic Exploration      #
+      → Data Synthesis        # solver-guided
+          → Native Execution  # bias-controlled
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
@@ -576,7 +615,7 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 
 ----
 
-##### `Solver-guided data synthesis`
+##### `Data Synthesis`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -607,7 +646,7 @@ assumptions: use perf.data
 
 ----
 
-##### `Bias-Controlled Native Execution`
+##### `Native Execution`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -670,44 +709,6 @@ https://github.com/andreas-abel/nanoBench
 
 https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 <!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-
-----
-
-#### Hardware effects [bias: cache, branch]
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/zen5.png" style="width: 79%; background:none; border:none; box-shadow:none;" />
-</p>
-
-https://chipsandcheese.com
-<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
-
-----
-
-#### Hardware effects [noise/jitter]
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-</p>
-
-https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
-
-----
-
-#### Hardware effects [opt: codegen]
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/code.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-objdump -d -s <file>
-```
-<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
 
 ----
 
@@ -875,20 +876,31 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 
 ----
 
-#### The worst possiblie execution!
+#### 'The Worst' Possiblie Execution
 <!-- .element: style="text-align:left" -->
 
-----
-
-#### Case study
-<!-- .element: style="text-align:left" -->
-
-```cpp
-Modern CPUs are primarily bottlenecked by
- - Instruction supply
- - Data access
- - Branch prediction
+```json
+{
+  "function": {
+    "layout": ["random"],
+  },
+  "branch": ["unpredictable"],
+  "memory": {
+    "heap": ["random"],
+    "stack": ["random"],
+    "cache": {
+      "dL1":  [{"hit_rate":0}],
+      "dL2":  [{"hit_rate":0}],
+      "dL3":  [{"hit_rate":0}],
+      "iL1":  [{"hit_rate":0}],
+      "iL2":  [{"hit_rate":0}],
+      "dTLB": [{"hit_rate":0}],
+      "iTLB": [{"hit_rate":0}],
+    }
+  }
+}
 ```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
