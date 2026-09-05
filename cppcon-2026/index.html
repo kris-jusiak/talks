@@ -51,13 +51,44 @@
 
 ----
 
+#### Disclaimer
+<!-- .element: style="text-align:left" -->
+
+```
+Focused on x86-64/linux
+Powered by linux-perf + perf-labs/perf
+```
+
+<p align="left">
+<img src="images/cpu_fpga_gpu_tpu.jpg" style="width: 49%; background:none; border:none; box-shadow:none;" />
+</p>
+
+##### - Intel - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
+##### - AMD - https://docs.amd.com/v/u/en-US/40332-PUB_4.08
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
+##### - ARM - https://developer.arm.com/documentation/ddi0487/latest
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
+##### - Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
+<!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
+
+---
+
+```asm
+apt install linux-tools-$(uname -r)
+pip install git+https://github.com/perf-labs/perf.git
+```
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:16px;" -->
+
+----
+
 ### Motivation
 <!-- .element: style="text-align:left" -->
 
 ----
 
 
-##### "`Perf or Nah`?"
+##### "`perf or nah`?"
 
 <!-- .element: style="text-align:left;" -->
 
@@ -106,10 +137,6 @@ What affects performance? if so, how much and why?
   </td>
 </tr>
 </table>
-
-<!--#### performance is not a number-->
-<!--#### performance is not normally distributed-->
-<!--#### performance is not scaling with transistors size-->
 
 https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
@@ -160,22 +187,7 @@ https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-how? when?
-```
-
-<img src="images/cpu_fpga_gpu_tpu.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
-<img src="images/jitter.png" style="width: 32%; background:none; border:none; box-shadow:none;" />
-
-http://www.qbaylogic.com
-<!-- .element: style="text-align:left; font-size:19px;" -->
-
-----
-
-### Always Measure
-<!-- .element: style="text-align:left" -->
-
-```cpp
-what?
+what? how? when?
 ```
 
 <img src="images/perf_map.png" style="width: 43%; background:none; border:none; box-shadow:none;" />
@@ -475,15 +487,14 @@ multiple runs?
 <!-- .element: style="text-align:left" -->
 
 ```cpp
+What if data spikes?
 What if cache will not be hot?
 What if branch will not be predicted?
 Whaf if code/data layout changes?
-What if data spikes?
 What if ...?
 ```
 
 ----
-
 
 ### Solution
 <!-- .element: style="text-align:left" -->
@@ -504,22 +515,6 @@ machine code                    # binary/assembly: cpp, rust, zig, ...
           → native execution    # bias-controlled
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Disclaimer
-<!-- .element: style="text-align:left" -->
-
-```
-Focused on x86-64/linux
-Powered by linux-perf + perf-labs/perf
-```
-
-```asm
-apt install linux-tools-$(uname -r)
-pip install git+https://github.com/perf-labs/perf.git
-```
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:16px;" -->
 
 ----
 
@@ -681,17 +676,21 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 #### Hardware effects [bias: cache, branch]
 <!-- .element: style="text-align:left" -->
 
-<img src="images/zen5.png" style="width: 82%; background:none; border:none; box-shadow:none;" />
+<p align="left">
+<img src="images/zen5.png" style="width: 79%; background:none; border:none; box-shadow:none;" />
+</p>
 
 https://chipsandcheese.com
 <!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
 
 ----
 
-#### Hardware effects [noise: jitter]
+#### Hardware effects [noise/jitter]
 <!-- .element: style="text-align:left" -->
 
+<p align="left">
 <img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+</p>
 
 https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
@@ -701,7 +700,9 @@ https://makelinux.github.io/kernel/map
 #### Hardware effects [opt: codegen]
 <!-- .element: style="text-align:left" -->
 
+<p align="left">
 <img src="images/code.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+</p>
 
 ```cpp
 objdump -d -s <file>
@@ -798,7 +799,7 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 ```cpp
 perf bench asm 'add r11, [rax]'
   --march sapphirerapids
-  --config.memory.cache.dL1="hit_rate:100"
+  --config.memory.cache.dL1=hit_rate:100
   --data.r11=0
   --data.rax=0x4000
   --data.memory.0x4000=1234
@@ -874,6 +875,11 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 
 ----
 
+#### The worst possiblie execution!
+<!-- .element: style="text-align:left" -->
+
+----
+
 #### Case study
 <!-- .element: style="text-align:left" -->
 
@@ -944,7 +950,6 @@ Non-tuned vs. tuned
 
 ----
 
-
 ```cpp
 perf bench instr 'mov'
     --march sapphirerapids
@@ -982,23 +987,31 @@ template auto enum_to_string(color) -> std::string_view;
 
 ----
 
+```cpp
 g++ -O3 ...
 g++ -O2 ...
 clang++ -O3 ...
 clang++ -O2 ...
+```
 
+```
 perf bench func | perf plot -p ecdf
+```
 
 ----
 
+```
 perf bench fizz_buzz -- 0
 perf bench fizz_buzz -- 1
 perf bench fizz_buzz -- 2
 ...
+```
 
 ----
 
-perf plot # over time
+```
+perf plot # trend
+```
 
 ----
 
