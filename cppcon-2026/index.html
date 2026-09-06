@@ -221,14 +221,14 @@ Performance Monitoring Unit
  likwid      - https://github.com/rrze-hpc/likwid                                nanobench   - https://github.com/martinus/nanobench
  gperftools  - https://github.com/gperftools/gperftools                          llvm-mca    - https://llvm.org/docs/commandguide/llvm-mca.html
  callgrind   - https://valgrind.org/docs/manual/cl-manual.html                   gbench      - https://github.com/google/benchmark
- bcc         - https://github.com/iovisor/bcc                                    celero      - https://github.com/digitalinblue/celero
- coz         - https://github.com/plasma-umass/coz                               ...
+ bcc         - https://github.com/iovisor/bcc                                    ...
+ coz         - https://github.com/plasma-umass/coz
 ```
 <!-- .element: style="text-align:left; font-size:11px;" -->
 
 ----
 
-##### Modern CPUs are primarily bottlenecked by
+##### Modern CPUs are `primarily` bottlenecked by
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -356,25 +356,15 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
 
 ----
 
-##### Instrumentation [RDTSC/RDTSCP/CNTVCT_EL0/CNTPCT_EL0]
+##### Instrumentation [nop->jmp]
 <!-- .element: style="text-align:left;" -->
 
-```asm
-start:                  stop:
-    lfence                  lfence
-    rdtsc                   rdtscp
-    lfence                  lfence
-```
-
 ```cpp
-function:
+// affects performance
+function: // llvm-xray
 // nop
 ret
 // nop
-```
-
-```cpp
-affects performance
 ```
 
 <p align="left">
@@ -383,8 +373,16 @@ affects performance
 
 ----
 
-#### Benchmarking
+#### Benchmarking [rdtsc/rdtscp/rdpmc]
 <!-- .element: style="text-align:left" -->
+
+```asm
+start:      stop:
+    lfence      lfence
+    rdtsc       rdtscp
+    lfence      lfence
+```
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ```cpp
 /**
@@ -404,9 +402,8 @@ auto bench(invocable auto code, integral auto iterations) { // multiple runs
 
 ----
 
-```cpp
-What if we could measure "what if?"
-```
+#### What if we could measure "`what if`?"
+<!-- .element: style="text-align:left;" -->
 
 ----
 
@@ -1189,7 +1186,7 @@ profile → benchmark → analyze → optimize ↻
 ```asm
 gh gist create --public --web your_study.ipynb
 ```
-<!-- .element: style="text-align:left; font-size:10px;" -->
+<!-- .element: style="text-align:left; font-size:12px;" -->
 
 ---
 
