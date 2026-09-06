@@ -131,7 +131,7 @@ What if ...?
 
 ----
 
-#### Performance [Transistors]
+#### Performance
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
@@ -143,8 +143,11 @@ What if ...?
  - More Caches
  - Improved Execution
  - Improved Parallelism&nbsp;
- - ...
-</pre>
+ - ...</pre><pre style="font-size:14px">
+(~) Frequency
+ - Base:  3–5 ghz
+ - Boost: 5–6 ghz
+ - Overclocked: ~9 ghz</pre>
   </td>
   <td>
     <img src="images/trend.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
@@ -155,77 +158,22 @@ What if ...?
 https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
 
-----
-
-#### Performance [Frequency]
-<!-- .element: style="text-align:left" -->
-
-<table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
-  <tr>
-  <td>
-  <pre style="font-size:14px">
-(~) Frequency
- - Base:  3–5 ghz
- - Boost: 5–6 ghz
- - Overclocked: ~9 ghz</pre>
-  <pre style="font-size:12px">
-</pre>
-  </td>
-  <td>
-    <img src="images/dennard.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-  </td>
-</tr>
-</table>
-
-[Moore’s Law and Dennard Scaling](https://wgropp.cs.illinois.edu/courses/cs598-s15/lectures/lecture15.pdf)
-<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
+<!--[Moore’s Law and Dennard Scaling](https://wgropp.cs.illinois.edu/courses/cs598-s15/lectures/lecture15.pdf)-->
 
 ----
 
-#### Performance [Is Not a Number]
+#### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
-<p align="left">
-<img src="images/num.jpg" style="width: 90%; border:none; box-shadow:none;" />
-</p>
-
-----
-
-#### Performance [bias]
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/zen5.png" style="width: 79%; background:none; border:none; box-shadow:none;" />
-</p>
-
+<pre style="font-size:14px">
 https://chipsandcheese.com
-<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
-
-----
-
-#### Performance [noise]
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-</p>
-
 https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
+</pre>
 
-----
-
-#### Performance [leakage]
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/code.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-</p>
-
-```cpp
-objdump -d -s <file>
-```
-<!-- .element: style="text-align:left; font-size:22px; margin: 5px 0px;" -->
+<img src="images/zen5.png" style="width: 44%; background:none; border:none; box-shadow:none;" />
+<img src="images/linux.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
+<br />
+<img src="images/num.jpg" style="width: 38%; background:none; border:none; box-shadow:none;" />
 
 ----
 
@@ -905,17 +853,7 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 ----
 
 ```
-perf info cpu --topology # lstopo
-```
-
-<p align="left">
-<img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
-</p>
-
-----
-
-```
-perf info cpu --id
+cpuid
 ```
 
 ```
@@ -923,13 +861,23 @@ perf info cpu --id
 ```
 <!-- .element: style="text-align:left;font-size:14px" -->
 
+
+
+```
+lstopo
+```
+
+<p align="left">
+<img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
+</p>
+
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
 <!-- .element: style="font-size:22px; text-align:left; margin: 0px 5px;" -->
 
 ----
 
 ```
-perf tune latency --verify
+tune & verify
 ```
 
 ```cpp
@@ -941,16 +889,10 @@ Measured vs. Spec
  ...
 ```
 
-<!--```-->
-<!--# Address Space Layout Randomization (ASLR)-->
-<!--perf tune latency --config.aslr=1-->
-<!--```-->
-<br />
-
 ----
 
 ```cpp
-perf bench asm 'rdtsc' | perf plot -p box
+perf microbench asm 'rdtsc' | plot -p box
 ```
 
 <p align="left">
@@ -963,8 +905,7 @@ Non-tuned vs. tuned
 ----
 
 ```cpp
-perf bench instr 'mov'
-    --march sapphirerapids
+perf microbench asm 'mov'
     --event cycles
 ```
 
