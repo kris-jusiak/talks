@@ -504,7 +504,9 @@ for solution in solutions:
 
 
 ```cpp
-assumptions: use perf.data
+states explosion?
+- sampling: perf.data
+- tracing (for branches)
 ```
 
 ----
@@ -546,10 +548,11 @@ assumptions: use perf.data
 
 ----
 
-#### Latency [backend]
+#### Backends [latency]
 <!-- .element: style="text-align:left" -->
 
 ```
+# unroll
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
