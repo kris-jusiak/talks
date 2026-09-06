@@ -751,21 +751,26 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 
 ```json
 {
-  "function": {
-    "layout": ["random"],
+  "block": {
+    "alignment": 7,
+    "order": "random",
   },
-  "branch": ["unpredictable"],
+  "function": {
+    "alignment": 7,
+    "order": "random",
+  },
+  "branch": "unpredictable",
   "memory": {
-    "heap": ["random"],
-    "stack": ["random"],
+    "heap": "random",
+    "stack": "random",
     "cache": {
-      "dL1":  [{"hit_rate":0}],
-      "dL2":  [{"hit_rate":0}],
-      "dL3":  [{"hit_rate":0}],
-      "iL1":  [{"hit_rate":0}],
-      "iL2":  [{"hit_rate":0}],
-      "dTLB": [{"hit_rate":0}],
-      "iTLB": [{"hit_rate":0}],
+      "dL1":  {"hit_rate":0},
+      "dL2":  {"hit_rate":0},
+      "dL3":  {"hit_rate":0},
+      "iL1":  {"hit_rate":0},
+      "iL2":  {"hit_rate":0},
+      "dTLB": {"hit_rate":0},
+      "iTLB": {"hit_rate":0},
     }
   }
 }
@@ -794,7 +799,6 @@ lscpu
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
 <!-- .element: style="font-size:22px; text-align:left; margin: 0px 5px;" -->
 
-
 ----
 
 ```
@@ -822,6 +826,10 @@ perf microbench asm 'rdtsc' | plot -p box
 
 Non-tuned vs. tuned
 <!-- .element: style="font-size:22px; text-align:left;" -->
+
+```
+Jitter isolate
+```
 
 ----
 
