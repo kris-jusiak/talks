@@ -376,18 +376,10 @@ ret
 #### Benchmarking [rdtsc/rdtscp/rdpmc]
 <!-- .element: style="text-align:left" -->
 
-```asm
-start:      stop:
-    lfence      lfence
-    rdtsc       rdtscp
-    lfence      lfence
-```
-<!-- .element: style="text-align:left; font-size:19px;" -->
-
 ```cpp
 /**
- * iteration speed, isolation, understanding
- * correlation issues (codegen, bias, noise, ...)
+ * [+] iteration speed, isolation, understanding
+ * [-] correlation (codegen, bias, noise, ...)
  */
 auto bench(invocable auto code, integral auto iterations) { // multiple runs
     const auto start = chrono::steady_clock::now(); // perf counters
@@ -545,6 +537,18 @@ states explosion?
 </td>
 </tr>
 </table>
+
+----
+
+#### Bench [harness]
+
+```asm
+start:      stop:
+    lfence      lfence
+    rdtsc       rdtscp
+    lfence      lfence
+```
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
 
