@@ -630,7 +630,7 @@ assumptions: use perf.data
 
 ----
 
-#### Latency [single instruction]
+#### Latency [backend]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -964,7 +964,7 @@ perf microbench fizz_buzz -- 2
 ----
 
 ```
-perf microbench plot # trend
+perf microbench plot -p ecdf -e cycles/instructions
 ```
 
 <img src="images/normal.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
@@ -974,7 +974,7 @@ perf microbench plot # trend
 ```cpp
 perf microbench func send_msg
     --exec gcc16.out
-    --event cycles,instructions
+    --event cycles,instructions # --event cycles --event instructions
 ```
 
 ----
@@ -990,27 +990,13 @@ perf microbench func send_msg
     ); name:
 ```
 
-<table>
-<tr>
-<td>
-<pre><code>
-int main() {
-    PERF_LABEL(hot_begin);
-    puts("hello world")
-    PERF_LABEL(hot_end);
-}
-</code></pre>
-</td>
-<td>
-    <pre><code>0x000   push    rax
-0x000   lea     rdi, [rip + .L.str]
-0x000   call    puts@PLT
-0x000   xor     eax, eax
-0x000   pop     rcx
-0x000   ret</code></pre>
-</td>
-</tr>
-</table>
+----
+
+```cpp
+PERF_LABEL(hot_path_begin);
+...
+PERF_LABEL(hot_path_end);
+```
 
 ----
 
@@ -1019,10 +1005,10 @@ g++ -O3 -std=c++26 case_study.cpp
 ```
 
 ```
-perf info metadata --exec <file>
-- hot_begin
-- hot_end
-- foo
+perf microbench info --exec <file> --labels --regions --functions
+hot_begin
+hot_end
+foo
 ```
 
 ```
@@ -1041,31 +1027,33 @@ perf bench region hot_begin..hot_end
 
 ----
 
+#### `hardware_effects.json`
+<!-- .element: style="text-align:left; font-size: 22px;" -->
+
 ```
-# latency.json
 {
-  "affinity": ["pinned"],
+  "affinity": [1],
   "function": {
-    "alignment": [16, 32, 64],
-    "layout": ["original", "random"],
+    "alignment": 16,
+    "layout": "random",
   },
-  "branch": ["predictable", "unpredictable"],
+  "branch": "unpredictable",
   "memory": {
-    "heap": ["random"],
-    "stack": ["random"],
+    "heap": "random",
+    "stack": "random",
     "cache": {
-      "dL1":  [{"hit_rate":[25, 50, 75, 100]}],
-      "dL2":  [{"hit_rate":[75, 100]}],
-      "dL3":  [{"hit_rate":"perf.data"}],
-      "iL1":  [{"hit_rate":100}],
-      "iL2":  [{"hit_rate":100}],
-      "dTLB": [{"hit_rate":100}],
-      "iTLB": [{"hit_rate":100}],
+      "dL1":  {"hit_rate":50},
+      "dL2":  {"hit_rate":75},
+      "dL3":  {"hit_rate":"perf.data"},
+      "iL1":  {"hit_rate":100},
+      "iL2":  {"hit_rate":100},
+      "dTLB": {"hit_rate":100},
+      "iTLB": {"hit_rate":100},
     }
   }
 }
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left;" -->
 
 ----
 
@@ -1098,10 +1086,22 @@ perf microbench func enum_to_string -x gcc26.out
 
 ----
 
+#### Empirical Cumulative Distribution Function (ECDF)
+<!-- .element: style="text-align:left;" -->
+
 ```
 perf microbench view --compare
-perf microbench plot -p ecdf # doesn't loose values
+perf microbench plot -p ecdf
 ```
+
+<p align="left">
+<img src="images/ecdf.png" style="width: 70%; background:white; border:none; box-shadow:none;" />
+</p>
+
+```asm
+ECDF shows the entire distribution without losing information
+```
+<!-- .element: style="text-align:left; font-size:14px;" -->
 
 ----
 
@@ -1251,6 +1251,10 @@ https://jupyter.org
 
 ```cpp
 profile → benchmark → analyze → optimize ↻
+```
+
+```
+gh gist create --public --web studies/study.ipynb
 ```
 
 ----
