@@ -165,15 +165,13 @@ https://github.com/karlrupp/microprocessor-trend-data
 #### Performance Is Not a Number!
 <!-- .element: style="text-align:left" -->
 
-<pre style="font-size:14px">
-https://chipsandcheese.com
-https://makelinux.github.io/kernel/map
-</pre>
+<img src="images/zen5.png" style="width: 52%; background:none; border:none; box-shadow:none;" />
+<img src="images/linux.png" style="width: 47%; background:none; border:none; box-shadow:none;" />
 
-<img src="images/zen5.png" style="width: 44%; background:none; border:none; box-shadow:none;" />
-<img src="images/linux.png" style="width: 40%; background:none; border:none; box-shadow:none;" />
-<br />
-<img src="images/num.jpg" style="width: 38%; background:none; border:none; box-shadow:none;" />
+https://chipsandcheese.com
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
+https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
 
 ----
 
@@ -853,17 +851,6 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 ----
 
 ```
-cpuid
-```
-
-```
-12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
-```
-<!-- .element: style="text-align:left;font-size:14px" -->
-
-
-
-```
 lstopo
 ```
 
@@ -871,8 +858,18 @@ lstopo
 <img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
 </p>
 
+```
+lscpu
+```
+
+```asm
+12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
+```
+<!-- .element: style="text-align:left;font-size:14px" -->
+
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
 <!-- .element: style="font-size:22px; text-align:left; margin: 0px 5px;" -->
+
 
 ----
 
@@ -965,6 +962,8 @@ perf microbench fizz_buzz -- 2
 ```
 perf microbench plot # trend
 ```
+
+<img src="images/normal.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 ----
 
