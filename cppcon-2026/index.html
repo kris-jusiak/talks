@@ -356,19 +356,22 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
 
 ----
 
-##### Instrumentation [nop->jmp]
+##### Instrumentation [rdtsc]
 <!-- .element: style="text-align:left;" -->
 
+```asm
+-                -fxray-instrument          __xray_patch
+```
 ```cpp
-// affects performance
-function: // llvm-xray
-// nop
-ret
-// nop
+function:        function:                  function:
+                  nop
+ mov eax, 42      mov eax, 42
+ ret              ret
+                  nop
 ```
 
 <p align="left">
-<img src="images/metrics.png" style="width: 50%; background:white; border:none; box-shadow:none;" />
+<img src="images/metrics.png" style="width: 100%; height: 350px; background:white; border:none; box-shadow:none;" />
 </p>
 
 ----
@@ -381,16 +384,20 @@ ret
  * [+] iteration speed, isolation, understanding
  * [-] correlation (codegen, bias, noise, ...)
  */
-auto bench(invocable auto code, integral auto iterations) { // multiple runs
-    const auto start = chrono::steady_clock::now(); // perf counters
-    for (auto i = 0u; i < iterations; ++i) { // latency vs. throughput
-        keep(invoke(code)); // optimizing compiler
+auto bench(invocable auto code, integral auto samples, integral auto iterations) {
+    vector<std::chrono::steady_clock::duration> stats(samples);
+    for (auto s = 0u; s < samples; ++s) {                   // multiple runs
+        const auto start = chrono::steady_clock::now();     // perf counters
+        for (auto i = 0u; i < iterations; ++i) {            // latency vs. throughput
+            keep(invoke(code));                             // optimizing compiler
+        }
+        const auto stop = chrono::steady_clock::now();
+        stats[s] = (stop - start) / iterations;
     }
-    const auto stop = chrono::steady_clock::now();
-    return (stop - start) / iterations; // statistics
+    return stats;                                           // statistics
 }
 ```
-<!-- .element: style="text-align:left; font-size:19px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -751,12 +758,7 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 
 ```json
 {
-  "block": {
-    "alignment": 7,
-    "order": "random",
-  },
   "function": {
-    "alignment": 7,
     "order": "random",
   },
   "branch": "unpredictable",
