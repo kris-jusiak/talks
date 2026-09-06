@@ -949,6 +949,7 @@ clang++ -O2 ...
 perf microbench func ... | llvm-mca
 alias bench='perf microbench'
 bench func ... | bench plot -p ecdf # losless
+bench func ... -i
 ```
 
 ----
