@@ -122,9 +122,10 @@ What affects performance? if so, how much and why?
 
 ```cpp
 What if data spikes?
-What if cache will not be hot?
-What if branch will not be predicted?
-Whaf if code/data layout changes?
+What if the environment inherently has jitter?
+What if caches aren’t as hot?
+What if branches aren’t as predictable?
+What if the code/data layout changes?
 What if ...?
 ```
 <!-- .element: class="fragment" -->
@@ -600,10 +601,10 @@ assumptions: use perf.data
 <table>
 <tr>
 <td>
-<img src="images/lat.png" style="width: 200px; background:white; border:none; box-shadow:none;" />
+<img src="images/lat.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </td>
 <td>
-<pre><code>Latency
+<pre><code style="width:760px">Latency
  ├─ Time it takes for a single operation to complete
  └─ ns/op
 </code></pre>
@@ -614,10 +615,10 @@ assumptions: use perf.data
 <table>
 <tr>
 <td>
-<img src="images/thr.png" style="width: 200px; background:white; border:none; box-shadow:none;" />
+<img src="images/thr.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </td>
 <td>
-<pre><code>Throughput
+<pre><code style="width:760px">Throughput
  ├─ Total number of operations
  ├  completed in a given amount of time
  ├─ ops/s, Gb/s, ...
@@ -945,7 +946,9 @@ clang++ -O2 ...
 ```
 
 ```
-perf microbench func ... | perf microbench plot -p ecdf
+perf microbench func ... | llvm-mca
+alias bench='perf microbench'
+bench func ... | bench plot -p ecdf # losless
 ```
 
 ----
