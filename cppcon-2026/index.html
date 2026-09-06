@@ -188,7 +188,7 @@ https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-what? how? when?
+What? How? When?
 ```
 
 <img src="images/perf_map.png" style="width: 43%; background:none; border:none; box-shadow:none;" />
@@ -228,11 +228,13 @@ Performance Monitoring Unit
 
 ----
 
+##### Modern CPUs are primarily bottlenecked by
+<!-- .element: style="text-align:left" -->
+
 ```cpp
-Modern CPUs are primarily bottlenecked by
- - Data access
- - Branch prediction
- - Instruction supply
+- Data access
+- Branch prediction
+- Instruction supply
 ```
 
 ----
@@ -273,7 +275,7 @@ https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 
 ----
 
-#### Sampling
+#### Sampling [PEBS/IBS/SPE/LBR/BRBE]
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -308,7 +310,7 @@ https://www.brendangregg.com
 
 ----
 
-#### Tracing
+#### Tracing [PT/ETM]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -337,7 +339,7 @@ perf report --itrace=10nsbg1024 --call-graph fractal
 
 ----
 
-#### Simulation [llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html)
+#### Simulation [[llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html)]
 <!-- .element: style="text-align:left;" -->
 
 ```asm
@@ -354,92 +356,14 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
 
 ----
 
-#### llvm-mca — [Timeline](https://llvm.org/docs/commandguide/llvm-mca.html#timeline-view)
-<!-- .element: style="text-align:left;" -->
-
-<pre><code data-trim>
-[1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    [10]   [11]   [12]
-RESOURCE-pressure           port0  port1  port2A  port2B  port3   port4   port5   port6   port7   port2D
-[0]    add_loop:
-[1]    add      eax, dword ptr [rdi+4*rcx-4]   1      .      .       .       .      0.50    0.50     .      .       .
-[2]    inc      rcx                             1      .      .       .       .       .       .       .      .       .
-[3]    cmp      rcx, rsi                        1      .      .       .       .       .       .       .      .       .
-[4]    jb       add_loop                        .      .      .       .       .       .       .       .      .       .
-Instructions:    4
-Total Cycles:    4
-Block RThroughput: 1.5
-</code></pre>
-<!-- .element: style="font-size:14px;" -->
-
-----
-
-#### llvm-mca — [Resource Pressure](https://llvm.org/docs/commandguide/llvm-mca.html#resource-pressure-view)
-<!-- .element: style="text-align:left;" -->
-
-<pre><code data-trim>
-[1]    [2]    [3]    [4]    [5]    [6]    [7]    [8]    [9]    [10]   [11]   [12]
-RESOURCE-pressure           port0  port1  port2A  port2B  port3   port4   port5   port6   port7   port2D
-[0]    add_loop:
-[1]    add      eax, dword ptr [rdi+4*rcx-4]   1      .      .       .       .      0.50    0.50     .      .       .
-[2]    inc      rcx                             1      .      .       .       .       .       .       .      .       .
-[3]    cmp      rcx, rsi                        1      .      .       .       .       .       .       .      .       .
-[4]    jb       add_loop                        .      .      .       .       .       .       .       .      .       .
--        -       -       -       -       -       -       -       -       -
-1.00     -       -       -       -      0.50    0.50     -       -       -
-Total unsustainable Resource Pressure Cycles: 2
-</code></pre>
-<!-- .element: style="font-size:14px;" -->
-
-----
-
-#### llvm-mca — [pext](https://www.felixcloutier.com/x86/pext) [enum_to_string](https://godbolt.org/z/3j8qcabsj)
+##### Instrumentation [RDTSC/RDTSCP/CNTVCT_EL0/CNTPCT_EL0]
 <!-- .element: style="text-align:left;" -->
 
 ```asm
-shl     edi, 3
-bzhi    eax, dword ptr [rsi], edi
-imul    eax, eax, 2893426669
-shr     eax, 29
-mov     ecx, 0b001100000010011
-shrx    eax, ecx, eax
-and     eax, 0b111
-ret
-```
-
-```
-llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure enum.s
-```
-
-----
-
-#### llvm-mca — Options
-<!-- .element: style="text-align:left;" -->
-
-```
--mcpu=<cpu>             target cpu (skylake, sapphirerapids, zen4, ...)
--timeline               show timeline view
--resource-pressure      show resource pressure view
--show-encoding          show instruction encoding
--tab-size=<n>           tab size (default: 4)
--iterations=<n>         number of iterations to simulate (default: 100)
--analysis-only          only run the analysis, no output
--stats                  print statistics
-```
-
-```cpp
-// useful for comparing microarchitectures:
-llvm-mca -mcpu=sapphirerapids -timeline input.s   // intel
-llvm-mca -mcpu=znver4       -timeline input.s   // amd
-llvm-mca -mcpu=cortex-x4    -timeline input.s   // arm
-```
-
-----
-
-#### Instrumentation
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-rdtsc() / rdtscp()
+start:                  stop:
+    lfence                  lfence
+    rdtsc                   rdtscp
+    lfence                  lfence
 ```
 
 ```cpp
@@ -453,37 +377,32 @@ ret
 affects performance
 ```
 
+<p align="left">
+<img src="images/metrics.png" style="width: 50%; background:white; border:none; box-shadow:none;" />
+</p>
+
 ----
 
 #### Benchmarking
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto bench(invocable auto code, integral auto iterations) {
-    const auto start = now();
-    for (auto i = 0u; i < iterations; ++i) {
-        keep(code());
+/**
+ * iteration speed, isolation, understanding
+ * correlation issues (codegen, bias, noise, ...)
+ */
+auto bench(invocable auto code, integral auto iterations) { // multiple runs
+    const auto start = chrono::steady_clock::now(); // perf counters
+    for (auto i = 0u; i < iterations; ++i) { // latency vs. throughput
+        keep(invoke(code)); // optimizing compiler
     }
-    const auto stop = now();
-    return stop - start;
+    const auto stop = chrono::steady_clock::now();
+    return (stop - start) / iterations; // statistics
 }
 ```
-
-```
-- C++ is limiting the factor - it tries to optimize
-- iteration speed
-- isolation
-- understanding
-- tuning
-- correlation issues
-- hard (latency vs throughput, noise, bias, hardware effects)
-multiple runs?
-```
+<!-- .element: style="text-align:left; font-size:19px;" -->
 
 ----
-
-### Solution
-<!-- .element: style="text-align:left" -->
 
 ```cpp
 What if we could measure "what if?"
