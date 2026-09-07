@@ -1129,6 +1129,10 @@ https://godbolt.org/z/3j8qcabsj # find hash at compile-time (constexpr gpu)
 
 ----
 
+PERF_ASSUME
+
+----
+
 ```
 perf microbench func enum_to_string_v3 -e asm -v | llvm-mca
 ```
