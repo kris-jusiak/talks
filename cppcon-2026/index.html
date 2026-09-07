@@ -241,16 +241,22 @@ perf stat --topdown ./a.out
 ```
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
+```
+[TODO: show examples output of topdown stat command]
+```
+
 https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
 ----
 
-##### Sampling [[linux-perf](https://perf.wiki.kernel.org), [bcc](https://github.com/iovisor/bcc), [intel-vtune](https://www.intel.com/content/www/us/en/docs/vtune-profiler), [amd-uprof](https://www.amd.com/en/developer/uprof.htm), ...]
+##### Sampling [[linux-perf](https://perf.wiki.kernel.org), [intel-vtune](https://www.intel.com/content/www/us/en/docs/vtune-profiler), [amd-uprof](https://www.amd.com/en/developer/uprof.htm), [bcc](https://github.com/iovisor/bcc), ...]
 <!-- .element: style="text-align:left;" -->
 
-```cpp
-perf record [TODO-fix command]
+```sh
+perf record --frequency 100 --call-graph dwarf -- ./a.out
+perf report --call-graph fractal
+perf script | stackcollapse-perf.pl | flamegraph.pl > flame.svg
 ```
 
 <table>
@@ -261,7 +267,7 @@ perf record [TODO-fix command]
 <tr>
 <td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
 <td>
-<pre style="font-size:10px;margin: 0px 0px;"><code>main;parse;tokenize 5
+<pre style="font-size:14px;margin: 0px 0px;"><code>main;parse;tokenize 5
 main;parse;analyze 3
 main;render 7
 ...
@@ -275,22 +281,25 @@ main;render 7
 <!-- .element: style="text-align:left" -->
 
 ```
-perf probe --exec --add func [TODO:fix syntax if incorrect]
+perf probe --exec a.out --add func
+perf probe --list
+```
+
+```sh
+perf record \
+    --event intel_pt//u \
+    --filter 'filter func @ ./a.out' \
+    --pid=$(pidof a.out) \
+    --mmap-pages 512,4096 \
+    --output perf.data
 ```
 
 ```
-[TODO:use long --names and ensure it's correct]
-perf record
-    --aux-sampe=32768
-    -e '{intel_pt//u,noretcomp=1/u,exe:func}'
-    -p $(pidof exe)
-    -m 64,8192 \
-    --snapshot \
-    -o perf.data
+perf report --itrace=i10ns --call-graph fractal
 ```
 
 ```
-perf report --itrace=10nsbg1024 --call-graph fractal
+[TODO:show example output of report-a few lines]
 ```
 
 -- Requires Intel-PT or ARM ETM (CoreSight) --
@@ -302,18 +311,18 @@ perf report --itrace=10nsbg1024 --call-graph fractal
 <!-- .element: style="text-align:left;" -->
 
 ```
-llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure example.s
+llvm-mca -mcpu=sapphirerapids magic_lut.asm
 ```
 
 ```cpp
 [1] [2] [3]  [4] [5] [6]   Instructions:
  1   1  0.50               shl  edi, 3
  2   5  0.50  *            bzhi eax, dword ptr [rsi], edi
- 1   3  1.00               imul eax, eax, 2893426669   /*magic*/
- 1   1  0.50               shr  eax, 29                /*shift*/
- 1   1  0.50               mov  ecx, 0b001100000010011 /*lut*/
+ 1   3  1.00               imul eax, eax, 2893426669        // magic
+ 1   1  0.50               shr  eax, 29
+ 1   1  0.50               mov  ecx, 0b001100000010011      // lookup table
  1   1  0.50               shrx eax, ecx, eax
- 1   1  0.25               and  eax, 0b111             /*mask*/
+ 1   1  0.25               and  eax, 0b111
  1   5  0.50          U    ret
 
 [1]: #uOps    [2]: Latency   [3]: RThroughput
@@ -321,8 +330,11 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure example.s
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
-```asm
-[TODO:show resource pressure and timpline]
+```
+[TODO:list important views ane purpose with examples single line aligned per view]
+llvm-mca -timline # DeeeeeeeeER
+llvm-mca -resource-pressure: port1: value
+...
 ```
 
 -- `MCA` results are estimates and will not perfectly reflect real-world performance --
@@ -334,16 +346,18 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure example.s
 <!-- .element: style="text-align:left;" -->
 
 ```asm
--                -fxray-instrument          __xray_patch
+-O3                    -fxray-instrument           __xray_patch
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
 ```cpp
-[TODO:show proper patched code for entry/exit]
-function:        function:                  function:
-                  nop
- mov eax, 42      mov eax, 42
- ret              ret
-                  nop
+func:                  func:                       func:
+                         nopw                        jmp __xray_FunctionEntry
+  mov eax, 42            mov eax, 42                 mov eax, 42
+                         nopw                        jmp __xray_FunctionExit
+  ret                    ret                         ret
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 <p align="left">
 <img src="images/metrics.png" style="width: 100%; height: 350px; background:white; border:none; box-shadow:none;" />
@@ -399,12 +413,11 @@ Machine Code
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```
-[TODO: fix example so it will have memory usage [r11] or similar with register]
-┌───────────────┐    ┌─────────────┐    ┌──────────────────┐    ┌───────────────┐
-│ mov eax, 42   │ →  │ {regs: eax} │ →  │ [42]             │ →  │ JIT / mmap    │
-│ xor eax, eax  │    │ {mem: -}    │    │                  │    │ rdpmc / flush │
-└───────────────┘    └─────────────┘    └──────────────────┘    └───────────────┘
- asm/cpp/rust/zig     exploration       data synthesis          native execution
+┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐    ┌───────────────┐
+│ mov eax, [r11]   │ →  │ {regs: r11}     │ →  │ r11 = mapped ptr │ →  │ JIT / mmap    │
+│ add eax, [r11+4] │    │ {mem: [r11]+4}  │    │ [ptr] = concrete │    │ rdpmc / evict │
+└──────────────────┘    └─────────────────┘    └──────────────────┘    └───────────────┘
+ asm/cpp/rust/zig        exploration           data synthesis          native execution
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
@@ -442,30 +455,41 @@ path 4: else         → "Unknown"      rdi ∈ {1, 2, 4, 7, 8, 11, ...}
 ```python
 def explore(project, start, end):
     state = project.factory.blank_state(addr=start)
-    mem = {}
+    state.globals["reads"], state.globals["writes"] = [], []
 
     def on_mem_read(state):
-        mem["mem_read"] = (addr, length, expr)
+        state.globals["reads"].append((
+            state.inspect.mem_read_address,
+            state.inspect.mem_read_length,
+            state.inspect.mem_read_expr))
 
     def on_mem_write(state):
-        mem["mem_write"] = (addr, length, expr)
+        state.globals["writes"].append((
+            state.inspect.mem_write_address,
+            state.inspect.mem_write_length,
+            state.inspect.mem_write_expr))
 
-    state.inspect.b("mem_read",  when=bp_after,  action=on_mem_read)
-    state.inspect.b("mem_write", when=bp_before, action=on_mem_write)
+    state.inspect.b("mem_read",  when=angr.BP_AFTER, action=on_mem_read)
+    state.inspect.b("mem_write", when=angr.BP_AFTER, action=on_mem_write)
 
-    simgr = project.factory.simgr(state)
+    simgr = project.factory.simulation_manager(state)
     simgr.explore(find=end)
 
-    return simgr.found + simgr.active + simgr.deadended
+    return [{"state": s,
+             "reg": {"rdi": s.regs.rdi},
+             "reads": s.globals.get("reads", []),
+             "writes": s.globals.get("writes", [])}
+            for s in simgr.found]
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:10px;" -->
 
 ```
-[TODO: ensure the explore is valid and show example state output for fizz_buzz]
-{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_33_64>}, 'mem_read': [], 'mem_write': []},
-{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_33_64>}, 'mem_read': [], 'mem_write': []},
-{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_33_64>}, 'mem_read': [], 'mem_write': []}
+{'path': 'FizzBuzz', 'reg': {'rdi': 15}, 'reads': [], 'writes': []}  # rdi % 15 == 0
+{'path': 'Fizz',     'reg': {'rdi': 3},  'reads': [], 'writes': []}  # rdi % 3  == 0
+{'path': 'Buzz',     'reg': {'rdi': 5},  'reads': [], 'writes': []}  # rdi % 5  == 0
+{'path': 'Unknown',  'reg': {'rdi': 1},  'reads': [], 'writes': []}  # else
 ```
+<!-- .element: style="text-align:left; font-size:10px;" -->
 
 https://docs.angr.io/en/latest/core-concepts/symbolic.html
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -484,16 +508,16 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 solutions = explore(project, start, end)
 
 for solution in solutions:
-    for name, sym in solution["reg"].items():
-        regs[name] = int(solver.eval(sym))
-
-    for addr, size, val in solution["reads"] + solution["writes"]:
-        writes[(addr, size)] = int(solver.eval(val))
-        values.append(solver.eval(sym))
+    rdi = solution["state"].solver.eval(state["reg"]["rdi"])
+    reads = [(solution["state"].solver.eval(a), state["state"].solver.eval(e)) for a, _, e in state["reads"]]
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 ```
-[TODO:show example values based on fizz_buzz]
+0, 15, 30, ...
+3, 6, 9, ...
+5, 10, 20, ...
+1, 2, 4, ...
 ```
 ----
 
@@ -554,23 +578,36 @@ States explosion?
 <!-- .element: style="text-align:left" -->
 
 ```asm
-[TODO: add example with rdpmc]
-start:      stop:
-    lfence      lfence
-    rdtsc       rdtscp
-    lfence      lfence
+start:                  stop:
+  lfence                  rdtscp             # serializing end stamp
+  rdtsc                   lfence
+  lfence                  shl rdx, 32
+  shl rdx, 32             or rax, rdx        # rax = TSC
+  or rax, rdx
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
 ```asm
-[TODO:fix the example]
-{setup}
+# PMC via rdpmc: ecx = counter index (index-1 from perf), edx:eax = value
+  mov ecx, 0              # PMC0, e.g. cycles
+  lfence
+  rdpmc
+  lfence
+  shl rdx, 32
+  or rax, rdx             # rax = counter value
+```
+
+```asm
+{setup}                 # save regs, warm caches/branch, calibrate empty loop
+mov r8, iterations
+.align 64
 .loop:
-  start
-  {code}
-  stop
-  jmp .loop
-{teardown}
+  start                 # lfence + rdtsc/rdpmc
+  {code}                # snippet under test (registers per SysV ABI)
+  stop                  # rdtscp + lfence, accumulate delta
+  dec r8
+  jnz .loop
+{teardown}              # restore regs, subtract empty-loop overhead
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
@@ -648,6 +685,16 @@ perf bench asm 'mov r11, [rax]' # lookup_table[value]
 ```
 
 ```cpp
+[TODO: fill how data is filled here]
+for reads in solutions:
+for writes in solutions:
+    if ram:
+        flush
+        settle
+        ...
+```
+
+```cpp
 dL1:   4ns
 dL2:  13ns
 dL3:  75ns
@@ -683,7 +730,7 @@ auto refresh(const void* addr) {
     settle();
 }
 ```
-<!-- .element: style="text-align:left; font-size:16px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```asm
 PREFETCHNTA Non-temporal
@@ -696,42 +743,36 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 
 ----
 
-```asm
-#[TODO:show assembllby for different levels based on the above]
-clflush
-prefetch
-```
-
-----
-
 #### Branch effects
 <!-- .element: style="text-align:left" -->
 
 ```
-[TODO: show benchmarks first like in cache effects and link to data synthesis from exploring]
+[TODO: fix the asm]
+perf bench asm 'cmp r11, [rax]; jmp ...' --config.branch=predictable
+perf bench asm 'cmp r11, [rax]; jmp ...' --config.branch=unpredictable
+```
+
+```
+[TODO: fix how data is filled here]
+for solution in solutions:
+    if "predictable"
+
 ```
 
 ```cpp
+[TODO: simplify it to show 10'000 1/0 per branch, branch aliasing the hash, taken not taken deffaults and no BTB entry allocated if branch is never taken]
 std::array<Branch<10'000'>, 1 << 12> btb{}; // per core
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
-
-```cpp
 auto predict(Branch branch) {
     if (auto& entry = btb[hash(branch.ip)]; // branch aliasing
-        entry.valid end entry.tag == branch.ip) {
-        return e.history.predict();
+        entry.valid && entry.tag == branch.ip) {
+        return entry.history.predict();
     }
     return branch.target < branch.ip ? TAKEN : NOT_TAKEN;
 }
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
-
-```cpp
 auto update(Branch branch, bool taken) {
-    auto& entry = btb[hash(br.ip)];
-    if (not entry.valid or entry.tag != branch.ip) {
-        if (not taken) {
+    auto& entry = btb[hash(branch.ip)];
+    if (!entry.valid || entry.tag != branch.ip) {
+        if (!taken) {
             return; // no BTB entry needed
         }
 
@@ -744,13 +785,22 @@ auto update(Branch branch, bool taken) {
 
 ----
 
-#### Codegen effects
+##### Codegen effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[TODO: this should demonstrate benchmarks with code layout alignments effects and --config.function.order=random]
-usage example
-[[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
+[TODO: keep the idea buf finish code]
+[[gnu::aligned(64)]] void hot_func() {
+    [[clang::code_align(64)]] for (...) {
+        // ...
+    }
+}
+```
+
+```
+perf bench func hot_func --exec normal.out   --config.function.order=original
+perf bench func hot_func --exec shuffled.out --config.function.order=random
+perf bench view -s min,median,p99 -- normal/ shuffled/
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -763,19 +813,19 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 <!-- .element: style="text-align:left" -->
 
 ```python
-page = mmap(
+page = mmap.mmap(
     -1,
     len(code_bytes),
-    PROT_READ|PROT_WRITE|PROT_EXEC,
-    MAP_PRIVATE|MAP_ANONYMOUS
+    prot=PROT_READ|PROT_WRITE|PROT_EXEC,
+    flags=MAP_PRIVATE|MAP_ANONYMOUS
 )
-page.write(bench_harness)
-[TODO: follow with execution]
+page.write(bench) # harness + code
+CFUNCTYPE((addressof(from_buffer(page)))()
 ```
 
-```
-[TODO:show asm example]
-```
+<p align="left">
+<img src="images/code.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
+</p>
 
 -- Alternatively save to an object file link and execute --
 <!-- .element: style="text-align:right; font-size:22px;" -->
@@ -788,25 +838,25 @@ page.write(bench_harness)
 ```
 lstopo
 ```
-<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;font-size:14px" -->
 
 <p align="left">
 <img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
 </p>
-<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;font-size:14px" -->
 
 ```
 lscpu
 ```
-<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;font-size:14px" -->
 
 ```asm
 12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
 ```
-<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;font-size:14px" -->
 
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;font-size:14px" -->
 
 ----
 
@@ -925,17 +975,31 @@ perf bench func process --exec memory.out | perf plot -t ecdf
 <!-- .element: style="text-align:left" -->
 
 ```python
-[TODO:finish the example in python with hit_rate exporation]
 import perf
 
-config = hit_rate 0..100 # TODO
-```
+for hit_rate in [100, 50, 0]:  # hot → warm → cold
+    config = {
+        "branch": "predictable",
+        "memory": {
+            "cache": {
+              "dL1": {"hit_rate": hit_rate},
+              "dL2": {"hit_rate": 100},
+              "dL3": {"hit_rate": 100}
+            }
+        }
+    }
 
+    df = perf.bench(
+        exec="memory.out",
+        func="process",
+        mode="latency",
+        setup="init",
+        config=config, event="cycles"
+    )
+
+    print(hit_rate, df["cycles"].describe()[["mean", "min", "max"]])
 ```
-hot  → L1:hit_rate:100
-warm → L1:hit_rate:50, L2:hit_rate:50, L3:hit_rate:50
-cold → L1:hit_rate:0,  L2:hit_rate:0,  L3:hit_rate:0
-```
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 https://jupyter.org
 <!-- .element: style="text-align:left; font-size: 20px;" -->
@@ -973,7 +1037,7 @@ perf plot -- data/fizz_buzz
 
 ----
 
-##### Frontend Bound [icache]
+##### Frontend Bound [layout]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -983,17 +1047,22 @@ void hot_function() {
 }
 
 void unused() {
-    for (int i = 0; i < 1000000; ++i) compute();
+    for (auto i = 0; i < 1000000; ++i) {
+        compute();
+    }
 }
 ```
 
+```sh
+g++ -O3 func.cpp -o a.out                         # order: hot, cold
+g++ -O3 func.cpp -o b.out -Wl,--sort-section=name # order: cold, hot
 ```
+
+```sh
 perf bench func hot_fn -m latency --exec normal.out --config.order=random -o normal
 perf bench func hot_fn -m latency --exec sectioned.out -o sectioned/
 perf bench func hot_fn -m latency --exec shifted.out   -o shifted/
 perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
-// g++ -O3 func.cpp -o a.out          # order: hot, cold
-// g++ -O3 func.cpp -o b.out -Wl,--sort-section=name  # order: cold, hot
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
@@ -1015,6 +1084,15 @@ perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
 ```
 
 ```cpp
+[TODO:show assemlby showing chain being inlined multiple times in different places with different code]
+```
+
+----
+
+##### Label..Label [region]
+<!-- .element: style="text-align:left;" -->
+
+```cpp
 #define PERF_LABEL(name) // can't affect binary
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
@@ -1024,12 +1102,16 @@ perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
         "0:\n"
     ); name:
 ```
-<!-- .element: style="text-align:left;font-size:20px" class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;font-size:20px" -->
+
+```asm
+[TODO:show assemlby showing that label has zero impact on generated instrucitons]
+```
 
 ```
 objdump -sj .perf.label <file>
 ```
-<!-- .element: style="text-align:left;font-size:20px" class="fragment" data-fragment-index="1" -->
+<!-- .element: style="text-align:left;font-size:20px" -->
 
 ----
 
@@ -1050,7 +1132,7 @@ perf bench region hot_begin..hot_end -e cycles/instructions --exec a.out | \
 
 ----
 
-#### 'The Worst' Possiblie Execution
+#### 'The Worst' Possible Execution
 <!-- .element: style="text-align:left" -->
 
 ```json
@@ -1076,12 +1158,12 @@ perf bench region hot_begin..hot_end -e cycles/instructions --exec a.out | \
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
--- Useful for environmentsa with inherently higher jitter --
+-- jitter --
 <!-- .element: style="text-align:right; font-size:20px;" -->
 
 ----
 
-#### 'The Worst' Possiblie Execution
+#### 'The Worst' Possible Execution
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
@@ -1089,7 +1171,7 @@ perf bench region hot_begin..hot_end -e cycles/instructions --exec a.out | \
 </p>
 
 ```cpp
-perf bench func find --exec hash.out -e cycles,instruciotns | llvm-mca
+perf bench func find --exec hash.out -e cycles,instructions | llvm-mca
 ```
 
 ----
