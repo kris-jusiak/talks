@@ -820,7 +820,7 @@ Measured vs. Spec
 ----
 
 ```cpp
-perf bench asm 'rdtsc' | plot -p box
+perf bench asm 'rdtsc' | perf plot
 ```
 
 <p align="left">
@@ -837,8 +837,7 @@ Jitter isolate
 ----
 
 ```cpp
-perf bench asm 'mov'
-    --event cycles
+perf bench asm 'mov mov eax, 42' --event cycles
 ```
 
 ```cpp
@@ -889,6 +888,7 @@ clang++ -O2 ...
 ```
 
 ```
+perf bench func --exec a.out --list
 perf bench func ... | llvm-mca
 alias bench='perf bench'
 bench func ... | bench plot -t ecdf # losless
