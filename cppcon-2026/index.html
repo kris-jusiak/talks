@@ -307,8 +307,8 @@ perf record
 perf report --itrace=10nsbg1024 --call-graph fractal
 ```
 
-ℹ️ Requires Intel-PT or ARM ETM (CoreSight)
-<!-- .element: style="text-align:left; font-size:16px;" -->
+-- Requires Intel-PT or ARM ETM (CoreSight) --
+<!-- .element: style="text-align:right; font-size:16px;" -->
 
 ----
 
@@ -343,8 +343,8 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
-⚠️ `MCA` results are estimates and will not perfectly reflect real-world performance
-<!-- .element: style="text-align:left; font-size:16px;" -->
+-- `MCA` results are estimates and will not perfectly reflect real-world performance --
+<!-- .element: style="text-align:right; font-size:16px;" -->
 
 ----
 
@@ -478,7 +478,7 @@ def explore(project, start, end):
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 https://docs.angr.io/en/latest/core-concepts/symbolic.html
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -773,8 +773,8 @@ page = mmap(
 page.write(bench_harness)
 ```
 
-📌 Or write to object file
-<!-- .element: style="text-align:left; font-size:22px;" -->
+-- Alternatively save to an object file link and execute --
+<!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
@@ -840,7 +840,7 @@ perf bench asm 'idiv' --event cycles
 ```
 
 https://uops.info/table.html # vs measured
-<!-- .element: style="text-align:left; font-size: 22px;" -->
+<!-- .element: style="text-align:left; font-size: 22px; margin: 5px 0px;" -->
 https://llvm.org/docs/CommandGuide/llvm-exegesis.html # vs llvm optimizer
 <!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
@@ -912,10 +912,8 @@ perf bench func process --exec memory.out | perf plot -t ecdf
 <img src="images/ecdf.png" style="width: 70%; background:white; border:none; box-shadow:none;" />
 </p>
 
-```asm
-Empirical Cumulative Distribution Function (ECDF) shows the entire distribution without losing information
-```
-<!-- .element: style="text-align:left; font-size:14px;" -->
+-- Empirical Cumulative Distribution Function (ECDF) shows the entire distribution without losing information --
+<!-- .element: style="text-align:right; font-size:16px;" -->
 
 ----
 
@@ -935,7 +933,7 @@ cold → L1:hit_rate:0,  L2:hit_rate:0,  L3:hit_rate:0
 ```
 
 https://jupyter.org
-<!-- .element: style="text-align:left; font-size: 16px;" -->
+<!-- .element: style="text-align:left; font-size: 20px;" -->
 
 ----
 
@@ -1011,8 +1009,6 @@ perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
 }
 ```
 
----
-
 ```cpp
 #define PERF_LABEL(name) // can't affect binary
     asm volatile(
@@ -1075,8 +1071,8 @@ perf bench region hot_begin..hot_end -e cycles/instructions --exec a.out | \
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-📌Jitter (cloud)
-<!-- .element: style="text-align:left; font-size:22px;" -->
+-- Useful for environmentsa with inherently higher jitter --
+<!-- .element: style="text-align:right; font-size:20px;" -->
 
 ----
 
