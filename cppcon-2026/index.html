@@ -17,11 +17,11 @@
     </style>
 
     <script>
-      var link = document.createelement( 'link' );
+      var link = document.createElement( 'link' );
       link.rel = 'stylesheet';
       link.type = 'text/css';
       link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
-      document.getelementsbytagname( 'head' )[0].appendchild( link );
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
 
       function set_address(self, remote, local) {
         if (window.location.search.match("local")) {
@@ -39,9 +39,6 @@
   <body>
     <div class="reveal">
       <div class="slides">
-          <script type="text/template">
-          </script>
-          </section>
 
           <section data-markdown=""
                    data-separator="^====+$"
@@ -228,10 +225,10 @@ Performance Monitoring Unit
 <td>
 <pre style="font-size:12px;margin: 0 0;"><code>Level Category Desktop(%) Server(%) HPC(%)
 ----- -------- ---------- --------- ------
-1 Retiring          20–50     10–30  30–70
-1 Bad Speculation    5–10      5–10    1–5
-1 Front-End Bound    5–10     10–25   5–10
-1 Back-End Bound    20–40     20–60  20–40</code></pre>
+1 retiring          20–50     10–30  30–70
+1 bad speculation    5–10      5–10    1–5
+1 frontend bound     5–10     10–25   5–10
+1 backend bound     20–40     20–60  20–40</code></pre>
 </td>
 </tr>
 </table>
@@ -242,8 +239,12 @@ perf stat --topdown ./a.out
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
 ```
-[TODO: show examples output of topdown stat command]
+2,736,393      topdown-retiring:u       #     26.7% retiring
+  482,892      topdown-bad-spec:u       #      4.7% bad speculation
+  965,785      topdown-fe-bound:u       #      9.4% frontend bound
+6,076,402      topdown-be-bound:u       #     59.2% backend bound
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 <!-- .element: style="text-align:left; font-size:15px;" -->
@@ -281,8 +282,7 @@ main;render 7
 <!-- .element: style="text-align:left" -->
 
 ```
-perf probe --exec a.out --add func
-perf probe --list
+perf probe --exec a.out --add func # INT3
 ```
 
 ```sh
@@ -290,8 +290,7 @@ perf record \
     --event intel_pt//u \
     --filter 'filter func @ ./a.out' \
     --pid=$(pidof a.out) \
-    --mmap-pages 512,4096 \
-    --output perf.data
+    --mmap-pages 512,4096
 ```
 
 ```
@@ -299,8 +298,13 @@ perf report --itrace=i10ns --call-graph fractal
 ```
 
 ```
-[TODO:show example output of report-a few lines]
+# ........  .......
+    42.15%  a.out
+            |
+            --- func
+                main
 ```
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 -- Requires Intel-PT or ARM ETM (CoreSight) --
 <!-- .element: style="text-align:right; font-size:16px;" -->
@@ -311,7 +315,7 @@ perf report --itrace=i10ns --call-graph fractal
 <!-- .element: style="text-align:left;" -->
 
 ```
-llvm-mca -mcpu=sapphirerapids magic_lut.asm
+llvm-mca -mcpu=sapphirerapids snippet.asm
 ```
 
 ```cpp
@@ -331,11 +335,10 @@ llvm-mca -mcpu=sapphirerapids magic_lut.asm
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```
-[TODO:list important views ane purpose with examples single line aligned per view]
-llvm-mca -timline # DeeeeeeeeER
-llvm-mca -resource-pressure: port1: value
-...
+llvm-mca -resource-pressure   # port usage: [0] 1.50 [1] 0.50 [5] 1.00 ...
+llvm-mca -timeline            # D=e=E=R pipeline diagram (D dispatched, e executing, E executed, R retired)
 ```
+<!-- .element: style="text-align:left; font-size:14px;" -->
 
 -- `MCA` results are estimates and will not perfectly reflect real-world performance --
 <!-- .element: style="text-align:right; font-size:16px;" -->
@@ -578,36 +581,20 @@ States explosion?
 <!-- .element: style="text-align:left" -->
 
 ```asm
+# rdtsc/rdtscp or rdpmc
 start:                  stop:
-  lfence                  rdtscp             # serializing end stamp
+  lfence                  rdtscp
   rdtsc                   lfence
-  lfence                  shl rdx, 32
-  shl rdx, 32             or rax, rdx        # rax = TSC
-  or rax, rdx
+  lfence
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
 ```asm
-# PMC via rdpmc: ecx = counter index (index-1 from perf), edx:eax = value
-  mov ecx, 0              # PMC0, e.g. cycles
-  lfence
-  rdpmc
-  lfence
-  shl rdx, 32
-  or rax, rdx             # rax = counter value
-```
-
-```asm
-{setup}                 # save regs, warm caches/branch, calibrate empty loop
-mov r8, iterations
-.align 64
-.loop:
-  start                 # lfence + rdtsc/rdpmc
-  {code}                # snippet under test (registers per SysV ABI)
-  stop                  # rdtscp + lfence, accumulate delta
-  dec r8
-  jnz .loop
-{teardown}              # restore regs, subtract empty-loop overhead
+{setup}
+start
+{code}
+stop
+{teardown}
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
@@ -684,14 +671,9 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 perf bench asm 'mov r11, [rax]' # lookup_table[value]
 ```
 
-```cpp
-[TODO: fill how data is filled here]
-for reads in solutions:
-for writes in solutions:
-    if ram:
-        flush
-        settle
-        ...
+```python
+for addr, size in reads + writes:
+    refresh(level, addr)
 ```
 
 ```cpp
@@ -747,39 +729,25 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 <!-- .element: style="text-align:left" -->
 
 ```
-[TODO: fix the asm]
-perf bench asm 'cmp r11, [rax]; jmp ...' --config.branch=predictable
-perf bench asm 'cmp r11, [rax]; jmp ...' --config.branch=unpredictable
+perf bench asm 'cmp r11, [rax]; je hit; nop; hit:' --config.branch=predictable
+perf bench asm 'cmp r11, [rax]; je hit; nop; hit:' --config.branch=unpredictable
 ```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
-```
-[TODO: fix how data is filled here]
+```python
 for solution in solutions:
-    if "predictable"
-
+    value = solution.eval(1)
+    bench(code, [repeat(value, N) if predictable else shuffle(values)])
 ```
 
 ```cpp
-[TODO: simplify it to show 10'000 1/0 per branch, branch aliasing the hash, taken not taken deffaults and no BTB entry allocated if branch is never taken]
-std::array<Branch<10'000'>, 1 << 12> btb{}; // per core
-auto predict(Branch branch) {
-    if (auto& entry = btb[hash(branch.ip)]; // branch aliasing
-        entry.valid && entry.tag == branch.ip) {
-        return entry.history.predict();
-    }
-    return branch.target < branch.ip ? TAKEN : NOT_TAKEN;
-}
-auto update(Branch branch, bool taken) {
-    auto& entry = btb[hash(branch.ip)];
-    if (!entry.valid || entry.tag != branch.ip) {
-        if (!taken) {
-            return; // no BTB entry needed
-        }
-
-        entry = {.valid = true, .ip = branch.ip, target = branch.target};
-    }
-    entry.history.update(taken);
-}
+struct Entry { bool valid{}; uint64_t tag{}; uint8_t hyst{}; }; // 2-bit counter
+std::array<Entry, 1 << 12> btb{};              // 4K entries, hash(ip) aliased
+auto predict(uint64_t ip, uint64_t target) {
+    auto& e = btb[(ip >> 2) & 0xFFF];          // aliasing: ips share an entry
+    if (e.valid && e.tag == ip) return e.hyst >= 2; // trained on 10'000 x 1/0
+    return target < ip ? TAKEN : NOT_TAKEN;    // cold: backward taken, forward not-taken
+} // update: if (!e.valid && !taken) return;   // never-taken: no BTB entry allocated
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
@@ -789,23 +757,51 @@ auto update(Branch branch, bool taken) {
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[TODO: keep the idea buf finish code]
-[[gnu::aligned(64)]] void hot_func() {
-    [[clang::code_align(64)]] for (...) {
-        // ...
+[[gnu::aligned(64), gnu::hot]]
+void hot_func(const int* v, int n) {
+    [[clang::code_align(64)]] for (int i = 0; i < n; ++i) {
+        sum += table[v[i] & 63];
     }
+    // ...
 }
 ```
 
 ```
-perf bench func hot_func --exec normal.out   --config.function.order=original
-perf bench func hot_func --exec shuffled.out --config.function.order=random
-perf bench view -s min,median,p99 -- normal/ shuffled/
+perf bench func hot_func --exec a.out
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 <!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+##### Label..Label [region]
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+#define PERF_LABEL(name) // can't affect binary
+    asm volatile(
+        ".pushsection perf.label, \"aw?\", @progbits\n"
+        ".quad 0f\n"
+        ".asciz \"" #name "\"\n"
+        ".popsection\n"
+        "0:\n"
+    ); name:
+```
+<!-- .element: style="text-align:left;font-size:20px" -->
+
+```asm
+hot_begin:
+  imul eax, eax, 31
+  add  eax, 17
+hot_end:
+```
+
+```
+objdump -sj .perf.label <file>
+```
+<!-- .element: style="text-align:left;font-size:20px" -->
 
 ----
 
@@ -1057,18 +1053,17 @@ void unused() {
 g++ -O3 func.cpp -o a.out                         # order: hot, cold
 g++ -O3 func.cpp -o b.out -Wl,--sort-section=name # order: cold, hot
 ```
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
-perf bench func hot_fn -m latency --exec normal.out --config.order=random -o normal
-perf bench func hot_fn -m latency --exec sectioned.out -o sectioned/
-perf bench func hot_fn -m latency --exec shifted.out   -o shifted/
-perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
+perf bench func hot_func --exec normal.out   --config.function.order=original
+perf bench func hot_func --exec shuffled.out --config.function.order=random
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
-##### Retiring
+##### Retiring [depedency-chain]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1083,39 +1078,16 @@ perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
 }
 ```
 
-```cpp
-[TODO:show assemlby showing chain being inlined multiple times in different places with different code]
-```
-
-----
-
-##### Label..Label [region]
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-#define PERF_LABEL(name) // can't affect binary
-    asm volatile(
-        ".pushsection perf.label, \"aw?\", @progbits\n"
-        ".quad 0f\n"
-        ".asciz \"" #name "\"\n"
-        ".popsection\n"
-        "0:\n"
-    ); name:
-```
-<!-- .element: style="text-align:left;font-size:20px" -->
-
 ```asm
-[TODO:show assemlby showing that label has zero impact on generated instrucitons]
+main+0x40: imul eax, eax, 31
+main+0x43: add  eax, 17
+main+0x83: imul ecx, ecx, 31
+main+0x86: add  ecx, 17
 ```
-
-```
-objdump -sj .perf.label <file>
-```
-<!-- .element: style="text-align:left;font-size:20px" -->
 
 ----
 
-##### Retiring [dependency chain]
+##### Retiring [dependency-chain]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -1210,7 +1182,6 @@ profile → benchmark → analyze → optimize ↻
       </div>
     </div>
 
-    <script src="reveal.js/lib/js/head.min.js"></script>
     <script src="reveal.js/js/reveal.js"></script>
 
     <script>
