@@ -194,14 +194,6 @@ What? How? When?
 <img src="images/perf_map.png" style="width: 43%; background:none; border:none; box-shadow:none;" />
 <img src="images/bpf.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
 
-https://github.com/iovisor/bcc
-<!-- .element: style="text-align:left; font-size:19px;" -->
-
-----
-
-### Always Measure
-<!-- .element: style="text-align:left;" -->
-
 ```
 Performance Monitoring Unit
   └─ CPU                     Intel        Amd          Arm
@@ -211,20 +203,7 @@ Performance Monitoring Unit
      ├─ Branch Recording     LBR          LBR          BRBE
      └─ Processor Trace      PT           -            ETM (CoreSight)
 ```
-<!-- .element: style="text-align:left; font-size:19px;" -->
-
-```python
- linux-perf  - https://perf.wiki.kernel.org                                      osaca       - https://github.com/rrze-hpc/osaca
- intel-vtune - https://www.intel.com/content/www/us/en/docs/vtune-profiler       uica        - https://uica.uops.info
- amd-uprof   - https://www.amd.com/en/developer/uprof.html                       llvm-xray   - https://llvm.org/docs/xray.html
- dtrace      - https://github.com/opendtrace                                     tracy       - https://github.com/wolfpld/tracy
- likwid      - https://github.com/rrze-hpc/likwid                                nanobench   - https://github.com/martinus/nanobench
- gperftools  - https://github.com/gperftools/gperftools                          llvm-mca    - https://llvm.org/docs/commandguide/llvm-mca.html
- callgrind   - https://valgrind.org/docs/manual/cl-manual.html                   gbench      - https://github.com/google/benchmark
- bcc         - https://github.com/iovisor/bcc                                    ...
- coz         - https://github.com/plasma-umass/coz
-```
-<!-- .element: style="text-align:left; font-size:11px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -239,8 +218,8 @@ Performance Monitoring Unit
 
 ----
 
-#### [Top down Microarchitecture Analysis Method](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf)
-<!-- .element: style="text-align:left" -->
+#### Top down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
+<!-- .element: style="text-align:left; font-size: 32px;" -->
 
 <table>
 <tr>
@@ -269,7 +248,7 @@ https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 
 ----
 
-#### Sampling [PEBS/IBS/SPE/LBR/BRBE]
+##### Sampling [[linux-perf](https://perf.wiki.kernel.org), [bcc](https://github.com/iovisor/bcc), [intel-vtune](https://www.intel.com/content/www/us/en/docs/vtune-profiler), [amd-uprof](https://www.amd.com/en/developer/uprof.htm), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -301,7 +280,7 @@ main;render 7</code></pre></td>
 
 ----
 
-#### Tracing [PT/ETM]
+##### Tracing [[linux-perf](https://perf.wiki.kernel.org), ...]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -328,9 +307,12 @@ perf record
 perf report --itrace=10nsbg1024 --call-graph fractal
 ```
 
+ℹ️ Requires Intel-PT or ARM ETM (CoreSight)
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
 ----
 
-#### Simulation [[llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html)]
+##### Machine-Code Analysis [[llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html), [uica](https://uica.uops.info), [callgrind](https://valgrind.org/docs/manual/cl-manual.html), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```asm
@@ -345,12 +327,7 @@ add_loop:
 llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
 ```
 
-```
-[1]: #uOps    [2]: Latency   [3]: RThroughput
-[4]: MayLoad  [5]: MayStore  [6]: HasSideEffects (U)
-```
-
-<pre><code data-trim>
+```cpp
 [1] [2] [3]  [4] [5] [6]   Instructions:
  1   1  0.50               shl  edi, 3
  2   5  0.50  *            bzhi eax, dword ptr [rsi], edi
@@ -360,14 +337,18 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
  1   1  0.50               shrx eax, ecx, eax
  1   1  0.25               and  eax, 0b111             /*mask*/
  1   5  0.50          U    ret
-</code></pre>
 
-[warn: simulation] timeline, resource_pressure
-uica
+[1]: #uOps    [2]: Latency   [3]: RThroughput
+[4]: MayLoad  [5]: MayStore  [6]: HasSideEffects (U)
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+⚠️ `MCA` results are estimates and will not perfectly reflect real-world performance
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
-##### Instrumentation [rdtsc]
+##### Instrumentation [[llvm-xray](https://llvm.org/docs/xray.html), [tracy](https://github.com/wolfpld/tracy), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```asm
@@ -387,7 +368,7 @@ function:        function:                  function:
 
 ----
 
-#### Benchmarking [rdtsc/rdtscp/rdpmc]
+##### Benchmarking [[likwid](https://github.com/rrze-hpc/likwid), [google/benchmark](https://github.com/google/benchmark), ...]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -417,7 +398,9 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
 
 ----
 
-##### What if we could measure "`what if`?"
+```
+What if we could measure "`what if`?"
+```
 <!-- .element: style="text-align:left;" -->
 
 ----
@@ -444,10 +427,13 @@ Machine Code
 
 ----
 
-##### `Symbolic Exploration`
+#### `Symbolic Exploration`
 <!-- .element: style="text-align:left" -->
 
 ----
+
+##### `Path`
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 constexpr auto fizz_buzz(int n) {
@@ -466,6 +452,9 @@ path 4: else         → "Unknown"      rdi ∈ {1, 2, 4, 7, 8, 11, ...}
 ```
 
 ----
+
+##### `Exploration`
+<!-- .element: style="text-align:left" -->
 
 ```python
 def explore(project, start, end):
@@ -488,12 +477,17 @@ def explore(project, start, end):
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
-https://gitlab.com/x86-psabis/x86-64-abi/-/jobs/artifacts/master/raw/x86-64-abi/abi.pdf
+https://docs.angr.io/en/latest/core-concepts/symbolic.html
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-##### `Data Synthesis`
+#### `Data Synthesis`
+<!-- .element: style="text-align:left" -->
+
+----
+
+##### `Solutions`
 <!-- .element: style="text-align:left" -->
 
 ```python
@@ -508,25 +502,28 @@ for solution in solutions:
         values.append(solver.eval(sym))
 ```
 
+----
+
+##### `Problem-space reduction`
+<!-- .element: style="text-align:left" -->
+
 ```
-states explosion?
+States explosion?
 - PERF_ASSUME (.expose)
 - sampling: perf.data
 - tracing (for branches)
 - capped iterations
 ```
-<!-- .element: class="fragment" -->
-
-
-https://docs.angr.io/en/latest/core-concepts/symbolic.html
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
-##### `Native Execution`
+#### `Native Execution`
 <!-- .element: style="text-align:left" -->
 
 ----
+
+##### `Latency vs. Throughput`
+<!-- .element: style="text-align:left" -->
 
 <table>
 <tr>
@@ -560,7 +557,7 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 
 ----
 
-#### Bench [harness]
+##### Benchmarking Harness
 <!-- .element: style="text-align:left" -->
 
 ```asm
@@ -589,9 +586,12 @@ pop rbx/rbp/r12-r15; ret
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
+https://gitlab.com/x86-psabis/x86-64-abi/-/jobs/artifacts/master/raw/x86-64-abi/abi.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
 ----
 
-#### Backends (unroll vs. repeat)
+##### Benchmarking Harness [unroll vs. repeat]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -608,8 +608,6 @@ add mov eax, 42
 add mov eax, 42
 ```
 
-or
-
 ```cpp
 # repeat:  one call fn  - one call nop  = fn cost
 measured (code) - overhead (nop) = true cost
@@ -617,35 +615,18 @@ measured (code) - overhead (nop) = true cost
 
 https://github.com/andreas-abel/nanoBench
 <!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-
-----
-
-#### JIT Code Generation
-
-```python
-// mmap RWX page → assemble x86-64 → call via ctypes
-page = mmap(-1, len(code_bytes), PROT_READ|PROT_WRITE|PROT_EXEC,
-            MAP_PRIVATE|MAP_ANONYMOUS)
-page.write(code_bytes)
-fn = ctypes.CFUNCTYPE(POINTER(Args))(addressof(page))
-fn(ctypes.byref(args))  # iterations, inputs, outputs, data
-```
-
-```python
-# per-iteration data buffer (column-major):
-#   reg columns:  rdi, rsi, rdx, ... (from SMT models)
-#   mem columns:  address value + tier (for cache steering)
-#
-# {data} block reads buffer[r8] and primes the machine
-# {data2} block reloads between timing windows
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
 #### Hardware effects
+<!-- .element: style="text-align:left" -->
+
+https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+##### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -671,9 +652,27 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 ----
 
-#### Hardware effects [Cache]
+#### Cache effects
 <!-- .element: style="text-align:left" -->
 
+```cpp
+perf bench asm 'add r11, [rax]' # lookup_table[value]
+```
+
+```cpp
+dL1:   4ns
+dL2:  13ns
+dL3:  75ns
+RAM: 294ns
+```
+
+https://www.akkadia.org/drepper/cpumemory.pdf
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+##### Cache effects
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 template<Level level>
@@ -717,30 +716,7 @@ prefetch
 
 ----
 
-#### Hardware effects [Cache]
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf bench asm 'add r11, [rax]'
-  --config.memory.cache.dL1=hit_rate:100
-  --data.r11=0
-  --data.rax=0x4000
-  --data.memory.0x4000=1234
-```
-
-```cpp
-dL1:   4ns
-dL2:  13ns
-dL3:  75ns
-RAM: 294ns
-```
-
-https://www.akkadia.org/drepper/cpumemory.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Hardware effects [Branch]
+#### Branch effects
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -777,49 +753,82 @@ auto update(Branch branch, bool taken) {
 ----
 
 ```cpp
-measure(repeat(vary(fn))
-```
-
-----
-
-#### Hardware effects [CodeGen]
-<!-- .element: style="text-align:left" -->
-
-```cpp
+Data syntheiss
 unused functions
 re-shuffle
 ```
 
-https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
+----
+
+##### `JIT Code Generation`
+<!-- .element: style="text-align:left" -->
+
+```python
+page = mmap(
+    -1,
+    len(code_bytes),
+    PROT_READ|PROT_WRITE|PROT_EXEC,
+    MAP_PRIVATE|MAP_ANONYMOUS
+)
+page.write(bench_harness)
+```
+
+📌 Or write to object file
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
+### Case Studies
+<!-- .element: style="text-align:left" -->
+
 ```
 lstopo
 ```
+<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
 
 <p align="left">
 <img src="images/lstopo.png" style="width: 800px; background:none; border:none; box-shadow:none;" />
 </p>
+<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
 
 ```
 lscpu
 ```
+<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
 
 ```asm
 12th Gen Intel(R) Core(TM) i7-12650 (alderlake:6.154.3)
 ```
-<!-- .element: style="text-align:left;font-size:14px" -->
+<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
 
 ##### https://en.wikichip.org / cpuid{family:6, model:154, stepping:3}
-<!-- .element: style="font-size:22px; text-align:left; margin: 0px 5px;" -->
+<!-- .element: style="text-align:left;font-size:14px" class="fragment" data-fragment-index="1" -->
 
 ----
 
+#### Tuning
+<!-- .element: style="text-align:left" -->
+
 ```
-tune & verify
+ADLSR
+...
 ```
+
+```cpp
+perf bench asm 'rdtsc' | perf plot -t bar
+```
+
+<p align="left">
+<img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
+</p>
+
+⚠️ Non-tuned vs. tuned
+<!-- .element: style="font-size:22px; text-align:left;" -->
+
+----
+
+#### Sanity-checks
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 Measured vs. Spec
@@ -830,52 +839,22 @@ Measured vs. Spec
  ...
 ```
 
-----
-
 ```cpp
-perf bench asm 'rdtsc' | perf plot -t bar
+perf bench asm 'add' --event cycles
+perf bench asm 'sub' --event cycles
+perf bench asm 'imul' --event cycles
+perf bench asm 'idiv' --event cycles
 ```
 
-<p align="left">
-<img src="images/tune.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
-</p>
-
-Non-tuned vs. tuned
-<!-- .element: style="font-size:22px; text-align:left;" -->
-
-```
-...
-Jitter isolate
-```
-
-----
-
-```cpp
-perf bench asm 'mov mov eax, 42' --event cycles
-```
-
-```cpp
-instr   mode
-mov     latency     100.0  0.11404  0.002010  0.112  0.112  0.116  0.116  0.116
-        throughput  100.0  0.11436  0.001977  0.112  0.112  0.116  0.116  0.116
-```
-<!-- .element: style="text-align:left; font-size: 19px;" -->
-
-https://uops.info/table.html
+https://uops.info/table.html # vs measured
 <!-- .element: style="text-align:left; font-size: 22px;" -->
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html # vs llvm optimizer
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
-### Case Studies
-<!-- .element: style="text-align:left" -->
-
-```
-# TODO Top Down again
-backend_bound
-bad_speculation
-frontend_bound
-retiring
-```
+#### Top down Microarchitecture Analysis Method
+<!-- .element: style="text-align:left; font-size: 32px;" -->
 
 ```
 perf stat   --control=fifo:/dev/shm/perf --delay=-1 ...
@@ -884,17 +863,23 @@ perf record --control=fifo:/dev/shm/perf --delay=-1 ...
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
 ```cpp
-perf bench func .* -m latency --exec binary.out \
-  -e cycles,instructions \
-  -e topdown-retiring \
-  -e topdown-bad-spec \
-  -e topdown-fe-bound \
+perf bench func .* --mode latency --exec binary.out \
+  -e duration_time,cycles,instructions \ # same execution
+  -e topdown-retiring                  \ # different run
+  -e topdown-bad-spec                  \ # different run
+  -e topdown-fe-bound                  \ # different run
   -e topdown-be-bound
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+<p align="left">
+<img src="images/td.png" style="width: 50%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+</p>
 
 ----
 
-#### Case Study: Backend_bound
+##### Backend bound
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 #include <perf/perf.hpp>
@@ -911,37 +896,24 @@ int process(int n) {
     return sum;
 }
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 ```cpp
-g++16 -O3 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
-g++16 -O2 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
-clang++-22 -O2 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
-clang++-22 -O3 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
+g++16 -O3 -std=c++23 -Ilib backend_bound/memory.cpp -o memory.out
+g++16 -O2 -std=c++23 -Ilib backend_bound/memory.cpp -o memory.out
+clang++-22 -O2 -std=c++23 -Ilib backend_bound/memory.cpp -o memory.out
+clang++-22 -O3 -std=c++23 -Ilib backend_bound/memory.cpp -o memory.out
 ```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 ----
 
-```
-perf bench func process --exec memory.out | perf plot -t ecdf # default
-```
-
-----
-
-```python
-import perf
-
-config =
-```
+##### Backend bound
+<!-- .element: style="text-align:left" -->
 
 ```
-hot  → tight distribution around ~3 cycles (L1 hit)
-warm → bimodal distribution (L1/L2 mix + L3 tail)
-cold → wide distribution, long tail to RAM latency
+perf bench func process --exec memory.out | perf plot -t ecdf
 ```
-
-https://jupyter.org
-
-----
 
 <p align="left">
 <img src="images/ecdf.png" style="width: 70%; background:white; border:none; box-shadow:none;" />
@@ -954,20 +926,28 @@ Empirical Cumulative Distribution Function (ECDF) shows the entire distribution 
 
 ----
 
-```cpp
-perf bench func process --exec memory.out -e cycles,instruciotns | llvm-mca
+##### Backend bound [memory]
+<!-- .element: style="text-align:left" -->
+
+```python
+import perf
+
+config = hit_rate 0..100 # TODO
 ```
 
-```cpp
-# TODO
+```
+hot  → L1:hit_rate:100
+warm → L1:hit_rate:50, L2:hit_rate:50, L3:hit_rate:50
+cold → L1:hit_rate:0,  L2:hit_rate:0,  L3:hit_rate:0
 ```
 
-note: -e cycles,instrucions # in the same run
-note: -e cycles -e instrucions # different runs
+https://jupyter.org
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 ----
 
-bad_speculation
+##### Bad Speculation [branch]
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 constexpr auto fizz_buzz(int n) {
@@ -987,31 +967,21 @@ perf bench func fizz_buzz --config.branch=unpredictable
 perf bench func fizz_buzz --config.branch=unpredictable -e branch-misses
 perf bench func fizz_buzz --event cycles,instructions
 ```
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
-perf view -- data/fizz_buzz
 ```
+perf view -- data/fizz_buzz
+perf plot -- data/fizz_buzz
+```
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 ----
 
-#### Frontend Bound
-
-
-```bash
-# function order matters (linker script, -ffunction-sections)
-# 16-byte alignment → one fewer fetch boundary
-```
-<!-- .element: class="fragment" -->
-
-```bash
-perf bench func hot_fn -m latency --exec normal.out --config.order=random    -o normal/
-perf bench func hot_fn -m latency --exec sectioned.out -o sectioned/
-perf bench func hot_fn -m latency --exec shifted.out   -o shifted/
-perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
+##### Frontend Bound [icache]
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-void unused();              // never called → 0 cost?
+void unused();
 void hot_function() {
     // ... performance critical code ...
 }
@@ -1021,42 +991,36 @@ void unused() {
 }
 ```
 
-```bash
-# same binary, different function order in .text:
-# hot_function at 0x1000 vs hot_function at 0x5000
-# → different icache behavior → different performance
 ```
-<!-- .element: class="fragment" -->
-
-```bash
-g++ -O3 func.cpp -o a.out          # order: hot, cold
-g++ -O3 func.cpp -o b.out -Wl,--sort-section=name  # order: cold, hot
-perf bench func hot_function -m latency --exec a.out
-perf bench func hot_function -m latency --exec b.out
-# same source, same compiler, same flags → different result!
+perf bench func hot_fn -m latency --exec normal.out --config.order=random -o normal
+perf bench func hot_fn -m latency --exec sectioned.out -o sectioned/
+perf bench func hot_fn -m latency --exec shifted.out   -o shifted/
+perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
+// g++ -O3 func.cpp -o a.out          # order: hot, cold
+// g++ -O3 func.cpp -o b.out -Wl,--sort-section=name  # order: cold, hot
 ```
-<!-- .element: class="fragment" -->
-
-https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
-#### Retiring [dependency chain]
+##### Retiring
+<!-- .element: style="text-align:left" -->
 
 ```cpp
-[[gnu::noinline]] int chain(int n) {
-    PERF_LABEL(chain_begin);
+[[gnu::always_inline]] int chain(int n) {
+    PERF_LABEL(hot_begin); // inlined multiple times
     int x = n;
-    for (int i = 0; i < 64; ++i)
-        x = x * 31 + 17;   // serial dependency → latency bound
-    PERF_LABEL(chain_end);
+    for (int i = 0; i < 64; ++i) {
+        x = x * 31 + 17; // serial dependency → latency bound
+    }
+    PERF_LABEL(hot_end);
     return x;
 }
 ```
 
+---
+
 ```cpp
-// objdump -sj .perf.label <file>
 #define PERF_LABEL(name) // can't affect binary
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
@@ -1066,17 +1030,29 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
         "0:\n"
     ); name:
 ```
+<!-- .element: style="text-align:left;font-size:20px" class="fragment" data-fragment-index="1" -->
 
 ```
-perf bench region hot_begin..hot_end -e cycles/instructions | perf view -e instructions/cycles
+objdump -sj .perf.label <file>
 ```
+<!-- .element: style="text-align:left;font-size:20px" class="fragment" data-fragment-index="1" -->
+
+----
+
+##### Retiring [dependency chain]
+<!-- .element: style="text-align:left" -->
+
+```
+perf bench region hot_begin..hot_end -e cycles/instructions --exec a.out | \
+    perf view -e instructions/cycles
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```asm
-# latency: 64 iterations × 3 cycles each = ~192 cycles
 # throughput: pipelined, 6 cycles/iteration throughput = ~32 cycles
 # IPC=1.0 latency → classic dependency chain (back-end bound)
 ```
-<!-- .element: style="text-align:left; font-size:14px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -1106,6 +1082,26 @@ perf bench region hot_begin..hot_end -e cycles/instructions | perf view -e instr
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
+📌Jitter (cloud)
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### 'The Worst' Possiblie Execution
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/hashing.png" style="width: 35%; background:white; border:none; box-shadow:none;" />
+</p>
+
+```
+[[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
+```
+
+```cpp
+perf bench func find --exec hash.out -e cycles,instruciotns | llvm-mca
+```
+
 ----
 
 #### `perf mantra`
@@ -1128,11 +1124,6 @@ profile → benchmark → analyze → optimize ↻
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
 ##### - Apple - https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:22px" -->
-
-```asm
-gh gist create --public --web your_study.ipynb
-```
-<!-- .element: style="text-align:left; font-size:12px;" -->
 
 ---
 
