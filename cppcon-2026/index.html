@@ -634,6 +634,15 @@ perf bench asm 'add r11, [rax]'
 
 ----
 
+```cpp
+perf.bench(exec="a.out", func="foo")                     
+perf.bench(region=["a", "b"], exec="a.out", name="ab")   
+perf.bench(asm="rdtsc")                                  
+perf.bench(asm="mov eax, 42", name="mov")                
+```
+
+----
+
 #### Hardware effects [Cache]
 <!-- .element: style="text-align:left" -->
 
