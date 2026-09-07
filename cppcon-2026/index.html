@@ -339,7 +339,7 @@ llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure example.s
 ```cpp
 [TODO:show proper patched code for entry/exit]
 function:        function:                  function:
-                  nop                       
+                  nop
  mov eax, 42      mov eax, 42
  ret              ret
                   nop
@@ -462,6 +462,9 @@ def explore(project, start, end):
 
 ```
 [TODO: ensure the explore is valid and show example state output for fizz_buzz]
+{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_33_64>}, 'mem_read': [], 'mem_write': []},
+{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_33_64>}, 'mem_read': [], 'mem_write': []},
+{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_33_64>}, 'mem_read': [], 'mem_write': []}
 ```
 
 https://docs.angr.io/en/latest/core-concepts/symbolic.html
@@ -742,13 +745,17 @@ auto update(Branch branch, bool taken) {
 ----
 
 #### Codegen effects
+<!-- .element: style="text-align:left" -->
 
 ```cpp
 [TODO: this should demonstrate benchmarks with code layout alignments effects and --config.function.order=random]
+usage example
+[[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
 ```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
--- [[clang::code_align(alignment)]] [[gun::aligned(alignment)]] --
-<!-- .element: style="text-align:right; font-size:16px;" -->
+https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
