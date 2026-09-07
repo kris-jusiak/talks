@@ -675,7 +675,7 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 #### Hardware effects [Cache]
 <!-- .element: style="text-align:left" -->
 
-```cpp
+```
 perf bench asm 'add r11, [rax]'
   --march sapphirerapids
   --config.memory.cache.dL1=hit_rate:100
@@ -820,7 +820,7 @@ Measured vs. Spec
 ----
 
 ```cpp
-perf microbench asm 'rdtsc' | plot -p box
+perf bench asm 'rdtsc' | plot -p box
 ```
 
 <p align="left">
@@ -837,7 +837,7 @@ Jitter isolate
 ----
 
 ```cpp
-perf microbench asm 'mov'
+perf bench asm 'mov'
     --event cycles
 ```
 
@@ -889,8 +889,8 @@ clang++ -O2 ...
 ```
 
 ```
-perf microbench func ... | llvm-mca
-alias bench='perf microbench'
+perf bench func ... | llvm-mca
+alias bench='perf bench'
 bench func ... | bench plot -t ecdf # losless
 bench func ... -i
 ```
@@ -898,16 +898,16 @@ bench func ... -i
 ----
 
 ```
-perf microbench fizz_buzz -- 0
-perf microbench fizz_buzz -- 1
-perf microbench fizz_buzz -- 2
+perf bench fizz_buzz -- 0
+perf bench fizz_buzz -- 1
+perf bench fizz_buzz -- 2
 ...
 ```
 
 ----
 
 ```
-perf microbench plot -t ecdf -e cycles/instructions
+perf bench plot -t ecdf -e cycles/instructions
 ```
 
 <img src="images/normal.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
@@ -915,7 +915,7 @@ perf microbench plot -t ecdf -e cycles/instructions
 ----
 
 ```cpp
-perf microbench func send_msg
+perf bench func send_msg
     --exec gcc16.out
     --event cycles,instructions # --event cycles --event instructions
 ```
@@ -948,7 +948,7 @@ g++ -O3 -std=c++26 case_study.cpp
 ```
 
 ```
-perf microbench info --exec <file> --labels --regions --functions
+perf bench info --exec <file> --labels --regions --functions
 hot_begin
 hot_end
 foo
@@ -1024,7 +1024,7 @@ constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
 ----
 
 ```cpp
-perf microbench func enum_to_string -x gcc26.out
+perf bench func enum_to_string -x gcc26.out
 ```
 
 ----
@@ -1033,8 +1033,8 @@ perf microbench func enum_to_string -x gcc26.out
 <!-- .element: style="text-align:left;" -->
 
 ```
-perf microbench view -s min,median,p99
-perf microbench plot -t ecdf
+perf bench view -s min,median,p99
+perf bench plot -t ecdf
 ```
 
 <p align="left">
@@ -1134,7 +1134,7 @@ PERF_ASSUME
 ----
 
 ```
-perf microbench func enum_to_string_v3 -e asm -v | llvm-mca
+perf bench func enum_to_string_v3 -e asm -v | llvm-mca
 ```
 
 ```cpp
