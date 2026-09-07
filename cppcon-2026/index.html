@@ -264,12 +264,6 @@ perf report --start-address=0x7f1234000000 --stop-address=0x7f1234002000
 ```
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
-```
-perf stat   --control=fifo:/dev/shm/perf --delay=-1 ...
-perf record --control=fifo:/dev/shm/perf --delay=-1 ...
-```
-<!-- .element: style="text-align:left; font-size:15px;" -->
-
 https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
@@ -298,15 +292,12 @@ perf record
 <tr>
 <td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
 <td>
-<pre style="font-size:14px;margin: 0 0;"><code># sampling (freq/period) | call-stack (lbr) | count
+<pre style="font-size:10px;margin: 0px 0px;"><code># sampling
 main;parse;tokenize 5
 main;parse;analyze 3
 main;render 7</code></pre></td>
 </tr>
 </table>
-
-https://www.brendangregg.com
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -354,6 +345,26 @@ add_loop:
 llvm-mca -mcpu=sapphirerapids -timeline -resource-pressure input.s
 ```
 
+```
+[1]: #uOps    [2]: Latency   [3]: RThroughput
+[4]: MayLoad  [5]: MayStore  [6]: HasSideEffects (U)
+```
+
+<pre><code data-trim>
+[1] [2] [3]  [4] [5] [6]   Instructions:
+ 1   1  0.50               shl  edi, 3
+ 2   5  0.50  *            bzhi eax, dword ptr [rsi], edi
+ 1   3  1.00               imul eax, eax, 2893426669   /*magic*/
+ 1   1  0.50               shr  eax, 29                /*shift*/
+ 1   1  0.50               mov  ecx, 0b001100000010011 /*lut*/
+ 1   1  0.50               shrx eax, ecx, eax
+ 1   1  0.25               and  eax, 0b111             /*mask*/
+ 1   5  0.50          U    ret
+</code></pre>
+
+[warn: simulation] timeline, resource_pressure
+uica
+
 ----
 
 ##### Instrumentation [rdtsc]
@@ -397,7 +408,12 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
     return stats;                                           // statistics
 }
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+<p align="left">
+<img src="images/normal.png" style="width: 100%; height: 250px; background:none; border:none; box-shadow:none;" />
+</p>
+
 
 ----
 
@@ -410,12 +426,21 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
 <!-- .element: style="text-align:left" -->
 
 ```python
-Machine Code                  # binary/assembly: cpp, rust, zig, ...
-  → Symbolic Exploration      #
-      → Data Synthesis        # solver-guided
-          → Native Execution  # bias-controlled
+Machine Code
+  → Symbolic Exploration
+      → Data Synthesis
+          → Native Execution
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
+
+```
+┌──────────────┐    ┌─────────────┐    ┌──────────────────┐    ┌──────────────┐
+│ mov eax, 42  │ →  │ {regs: eax} │ →  │ [42]             │ →  │ JIT / mmap   │
+│ xor eax, eax │    │ {mem: -}    │    │                  │    │ rdpmc/flush  │
+└──────────────┘    └─────────────┘    └──────────────────┘    └──────────────┘
+ cpp/rust/zig       exploration          data synthesis         native execution
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -425,29 +450,20 @@ Machine Code                  # binary/assembly: cpp, rust, zig, ...
 ----
 
 ```cpp
-[[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
+constexpr auto fizz_buzz(int n) {
        if (n % 15 == 0) { return "FizzBuzz"; }
   else if (n % 3  == 0) { return "Fizz";     }
   else if (n % 5  == 0) { return "Buzz";     }
   return "Unknown";
 }
-// path 1: x > 10 leading to the result “greater”
-// path 2: x <= 10 leading to the result “lesser or equal”
-
 ```
 
-```cpp
-void helloworld() {
-    printf("hello, world!\n");
-}
-void firstcall(uint32_t num) {
-    if (num > 50 && num <100)
-        helloworld();
-}
 ```
-
-https://gitlab.com/x86-psabis/x86-64-abi/-/jobs/artifacts/master/raw/x86-64-abi/abi.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
+path 1: n % 15 == 0  → "FizzBuzz"     rdi ∈ {0, 15, 30, 45, ...}
+path 2: n % 3  == 0  → "Fizz"         rdi ∈ {3, 6, 9, 12, 18, ...}
+path 3: n % 5  == 0  → "Buzz"         rdi ∈ {5, 10, 20, 25, ...}
+path 4: else         → "Unknown"      rdi ∈ {1, 2, 4, 7, 8, 11, ...}
+```
 
 ----
 
@@ -472,7 +488,7 @@ def explore(project, start, end):
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
-https://docs.angr.io/en/latest/core-concepts/symbolic.html
+https://gitlab.com/x86-psabis/x86-64-abi/-/jobs/artifacts/master/raw/x86-64-abi/abi.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
@@ -480,33 +496,30 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 ##### `Data Synthesis`
 <!-- .element: style="text-align:left" -->
 
-----
-
-```python
-obj = elf(project.loader)
-obj.map_elf()
-obj.setup_stack()
-page = mmap.mmap(
-    -1,
-    len(code),
-    prot=prot_read | prot_write | prot_exec,
-    flags=map_private | map_anonymous
-)
-```
-
 ```python
 solutions = explore(project, start, end)
+
 for solution in solutions:
     for name, sym in solution["reg"].items():
+        regs[name] = int(solver.eval(sym))
+
+    for addr, size, val in solution["reads"] + solution["writes"]:
+        writes[(addr, size)] = int(solver.eval(val))
         values.append(solver.eval(sym))
 ```
 
-
-```cpp
+```
 states explosion?
+- PERF_ASSUME (.expose)
 - sampling: perf.data
 - tracing (for branches)
+- capped iterations
 ```
+<!-- .element: class="fragment" -->
+
+
+https://docs.angr.io/en/latest/core-concepts/symbolic.html
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -558,13 +571,31 @@ start:      stop:
 ```
 <!-- .element: style="text-align:left; font-size:19px;" -->
 
+```asm
+# latency harness skeleton (simplified)
+push rbx/rbp/r12-r15
+mov  r8, [rdi]          # iterations
+mov  r9, [rdi+0x8]      # inputs
+mov  r10, [rdi+0x10]    # outputs
+{setup}
+.loop:
+  {data}                # prime regs + steer caches
+  {t0}                  # lfence; rdtsc; mov rbx, rax
+  {code}                # the code being measured
+  {t1}                  # rdtscp; lfence; sub; store
+  dec r8; jnz .loop
+{teardown}
+pop rbx/rbp/r12-r15; ret
+```
+<!-- .element: style="text-align:left; font-size:14px;" -->
+
 ----
 
-#### Backends [latency]
+#### Backends (unroll vs. repeat)
 <!-- .element: style="text-align:left" -->
 
 ```
-# unroll
+# unroll:  (2N × code - N × nop) / N   = per-copy cost
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
@@ -575,18 +606,42 @@ add mov eax, 42
 add mov eax, 42
 add mov eax, 42
 add mov eax, 42
+```
+
+or
+
+```cpp
+# repeat:  one call fn  - one call nop  = fn cost
+measured (code) - overhead (nop) = true cost
 ```
 
 https://github.com/andreas-abel/nanoBench
 <!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
-#### Throughput
-<!-- .element: style="text-align:left" -->
+#### JIT Code Generation
 
-https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
+```python
+// mmap RWX page → assemble x86-64 → call via ctypes
+page = mmap(-1, len(code_bytes), PROT_READ|PROT_WRITE|PROT_EXEC,
+            MAP_PRIVATE|MAP_ANONYMOUS)
+page.write(code_bytes)
+fn = ctypes.CFUNCTYPE(POINTER(Args))(addressof(page))
+fn(ctypes.byref(args))  # iterations, inputs, outputs, data
+```
+
+```python
+# per-iteration data buffer (column-major):
+#   reg columns:  rdi, rsi, rdx, ... (from SMT models)
+#   mem columns:  address value + tier (for cache steering)
+#
+# {data} block reads buffer[r8] and primes the machine
+# {data2} block reloads between timing windows
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -613,33 +668,6 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Hardware effects [Cache]
-<!-- .element: style="text-align:left" -->
-
-```cpp
-auto value = lut[i];
-```
-
-```cpp
-perf bench asm 'add r11, [rax]'
-  --march sapphirerapids
-  --config.memory.cache.dL1=100
-  --data.r11=0
-  --data.rax=0x4000
-  --data.memory.0x4000=1234
-```
-
-----
-
-```cpp
-perf.bench(exec="a.out", func="foo")                     
-perf.bench(region=["a", "b"], exec="a.out", name="ab")   
-perf.bench(asm="rdtsc")                                  
-perf.bench(asm="mov eax, 42", name="mov")                
-```
 
 ----
 
@@ -681,12 +709,19 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 
 ----
 
+```asm
+# TODO show assembllby for different levels
+clflush
+prefetch
+```
+
+----
+
 #### Hardware effects [Cache]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 perf bench asm 'add r11, [rax]'
-  --march sapphirerapids
   --config.memory.cache.dL1=hit_rate:100
   --data.r11=0
   --data.rax=0x4000
@@ -699,9 +734,6 @@ dL2:  13ns
 dL3:  75ns
 RAM: 294ns
 ```
-
-memory effects (heap pollution)
-<!-- .element: style="text-align:left; font-size:20px;" -->
 
 https://www.akkadia.org/drepper/cpumemory.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
@@ -763,34 +795,6 @@ https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong
 
 ----
 
-#### 'The Worst' Possiblie Execution
-<!-- .element: style="text-align:left" -->
-
-```json
-{
-  "function": {
-    "order": "random",
-  },
-  "branch": "unpredictable",
-  "memory": {
-    "heap": "random",
-    "stack": "random",
-    "cache": {
-      "dL1":  {"hit_rate":0},
-      "dL2":  {"hit_rate":0},
-      "dL3":  {"hit_rate":0},
-      "iL1":  {"hit_rate":0},
-      "iL2":  {"hit_rate":0},
-      "dTLB": {"hit_rate":0},
-      "iTLB": {"hit_rate":0},
-    }
-  }
-}
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-----
-
 ```
 lstopo
 ```
@@ -829,7 +833,7 @@ Measured vs. Spec
 ----
 
 ```cpp
-perf bench asm 'rdtsc' | perf plot
+perf bench asm 'rdtsc' | perf plot -t bar
 ```
 
 <p align="left">
@@ -840,6 +844,7 @@ Non-tuned vs. tuned
 <!-- .element: style="font-size:22px; text-align:left;" -->
 
 ```
+...
 Jitter isolate
 ```
 
@@ -861,77 +866,197 @@ https://uops.info/table.html
 
 ----
 
+### Case Studies
+<!-- .element: style="text-align:left" -->
+
 ```
+# TODO Top Down again
 backend_bound
 bad_speculation
 frontend_bound
 retiring
 ```
 
-----
-
-`.jitdata`
-<!-- .element: style="text-align:left" -->
+```
+perf stat   --control=fifo:/dev/shm/perf --delay=-1 ...
+perf record --control=fifo:/dev/shm/perf --delay=-1 ...
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 ```cpp
-perf record -- perf bench
+perf bench func .* -m latency --exec binary.out \
+  -e cycles,instructions \
+  -e topdown-retiring \
+  -e topdown-bad-spec \
+  -e topdown-fe-bound \
+  -e topdown-be-bound
 ```
+
+----
+
+#### Case Study: Backend_bound
+
+```cpp
+#include <perf/perf.hpp>
+
+int arr[64];
+void init() { for (int i = 0; i < 64; ++i) arr[i] = i * 37; }
+
+int process(int n) {
+    int sum = 0;
+    for (int i = 0; i < n; ++i) {
+        int val = arr[i & 63];         // cache access
+        sum += (val & 1) ? val : -val; // branch
+    }
+    return sum;
+}
+```
+
+```cpp
+g++16 -O3 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
+g++16 -O2 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
+clang++-22 -O2 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
+clang++-22 -O3 -std=c++23 -Ilib studies/x86_64/backend_bound/memory.cpp -o memory.out
+```
+
+----
+
+```
+perf bench func process --exec memory.out | perf plot -t ecdf # default
+```
+
+----
+
+```python
+import perf
+
+config =
+```
+
+```
+hot  → tight distribution around ~3 cycles (L1 hit)
+warm → bimodal distribution (L1/L2 mix + L3 tail)
+cold → wide distribution, long tail to RAM latency
+```
+
+https://jupyter.org
+
+----
+
+<p align="left">
+<img src="images/ecdf.png" style="width: 70%; background:white; border:none; box-shadow:none;" />
+</p>
+
+```asm
+Empirical Cumulative Distribution Function (ECDF) shows the entire distribution without losing information
+```
+<!-- .element: style="text-align:left; font-size:14px;" -->
 
 ----
 
 ```cpp
-auto enum_to_string(enum auto value) -> std::string_view;
+perf bench func process --exec memory.out -e cycles,instruciotns | llvm-mca
 ```
 
 ```cpp
-template auto enum_to_string(color) -> std::string_view;
+# TODO
 ```
 
+note: -e cycles,instrucions # in the same run
+note: -e cycles -e instrucions # different runs
+
 ----
+
+bad_speculation
 
 ```cpp
-g++ -O3 ...
-g++ -O2 ...
-clang++ -O3 ...
-clang++ -O2 ...
+constexpr auto fizz_buzz(int n) {
+       if (n % 15 == 0) { return "FizzBuzz"; }
+  else if (n % 3  == 0) { return "Fizz";     }
+  else if (n % 5  == 0) { return "Buzz";     }
+  return "Unknown";
+}
 ```
 
 ```
-perf bench func --exec a.out --list
-perf bench func ... | llvm-mca
-alias bench='perf bench'
-bench func ... | bench plot -t ecdf # losless
-bench func ... -i
+perf bench func fizz_buzz --data.rdi=0
+perf bench func fizz_buzz --data.rdi=1
+perf bench func fizz_buzz --data.rdi=2
+perf bench func fizz_buzz --config.branch=predictable
+perf bench func fizz_buzz --config.branch=unpredictable
+perf bench func fizz_buzz --config.branch=unpredictable -e branch-misses
+perf bench func fizz_buzz --event cycles,instructions
+```
+
+perf view -- data/fizz_buzz
 ```
 
 ----
 
-```
-perf bench fizz_buzz -- 0
-perf bench fizz_buzz -- 1
-perf bench fizz_buzz -- 2
-...
-```
+#### Frontend Bound
 
-----
 
+```bash
+# function order matters (linker script, -ffunction-sections)
+# 16-byte alignment → one fewer fetch boundary
 ```
-perf bench plot -t ecdf -e cycles/instructions
+<!-- .element: class="fragment" -->
+
+```bash
+perf bench func hot_fn -m latency --exec normal.out --config.order=random    -o normal/
+perf bench func hot_fn -m latency --exec sectioned.out -o sectioned/
+perf bench func hot_fn -m latency --exec shifted.out   -o shifted/
+perf bench view -s min,median,p99 -- normal/ sectioned/ shifted/
 ```
-
-<img src="images/normal.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-
-----
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```cpp
-perf bench func send_msg
-    --exec gcc16.out
-    --event cycles,instructions # --event cycles --event instructions
+void unused();              // never called → 0 cost?
+void hot_function() {
+    // ... performance critical code ...
+}
+
+void unused() {
+    for (int i = 0; i < 1000000; ++i) compute();
+}
 ```
+
+```bash
+# same binary, different function order in .text:
+# hot_function at 0x1000 vs hot_function at 0x5000
+# → different icache behavior → different performance
+```
+<!-- .element: class="fragment" -->
+
+```bash
+g++ -O3 func.cpp -o a.out          # order: hot, cold
+g++ -O3 func.cpp -o b.out -Wl,--sort-section=name  # order: cold, hot
+perf bench func hot_function -m latency --exec a.out
+perf bench func hot_function -m latency --exec b.out
+# same source, same compiler, same flags → different result!
+```
+<!-- .element: class="fragment" -->
+
+https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
+#### Retiring [dependency chain]
+
 ```cpp
+[[gnu::noinline]] int chain(int n) {
+    PERF_LABEL(chain_begin);
+    int x = n;
+    for (int i = 0; i < 64; ++i)
+        x = x * 31 + 17;   // serial dependency → latency bound
+    PERF_LABEL(chain_end);
+    return x;
+}
+```
+
+```cpp
+// objdump -sj .perf.label <file>
 #define PERF_LABEL(name) // can't affect binary
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
@@ -942,268 +1067,48 @@ perf bench func send_msg
     ); name:
 ```
 
-----
-
-```cpp
-PERF_LABEL(hot_path_begin);
-...
-PERF_LABEL(hot_path_end);
+```
+perf bench region hot_begin..hot_end -e cycles/instructions | perf view -e instructions/cycles
 ```
 
-----
-
-```cpp
-g++ -O3 -std=c++26 case_study.cpp
+```asm
+# latency: 64 iterations × 3 cycles each = ~192 cycles
+# throughput: pipelined, 6 cycles/iteration throughput = ~32 cycles
+# IPC=1.0 latency → classic dependency chain (back-end bound)
 ```
-
-```
-perf bench info --exec <file> --labels --regions --functions
-hot_begin
-hot_end
-foo
-```
-
-```
-objdump -sj .perf.label <file>
-```
+<!-- .element: style="text-align:left; font-size:14px;" -->
 
 ----
 
-```cpp
-perf stat --topdown -I 1000 ./a.out
-```
+#### 'The Worst' Possiblie Execution
+<!-- .element: style="text-align:left" -->
 
-```
-perf bench region hot_begin..hot_end
-```
-
-----
-
-#### `hardware_effects.json`
-<!-- .element: style="text-align:left; font-size: 22px;" -->
-
-```
+```json
 {
-  "affinity": [1],
   "function": {
-    "alignment": 16,
-    "layout": "random",
+    "order": "random",
   },
   "branch": "unpredictable",
   "memory": {
     "heap": "random",
     "stack": "random",
     "cache": {
-      "dL1":  {"hit_rate":50},
-      "dL2":  {"hit_rate":75},
-      "dL3":  {"hit_rate":"perf.data"},
-      "iL1":  {"hit_rate":100},
-      "iL2":  {"hit_rate":100},
-      "dTLB": {"hit_rate":100},
-      "iTLB": {"hit_rate":100},
+      "dL1":  {"hit_rate":0},
+      "dL2":  {"hit_rate":0},
+      "dL3":  {"hit_rate":0},
+      "iL1":  {"hit_rate":0},
+      "iL2":  {"hit_rate":0},
+      "dTLB": {"hit_rate":0},
+      "iTLB": {"hit_rate":0},
     }
   }
 }
 ```
-<!-- .element: style="text-align:left;" -->
-
-----
-
-<!--template void enum_to_string(color);-->
-
-```cpp
-constexpr auto v0::enum_to_string(enum auto value) -> std::string_view {
-    template for (constexpr auto e :
-        define_static_array(meta::enumerators_of(^^E))) {
-        if (value == [:e:]) {
-            return meta::identifier_of(e);
-        }
-    }
-    return {};
-}
-```
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-```
-"enum_to_string"_test = [] constexpr {
-    expect(enum_to_string());
-};
-```
-
-----
-
-```cpp
-perf bench func enum_to_string -x gcc26.out
-```
-
-----
-
-#### Empirical Cumulative Distribution Function (ECDF)
-<!-- .element: style="text-align:left;" -->
-
-```
-perf bench view -s min,median,p99
-perf bench plot -t ecdf
-```
-
-<p align="left">
-<img src="images/ecdf.png" style="width: 70%; background:white; border:none; box-shadow:none;" />
-</p>
-
-```asm
-ECDF shows the entire distribution without losing information
-```
-<!-- .element: style="text-align:left; font-size:14px;" -->
-
-----
-
-```cpp
-std::string_view v1::enum_to_string(enum auto value) {
-    template for (constexpr auto e :
-        std::define_static_array(std::meta::enumerators_of(^^E)))
-        switch(value) {
-            case [:e:]: return std::meta::identifier_of(e);
-        }
-    return {};
-}
-```
-
-----
-
-```cpp
-std::string_view v2::enum_to_string(enum auto value) {
-    static const auto map = [] {
-        std::unordered_map<E, std::string_view> m;
-        template for (constexpr auto e :
-            std::define_static_array(std::meta::enumerators_of(^^E))) {
-            m.emplace([:e:], std::meta::identifier_of(e));
-        }
-        return m;
-    }();
-
-    if (auto it = map.find(value); it != map.end()) {
-        return it->second;
-    }
-
-    return {};
-}
-```
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-```cpp
-std::string_view enum_to_string_v1(enum auto value) {
-    // pext
-}
-```
-
-----
-
-```cpp
-std::string_view enum_to_string_v1(enum auto value) {
-    // pext
-    // simd - collisions
-}
-```
-
-----
-
-#### Hashing
-<!-- .element: style="text-align:left" -->
-
-<img src="images/hashing.png" style="width: 75%; background:white; border:none; box-shadow:none;" />
-
-----
-
-```cpp
-enum uri { ftp = 0, file = 1, http = 2, ws = 3, wss = 4, };
-```
-
-```cpp
-std::string_view enum_to_string_v1(enum auto value) {
-  // mph
-  constexpr auto nbits = /*bits*/
-  constexpr auto shift = sizeof(T) * CHAR_BIT - nbits; // 29
-  constexpr auto mask  = (1u << nbits) - 1u;           // 0b111
-  constexpr auto [magic, lut] = magic_lut(mask, shift, MaxAttempts);
-  auto&& value = to<T>(key);
-  return (lut >> ((value * magic) >> shift)) & mask;
-}
-```
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-https://godbolt.org/z/3j8qcabsj # find hash at compile-time (constexpr gpu)
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
-PERF_ASSUME
-
-----
-
-```
-perf bench func enum_to_string_v3 -e asm -v | llvm-mca
-```
-
-```cpp
-[1]: #uOps    [2]: Latency   [3]: RThroughput
-[4]: MayLoad  [5]: MayStore  [6]: HasSideEffects (U)
-```
-
-<pre><code data-trim>
-[1] [2] [3]  [4] [5] [6]   Instructions:
- 1   1  0.50               shl  edi, 3
- 2   5  0.50  *            bzhi eax, dword ptr [rsi], edi
- 1   3  1.00               imul eax, eax, 2893426669   /*magic*/
- 1   1  0.50               shr  eax, 29                /*shift*/
- 1   1  0.50               mov  ecx, 0b001100000010011 /*lut*/
- 1   1  0.50               shrx eax, ecx, eax
- 1   1  0.25               and  eax, 0b111             /*mask*/
- 1   5  0.50          U    ret
-</code></pre>
-
-```
-no lookup table (stored directly in a register)
-```
-
-----
-
-```cpp
-std::string_view v4::enum_to_string(enum auto value) {
-    // mask
-    // pext
-    // simd
-}
-```
-
-----
-
-```cpp
-std::string_view v5::enum_to_string(enum auto value) {
-    // policy
-    // [[clang::code_align(alignment)]] [[gun::aligned(alignment)]]
-}
-```
-
-----
-
-#### Analysis / Testing
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/study.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
-</p>
-
-<!--asm/timeline/resource_pressure-->
-<!--perf.bench(asm).instrucitons < 10-->
-
-https://jupyter.org
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
-
-----
-
-#### `"perf" mantra`
+#### `perf mantra`
 <!-- .element: style="text-align:left" -->
 
 ```cpp
