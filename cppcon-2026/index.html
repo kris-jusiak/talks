@@ -287,24 +287,26 @@ perf probe --exec a.out --add func # INT3
 
 ```sh
 perf record \
-    --event intel_pt//u \
+    --event intel_pt/tsc,cyc=1/u \
     --filter 'filter func @ ./a.out' \
     --pid=$(pidof a.out) \
     --mmap-pages 512,4096
 ```
 
 ```
-perf report --itrace=i10ns --call-graph fractal
-```
+perf script --itrace=i --insn-trace=disasm -F+ipc | format
 
+Instruction                         IPC
+──────────────────────────────────────────
+push   %rbp                          —
+mov    %rsp,%rbp                     —
+sub    $0x20,%rsp                   1.00
+mov    (%rdi),%rax                  0.50
+imul   %rcx,%rax                    0.33
+add    %rax,%rdx                     —
+leave                               1.00
+ret                                  —
 ```
-# ........  .......
-    42.15%  a.out
-            |
-            --- func
-                main
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
 
 -- Requires Intel-PT or ARM ETM (CoreSight) --
 <!-- .element: style="text-align:right; font-size:16px;" -->
