@@ -675,7 +675,7 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 #### Hardware effects [Cache]
 <!-- .element: style="text-align:left" -->
 
-```
+```cpp
 perf bench asm 'add r11, [rax]'
   --march sapphirerapids
   --config.memory.cache.dL1=hit_rate:100
