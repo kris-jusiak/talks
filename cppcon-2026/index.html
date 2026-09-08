@@ -262,10 +262,6 @@ perf script | stackcollapse-perf.pl | flamegraph.pl > flame.svg
 
 <table>
 <tr>
-</tr>
-
-<table>
-<tr>
 <td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
 <td>
 <pre style="font-size:14px;margin: 0px 0px;"><code>main;parse;tokenize 5
@@ -275,6 +271,9 @@ main;render 7
 </code></pre></td>
 </tr>
 </table>
+
+-fno-omit-frame-pointer
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -294,10 +293,8 @@ perf record \
 ```
 
 ```
-perf script --itrace=i --insn-trace=disasm -F+ipc | format
+perf script --itrace=i --insn-trace=disasm -F+ipc
 
-Instruction                         IPC
-──────────────────────────────────────────
 push   %rbp                          —
 mov    %rsp,%rbp                     —
 sub    $0x20,%rsp                   1.00
@@ -337,10 +334,16 @@ llvm-mca -mcpu=sapphirerapids snippet.asm
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```
-llvm-mca -resource-pressure   # port usage: [0] 1.50 [1] 0.50 [5] 1.00 ...
-llvm-mca -timeline            # D=e=E=R pipeline diagram (D dispatched, e executing, E executed, R retired)
+llvm-mca -resource-pressure   # port usage:       [0] 1.50 [1] 0.50 [5] 1.00 ...
+llvm-mca -timeline            # pipeline diagram: D=dispatched, e=executing, E=executed, R=retired
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
+
+Scheduling Models - https://github.com/llvm/llvm-project/tree/main/llvm/lib/Target
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+https://www.uops.info/instructions.xml
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 -- `MCA` results are estimates and will not perfectly reflect real-world performance --
 <!-- .element: style="text-align:right; font-size:16px;" -->
@@ -727,7 +730,7 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 
 ----
 
-#### Branch effects
+##### Branch effects
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -768,7 +771,7 @@ void hot_func(const int* v, int n) {
 }
 ```
 
-```
+```sh
 perf bench func hot_func --exec a.out
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -778,7 +781,7 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 ----
 
-##### Label..Label [region]
+##### Begin..End [region]
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -805,6 +808,12 @@ objdump -sj .perf.label <file>
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
+```
+Across functions
+Inlined multipel times
+```
+
+
 ----
 
 ##### `JIT Code Generation`
@@ -825,7 +834,7 @@ CFUNCTYPE((addressof(from_buffer(page)))()
 <img src="images/code.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
 </p>
 
--- Alternatively save to an object file link and execute --
+-- Alternatively save to an object file link and execute / .jitdata --
 <!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
@@ -885,14 +894,16 @@ Measured vs. Spec
 ```
 
 ```cpp
-perf bench asm 'add' --event cycles
-perf bench asm 'sub' --event cycles
-perf bench asm 'imul' --event cycles
-perf bench asm 'idiv' --event cycles
+perf bench asm 'imul eax, 0' --mode latency -e cycles,instructions
+perf bench asm 'add eax, 0' --mode latency -e cycles,instructions
+perf bench asm 'sub eax, 0' --mode latency -e cycles,instructions
+perf bench asm 'cldlc; idiv eax, 0'  --mode latency -e cycles,instructions
 ```
+<!-- .element: style="text-align:left; font-size: 20px;" -->
 
 https://uops.info/table.html # vs measured
 <!-- .element: style="text-align:left; font-size: 22px; margin: 5px 0px;" -->
+
 https://llvm.org/docs/CommandGuide/llvm-exegesis.html # vs llvm optimizer
 <!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
@@ -927,8 +938,6 @@ perf bench {func,region} .* --mode latency --exec binary.out \
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-#include <perf/perf.hpp>
-
 int arr[64];
 void init() { for (int i = 0; i < 64; ++i) arr[i] = i * 37; }
 
@@ -973,7 +982,7 @@ perf bench func process --exec memory.out | perf plot -t ecdf
 <!-- .element: style="text-align:left" -->
 
 ```python
-import perf
+import perf                                                                               # python
 
 for hit_rate in [100, 50, 0]:  # hot → warm → cold
     config = {
