@@ -234,7 +234,7 @@ Performance Monitoring Unit
 </table>
 
 ```sh
-perf stat --topdown ./a.out
+perf stat --topdown -- ./a.out
 ```
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
@@ -273,7 +273,7 @@ main;render 7
 </table>
 
 -fno-omit-frame-pointer
-<!-- .element: style="text-align:left; font-size:16px;" -->
+<!-- .element: style="text-align:right; font-size:16px;" -->
 
 ----
 
@@ -353,22 +353,50 @@ https://www.uops.info/instructions.xml
 ##### Instrumentation [[llvm-xray](https://llvm.org/docs/xray.html), [tracy](https://github.com/wolfpld/tracy), ...]
 <!-- .element: style="text-align:left;" -->
 
-```asm
--O3                    -fxray-instrument           __xray_patch
-```
-<!-- .element: style="text-align:left; font-size:15px;" -->
-
-```cpp
-func:                  func:                       func:
-                         nopw                        jmp __xray_FunctionEntry
-  mov eax, 42            mov eax, 42                 mov eax, 42
-                         nopw                        jmp __xray_FunctionExit
-  ret                    ret                         ret
-```
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<table style="border-collapse:collapse; width:100%;">
+  <tr>
+      <td style="width:25%">
+          <pre style="font-size:14px">int func() { return 42; }</pre>
+      </td>
+      <td style="width:25%">
+          <pre style="font-size:14px">-fxray-instrument</pre>
+      </td>
+      <td style="width:25%">
+          <pre style="font-size:14px">__xray_patch</pre>
+      </td>
+  </tr>
+  <tr>
+  <td>
+      <pre style="font-size:14px">
+func:        
+  mov eax, 42
+  ret        
+      <br/>
+      </pre>
+  </td>
+  <td>
+      <pre style="font-size:14px">
+func:        
+  nopw       
+  mov eax, 42
+  nopw       
+  ret        
+      </pre>
+  </td>
+  <td>
+      <pre style="font-size:14px">
+func:
+  jmp __xray_FunctionEntry
+  mov eax, 42
+  jmp __xray_FunctionExit
+  ret
+      </pre>
+  </td>
+</tr>
+</table>
 
 <p align="left">
-<img src="images/metrics.png" style="width: 100%; height: 350px; background:white; border:none; box-shadow:none;" />
+<img src="images/metrics.png" style="width: 100%; height: 320px; background:white; border:none; box-shadow:none;" />
 </p>
 
 ----
@@ -436,7 +464,29 @@ Machine Code
 
 ----
 
-##### `Path`
+##### `Explore`
+<!-- .element: style="text-align:left" -->
+
+```python
+def explore(project, start, end):                                      # python
+    state = project.factory.blank_state(addr=start) 
+
+    state.inspect.b("mem_read",  when=angr.BP_AFTER, action=on_mem_read)
+    state.inspect.b("mem_write", when=angr.BP_AFTER, action=on_mem_write)
+
+    simgr = project.factory.simulation_manager(state)
+    simgr.explore(find=end)
+
+    return simgr.found + simgr.active + simgr.deadended
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+https://docs.angr.io/en/latest/core-concepts/symbolic.html
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+##### Example
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -449,58 +499,16 @@ constexpr auto fizz_buzz(int n) {
 ```
 
 ```
-path 1: n % 15 == 0  → "FizzBuzz"     rdi ∈ {0, 15, 30, 45, ...}
-path 2: n % 3  == 0  → "Fizz"         rdi ∈ {3, 6, 9, 12, 18, ...}
-path 3: n % 5  == 0  → "Buzz"         rdi ∈ {5, 10, 20, 25, ...}
-path 4: else         → "Unknown"      rdi ∈ {1, 2, 4, 7, 8, 11, ...}
+solutions = explore(project, fizz_buzz, fizz_buzz+size)
 ```
 
-----
-
-##### `Exploration`
-<!-- .element: style="text-align:left" -->
-
-```python
-def explore(project, start, end):
-    state = project.factory.blank_state(addr=start)
-    state.globals["reads"], state.globals["writes"] = [], []
-
-    def on_mem_read(state):
-        state.globals["reads"].append((
-            state.inspect.mem_read_address,
-            state.inspect.mem_read_length,
-            state.inspect.mem_read_expr))
-
-    def on_mem_write(state):
-        state.globals["writes"].append((
-            state.inspect.mem_write_address,
-            state.inspect.mem_write_length,
-            state.inspect.mem_write_expr))
-
-    state.inspect.b("mem_read",  when=angr.BP_AFTER, action=on_mem_read)
-    state.inspect.b("mem_write", when=angr.BP_AFTER, action=on_mem_write)
-
-    simgr = project.factory.simulation_manager(state)
-    simgr.explore(find=end)
-
-    return [{"state": s,
-             "reg": {"rdi": s.regs.rdi},
-             "reads": s.globals.get("reads", []),
-             "writes": s.globals.get("writes", [])}
-            for s in simgr.found]
 ```
-<!-- .element: style="text-align:left; font-size:10px;" -->
-
+{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_12_64>}, 'mem_read': [], 'mem_write': []} 
+{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_12_64>}, 'mem_read': [], 'mem_write': []}
+{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_12_64>}, 'mem_read': [], 'mem_write': []}
+{'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_12_64>}, 'mem_read': [], 'mem_write': []}
 ```
-{'path': 'FizzBuzz', 'reg': {'rdi': 15}, 'reads': [], 'writes': []}  # rdi % 15 == 0
-{'path': 'Fizz',     'reg': {'rdi': 3},  'reads': [], 'writes': []}  # rdi % 3  == 0
-{'path': 'Buzz',     'reg': {'rdi': 5},  'reads': [], 'writes': []}  # rdi % 5  == 0
-{'path': 'Unknown',  'reg': {'rdi': 1},  'reads': [], 'writes': []}  # else
-```
-<!-- .element: style="text-align:left; font-size:10px;" -->
-
-https://docs.angr.io/en/latest/core-concepts/symbolic.html
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:14px;" -->
 
 ----
 
@@ -513,19 +521,16 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 <!-- .element: style="text-align:left" -->
 
 ```python
-solutions = explore(project, start, end)
-
-for solution in solutions:
-    rdi = solution["state"].solver.eval(state["reg"]["rdi"])
-    reads = [(solution["state"].solver.eval(a), state["state"].solver.eval(e)) for a, _, e in state["reads"]]
+for solution in solutions:                                      # python
+    print(solution["state"].solver.eval_up_to(state["reg"]["rdi"], 3))
 ```
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
-```
-0, 15, 30, ...
-3, 6, 9, ...
-5, 10, 20, ...
-1, 2, 4, ...
+```cpp
+0, 15, 30 // rdi % 15 == 0
+3,  6,  9 // rdi % 3  == 0
+5, 10, 20 // rdi % 5  == 0
+1,  2,  4 // else
 ```
 ----
 
@@ -733,6 +738,28 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 ##### Branch effects
 <!-- .element: style="text-align:left" -->
 
+<table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
+  <tr>
+  <td>
+    <img src="images/cpu2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+  </td>
+  <td>
+     <pre style="font-size:10px">
+struct Entry { bool valid{}; uint64_t tag{}; uint8_t hyst{}; }; // 2-bit counter
+std::array<Entry, 1 << 12> btb{};              // 4K entries, hash(ip) aliased
+auto predict(uint64_t ip, uint64_t target) {
+    auto& e = btb[(ip >> 2) & 0xFFF];          // aliasing: ips share an entry
+    if (e.valid && e.tag == ip) return e.hyst >= 2; // trained on 10'000 x 1/0
+    return target < ip ? TAKEN : NOT_TAKEN;    // cold: backward taken, forward not-taken
+} // update: if (!e.valid && !taken) return;   // never-taken: no BTB entry allocated
+   </pre>
+  </td>
+</tr>
+</table>
+
+<p align="left">
+</p>
+
 ```
 perf bench asm 'cmp r11, [rax]; je hit; nop; hit:' --config.branch=predictable
 perf bench asm 'cmp r11, [rax]; je hit; nop; hit:' --config.branch=unpredictable
@@ -744,17 +771,6 @@ for solution in solutions:
     value = solution.eval(1)
     bench(code, [repeat(value, N) if predictable else shuffle(values)])
 ```
-
-```cpp
-struct Entry { bool valid{}; uint64_t tag{}; uint8_t hyst{}; }; // 2-bit counter
-std::array<Entry, 1 << 12> btb{};              // 4K entries, hash(ip) aliased
-auto predict(uint64_t ip, uint64_t target) {
-    auto& e = btb[(ip >> 2) & 0xFFF];          // aliasing: ips share an entry
-    if (e.valid && e.tag == ip) return e.hyst >= 2; // trained on 10'000 x 1/0
-    return target < ip ? TAKEN : NOT_TAKEN;    // cold: backward taken, forward not-taken
-} // update: if (!e.valid && !taken) return;   // never-taken: no BTB entry allocated
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -785,7 +801,7 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-#define PERF_LABEL(name) // can't affect binary
+#define PERF_LABEL(name)
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
         ".quad 0f\n"
@@ -820,26 +836,39 @@ Inlined multipel times
 <!-- .element: style="text-align:left" -->
 
 ```python
-page = mmap.mmap(
+page = mmap(
     -1,
     len(code_bytes),
     prot=PROT_READ|PROT_WRITE|PROT_EXEC,
     flags=MAP_PRIVATE|MAP_ANONYMOUS
 )
 page.write(bench) # harness + code
-CFUNCTYPE((addressof(from_buffer(page)))()
+CFUNCTYPE((addressof(from_buffer(page)))() # execute
 ```
 
 <p align="left">
 <img src="images/code.png" style="width: 45%; background:none; border:none; box-shadow:none;" />
 </p>
 
--- Alternatively save to an object file link and execute / .jitdata --
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+```cpp
+perf bench --save example.s --save example.o
+```
+
+-- .jitdata --
 <!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
 ### Case Studies
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Hardware
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -881,7 +910,7 @@ perf bench asm 'rdtsc' | perf plot -t bar
 
 ----
 
-##### Measured vs. Documented [sanity-checks]
+##### Sanity-Checks [measured vs. documented]
 <!-- .element: style="text-align:left" -->
 
 <!--```cpp-->
@@ -894,10 +923,10 @@ perf bench asm 'rdtsc' | perf plot -t bar
 <!--```-->
 
 ```cpp
-perf bench asm 'imul eax, 0' --mode latency -e cycles,instructions
-perf bench asm 'add eax, 0' --mode latency -e cycles,instructions
-perf bench asm 'sub eax, 0' --mode latency -e cycles,instructions
-perf bench asm 'cdq; idiv ecx;' --setup 'mov ecx, 2' --mode latency -e cycles,instructions
+perf bench asm 'imul eax, 0' --mode latency -e cycles
+perf bench asm 'add  eax, 0' --mode latency -e cycles
+perf bench asm 'sub  eax, 0' --mode latency -e cycles
+perf bench asm 'cdq; idiv ecx;' --setup 'mov ecx, 2' --mode latency -e cycles
 ```
 <!-- .element: style="text-align:left; font-size: 15px;" -->
 
@@ -916,19 +945,15 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html # vs llvm optimizer
 #### Top down Microarchitecture Analysis Method
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
-```
-perf stat   --control=fifo:/dev/shm/perf --delay=-1 ...
-perf record --control=fifo:/dev/shm/perf --delay=-1 ...
+```sh
+perf stat --topdown --control=fifo:/dev/shm/perf --delay=-1 -- ./a.out
 ```
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
 ```cpp
-perf bench {func,region} .* --mode latency --exec binary.out \
-  -e duration_time,cycles,instructions \ # same execution
-  -e topdown-retiring                  \ # different run
-  -e topdown-bad-spec                  \ # different run
-  -e topdown-fe-bound                  \ # different run
-  -e topdown-be-bound
+perf bench func ".*" --mode latency --exec a.out \
+  -e duration_time,cycles,instructions \
+  -e topdown-retiring,topdown-bad-spec,topdown-fe-bound,topdown-be-bound # seperate run
 ```
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
