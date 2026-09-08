@@ -881,25 +881,29 @@ perf bench asm 'rdtsc' | perf plot -t bar
 
 ----
 
-#### Sanity-checks
+##### Measured vs. Documented [sanity-checks]
 <!-- .element: style="text-align:left" -->
 
-```cpp
-Measured vs. Spec
-- instructions latency/rthroughput/...
-- dL1/dL2/dL3 load/store latency/bandwidth
-- branch misprediction penalty
-- max(µops/cycle) vs. dispatch width
- ...
-```
+<!--```cpp-->
+<!--Measured vs. Spec-->
+<!--- instructions latency/rthroughput/...-->
+<!--- dL1/dL2/dL3 load/store latency/bandwidth-->
+<!--- branch misprediction penalty-->
+<!--- max(µops/cycle) vs. dispatch width-->
+ <!--...-->
+<!--```-->
 
 ```cpp
 perf bench asm 'imul eax, 0' --mode latency -e cycles,instructions
 perf bench asm 'add eax, 0' --mode latency -e cycles,instructions
 perf bench asm 'sub eax, 0' --mode latency -e cycles,instructions
-perf bench asm 'cldlc; idiv eax, 0'  --mode latency -e cycles,instructions
+perf bench asm 'cdq; idiv ecx;' --setup 'mov ecx, 2' --mode latency -e cycles,instructions
 ```
-<!-- .element: style="text-align:left; font-size: 20px;" -->
+<!-- .element: style="text-align:left; font-size: 15px;" -->
+
+<p align="left">
+<img src="images/cmp2.png" style="width: 50%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+</p>
 
 https://uops.info/table.html # vs measured
 <!-- .element: style="text-align:left; font-size: 22px; margin: 5px 0px;" -->
