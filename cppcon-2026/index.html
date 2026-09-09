@@ -435,7 +435,7 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
 ```
 What if we could measure "what if?"
 ```
-<!-- .element: style="text-align:left; font-size:30px;" -->
+<!-- .element: style="text-align:left; font-size:26px;" -->
 
 ----
 
@@ -451,10 +451,10 @@ Machine Code
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```
-┌──────────────────┐   ┌─────────────────┐   ┌───────────────┐   ┌───────────────┐
-│ mov eax, [r11]   │ → │ {reg: r11}      │ → │ r11 = [0,3,5] │ → │ mmap / jit    │
-│ add eax, [r11+4] │   │ {mem: [r11]+4}  │   │ [r11] = [1,3] │   │ cache/branch  │
-└──────────────────┘   └─────────────────┘   └───────────────┘   └───────────────┘
+┌──────────────────┐   ┌─────────────────┐   ┌───────────────┐   ┌────────────────┐
+│ mov eax, [r11]   │ → │ {reg: r11}      │ → │ r11 = [0,3,5] │ → │ mmap / jit     │
+│ add eax, [r11+4] │   │ {mem: [r11]+4}  │   │ [r11] = [1,3] │   │ [cache/branch] │
+└──────────────────┘   └─────────────────┘   └───────────────┘   └────────────────┘
  asm/cpp/rust/zig       exploration           data synthesis      native execution
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
@@ -466,7 +466,7 @@ Machine Code
 
 ----
 
-##### `Explore`
+##### Explore
 <!-- .element: style="text-align:left" -->
 
 ```python
@@ -488,17 +488,42 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 
 ----
 
-##### Example
+##### Explore
 <!-- .element: style="text-align:left" -->
 
-```cpp
+
+<table>
+<tr>
+<td><pre style="font-size:15px;"><code>
+imul eax, edi, 0xeeeeeeef
+lea rdx, [rip + 0xeb3]
+add eax, 0x8888888
+cmp eax, 0x11111110
+jbe 0x40119a
+imul eax, edi, 0xaaaaaaab
+lea rdx, [rip + 0xea3]
+add eax, 0x2aaaaaaa
+cmp eax, 0x55555554
+jbe 0x40119a
+imul edi, edi, 0xcccccccd
+lea rdx, [rip + 0xe8f]
+lea rax, [rip + 0xe7e]
+add edi, 0x19999999
+cmp edi, 0x33333332
+cmovbe rdx, rax
+mov rax, rdx
+ret
+</pre></code></td>
+<td><pre style="font-size:22px;"><code>
 constexpr auto fizz_buzz(int n) {
        if (n % 15 == 0) { return "FizzBuzz"; }
   else if (n % 3  == 0) { return "Fizz";     }
   else if (n % 5  == 0) { return "Buzz";     }
   return "Unknown";
 }
-```
+</pre></code></td>
+</tr>
+</table>
 
 ```
 solutions = explore(project, fizz_buzz, fizz_buzz+size)
@@ -510,7 +535,7 @@ solutions = explore(project, fizz_buzz, fizz_buzz+size)
 {'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_12_64>}, 'mem_read': [], 'mem_write': []}
 {'state': <SimState @ 0x40119d>, 'reg': {'rdi': <BV64 rdi_12_64>}, 'mem_read': [], 'mem_write': []}
 ```
-<!-- .element: style="text-align:left; font-size:14px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -878,9 +903,6 @@ perf bench --save example.s --save example.o
 <!-- .element: style="text-align:left" -->
 
 ----
-
-#### Hardware
-<!-- .element: style="text-align:left" -->
 
 ```
 lstopo
