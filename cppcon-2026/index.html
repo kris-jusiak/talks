@@ -129,7 +129,7 @@ What if ...?
 
 ----
 
-#### Performance
+#### Microprocessor trends
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
@@ -160,12 +160,33 @@ https://github.com/karlrupp/microprocessor-trend-data
 
 ----
 
-#### Performance Is Not a Number!
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
-<p align="left">
-<img src="images/normal.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
-</p>
+<img src="images/zen5.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+
+https://chipsandcheese.com
+<!-- .element: style="text-align:left; margin: 0px 0px; font-size:22px;" -->
+
+----
+
+#### System effects
+<!-- .element: style="text-align:left" -->
+
+<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+
+https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; margin: 0px 0px; font-size:22px;" -->
+
+----
+
+#### Performance Is Not A Number
+<!-- .element: style="text-align:left" -->
+
+<img src="images/perf.jpeg" style="width: 90%; background:none; border:none; box-shadow:none;" />
+
+[Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -415,20 +436,11 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
     return stats;
 }
 ```
-<!-- .element: style="text-align:left; font-size:16px;" -->
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
-```cpp
- -----------------------------------------------------------------------------
- Benchmark                                       Time           CPU Iterations
- -----------------------------------------------------------------------------
- BM_fast_operation                           16327 ns      16392 ns      44800
- BM_slow_operation                           17499 ns      16881 ns      40727
- BM_large_data_processing                    42851 ns      43102 ns      16240
- BM_complex_algorithm                        73194 ns      72881 ns       9584
- BM_memory_intensive_operation              118327 ns     117904 ns       5921
- -----------------------------------------------------------------------------
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<p align="left">
+<img src="images/normal.png" style="width: 100%; height: 275px; background:none; border:none; box-shadow:none;" />
+</p>
 
 ----
 
@@ -669,22 +681,6 @@ https://github.com/andreas-abel/nanoBench
 
 ----
 
-#### Hardware effects [Bias/Noise]
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/zen5.png" style="width: 52%; background:none; border:none; box-shadow:none;" />
-<img src="images/linux.png" style="width: 47%; background:none; border:none; box-shadow:none;" />
-</p>
-
-https://chipsandcheese.com
-<!-- .element: style="text-align:left; margin: 0px 0px; font-size:22px;" -->
-
-https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; margin: 0px 0px; font-size:22px;" -->
-
-----
-
 ##### Hardware effects
 <!-- .element: style="text-align:left" -->
 
@@ -833,9 +829,6 @@ void hot_func(const int* v, int n) {
 perf bench func hot_func --exec a.out
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
-
-https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf
-<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
