@@ -364,6 +364,19 @@ https://www.uops.info/instructions.xml
 
 ----
 
+##### Instrumentation [[bpfrace]()[tracy](https://github.com/wolfpld/tracy), ...]
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+sudo bpftrace -e '
+uprobe:./a.out:foo
+{
+    @x[arg0] = count();
+}
+```
+
+----
+
 ##### Instrumentation [[llvm-xray](https://llvm.org/docs/xray.html), [tracy](https://github.com/wolfpld/tracy), ...]
 <!-- .element: style="text-align:left;" -->
 
@@ -433,7 +446,7 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
         const auto stop = chrono::steady_clock::now();
         stats[s] = (stop - start) / iterations;
     }
-    return stats;
+    return stats; // statistics
 }
 ```
 <!-- .element: style="text-align:left; font-size:15px;" -->
@@ -579,11 +592,15 @@ rdi: 1,  2,  4 // else
 <!-- .element: style="text-align:left" -->
 
 ```
-States explosion?
-- PERF_ASSUME (.expose)
-- sampling: perf.data
-- tracing (for branches)
-- capped iterations
+sudo bpftrace -e '
+uprobe:./a.out:foo
+{
+    @x[arg0] = count();
+}
+```
+
+```cpp
+perf record -e branch-misses,branch-refrences
 ```
 
 ----
