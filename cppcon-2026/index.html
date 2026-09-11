@@ -72,7 +72,7 @@ Powered by linux-perf + perf-labs/perf
 ---
 
 ```asm
-apt install linux-tools-$(uname -r) bpftrace
+apt install linux-tools-$(uname -r) 
 pip install git+https://github.com/perf-labs/perf.git
 ```
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:16px;" -->
@@ -264,30 +264,26 @@ https://github.com/andikleen/pmu-tools/wiki/toplev-manual
 
 ----
 
-##### Sampling [[linux-perf](https://perf.wiki.kernel.org), [intel-vtune](https://www.intel.com/content/www/us/en/docs/vtune-profiler), [amd-uprof](https://www.amd.com/en/developer/uprof.htm), [bcc](https://github.com/iovisor/bcc), ...]
+##### Sampling [[linux-perf](https://perf.wiki.kernel.org), [intel-vtune](https://www.intel.com/content/www/us/en/docs/vtune-profiler), [amd-uprof](https://www.amd.com/en/developer/uprof.htm), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```sh
-perf record --frequency 100 --call-graph dwarf -- ./a.out
-perf report --call-graph fractal
-perf script | stackcollapse-perf.pl | flamegraph.pl > flame.svg
+perf record -- ./a.out
+perf script | stackcollapse-perf.pl | flamegraph.pl
 ```
 
-<table>
-<tr>
-<td><img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" /></td>
-<td>
-<pre style="font-size:14px;margin: 0px 0px;"><code>main;parse;tokenize 5
+```asm
 main;parse;analyze 3
 main;render 7
 ...
-</code></pre></td>
-</tr>
-</table>
+```
+<!-- .element: style="text-align:left; font-size:10px;" -->
+
+<img src="images/flamegraph.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
 
 ----
 
-##### Instrumentation [[bpfrace](https://github.com/bpftrace/bpftrace), [tracy](https://github.com/wolfpld/tracy), ...]
+##### Instrumentation [[bpfrace](https://github.com/bpftrace/bpftrace), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -295,7 +291,7 @@ sudo bpftrace -e '
 uprobe:./a.out:func
 {
     @x[arg0] = count();
-}
+}'
 ```
 
 ----
@@ -384,7 +380,7 @@ Requires Intel-PT or ARM ETM (CoreSight)
 
 ----
 
-##### Machine-Code Analysis [[llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html), [uica](https://uica.uops.info), [callgrind](https://valgrind.org/docs/manual/cl-manual.html), ...]
+##### Machine-Code Analysis [[llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```
@@ -424,7 +420,7 @@ https://www.uops.info/instructions.xml
 
 ----
 
-##### Benchmarking [[google/benchmark](https://github.com/google/benchmark), [likwid](https://github.com/rrze-hpc/likwid), ...]
+##### Benchmarking [[google/benchmark](https://github.com/google/benchmark), ...]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -538,7 +534,7 @@ cmovbe rdx, rax
 mov rax, rdx
 ret
 </pre></code></td>
-<td><pre style="font-size:22px;"><code>
+<td><pre style="font-size:20px;"><code>
 [[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
        if (n % 15 == 0) { return "FizzBuzz"; }
   else if (n % 3  == 0) { return "Fizz";     }
@@ -600,6 +596,10 @@ uprobe:./a.out:foo
 
 ```cpp
 perf record -e branch-misses,branch-refrences
+```
+
+```cpp
+perf bench func fizz_buzz -x a.out --trace trace.json
 ```
 
 ----
