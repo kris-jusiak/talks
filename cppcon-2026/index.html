@@ -201,10 +201,6 @@ https://makelinux.github.io/kernel/map
 ### Always Measure
 <!-- .element: style="text-align:left" -->
 
-```cpp
-What? How? When?
-```
-
 <img src="images/perf_map.png" style="width: 43%; background:none; border:none; box-shadow:none;" />
 <img src="images/bpf.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
 
@@ -291,6 +287,70 @@ main;render 7
 
 ----
 
+##### Instrumentation [[bpfrace](https://github.com/bpftrace/bpftrace), [tracy](https://github.com/wolfpld/tracy), ...]
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+sudo bpftrace -e '
+uprobe:./a.out:func
+{
+    @x[arg0] = count();
+}
+```
+
+----
+
+##### Instrumentation [[llvm-xray](https://llvm.org/docs/xray.html), [tracy](https://github.com/wolfpld/tracy), ...]
+<!-- .element: style="text-align:left;" -->
+
+<table style="border-collapse:collapse; width:100%;">
+  <tr>
+      <td style="width:25%">
+          <pre style="font-size:14px">int func() { return 42; }</pre>
+      </td>
+      <td style="width:25%">
+          <pre style="font-size:14px">-fxray-instrument</pre>
+      </td>
+      <td style="width:25%">
+          <pre style="font-size:14px">__xray_patch</pre>
+      </td>
+  </tr>
+  <tr>
+  <td>
+      <pre style="font-size:14px">
+func:
+  mov eax, 42
+  ret
+      <br/>
+      </pre>
+  </td>
+  <td>
+      <pre style="font-size:14px">
+func:
+  nopw
+  mov eax, 42
+  nopw
+  ret
+      </pre>
+  </td>
+  <td>
+      <pre style="font-size:14px">
+func:
+  jmp __xray_FunctionEntry
+  mov eax, 42
+  jmp __xray_FunctionExit
+  ret
+      </pre>
+  </td>
+</tr>
+</table>
+
+<p align="left">
+<img src="images/metrics.png" style="width: 100%; height: 320px; background:white; border:none; box-shadow:none;" />
+</p>
+
+----
+
 ##### Tracing [[linux-perf](https://perf.wiki.kernel.org), ...]
 <!-- .element: style="text-align:left" -->
 
@@ -364,70 +424,6 @@ https://www.uops.info/instructions.xml
 
 ----
 
-##### Instrumentation [[bpfrace]()[tracy](https://github.com/wolfpld/tracy), ...]
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-sudo bpftrace -e '
-uprobe:./a.out:foo
-{
-    @x[arg0] = count();
-}
-```
-
-----
-
-##### Instrumentation [[llvm-xray](https://llvm.org/docs/xray.html), [tracy](https://github.com/wolfpld/tracy), ...]
-<!-- .element: style="text-align:left;" -->
-
-<table style="border-collapse:collapse; width:100%;">
-  <tr>
-      <td style="width:25%">
-          <pre style="font-size:14px">int func() { return 42; }</pre>
-      </td>
-      <td style="width:25%">
-          <pre style="font-size:14px">-fxray-instrument</pre>
-      </td>
-      <td style="width:25%">
-          <pre style="font-size:14px">__xray_patch</pre>
-      </td>
-  </tr>
-  <tr>
-  <td>
-      <pre style="font-size:14px">
-func:
-  mov eax, 42
-  ret
-      <br/>
-      </pre>
-  </td>
-  <td>
-      <pre style="font-size:14px">
-func:
-  nopw
-  mov eax, 42
-  nopw
-  ret
-      </pre>
-  </td>
-  <td>
-      <pre style="font-size:14px">
-func:
-  jmp __xray_FunctionEntry
-  mov eax, 42
-  jmp __xray_FunctionExit
-  ret
-      </pre>
-  </td>
-</tr>
-</table>
-
-<p align="left">
-<img src="images/metrics.png" style="width: 100%; height: 320px; background:white; border:none; box-shadow:none;" />
-</p>
-
-----
-
 ##### Benchmarking [[google/benchmark](https://github.com/google/benchmark), [likwid](https://github.com/rrze-hpc/likwid), ...]
 <!-- .element: style="text-align:left" -->
 
@@ -461,6 +457,9 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
 What if we could measure "what if?"
 ```
 <!-- .element: style="text-align:left; font-size:26px;" -->
+
+AI friendly
+<!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
@@ -540,7 +539,7 @@ mov rax, rdx
 ret
 </pre></code></td>
 <td><pre style="font-size:22px;"><code>
-constexpr auto fizz_buzz(int n) {
+[[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
        if (n % 15 == 0) { return "FizzBuzz"; }
   else if (n % 3  == 0) { return "Fizz";     }
   else if (n % 5  == 0) { return "Buzz";     }
@@ -790,6 +789,51 @@ CLDEMOTE    Hint into more distant level (Sapphire Rapids / Xeon, ...)
 
 ----
 
+##### Cache effects
+<!-- .element: style="text-align:left" -->
+
+```cpp
+             1000 addresses
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+       L1                      800
+      200                       │
+   (20% total)       ┌─────────┴─────────┐
+                     │                   │
+                    L2                  560
+                   240                   │
+             (30% of 800)     ┌──────────┴──────────┐
+                              │                     │
+                              L3                    RAM
+                             224                    336
+                       (40% of 560)
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+```python
+for i in range(l1):
+    mov addresses[i], [reg]
+    mfence
+for i in range(l2):
+    cflushopt addresses[i + l1]
+    prefetcht1
+    mfence
+for i in range(l3):
+    addr = i + l1 + l2
+    mov addresses[addr], [reg]
+    cldemote addresses[addr]
+    mfence
+for i in range(ram):
+    addr = i + l1 + l2 + l3
+    cflushopt addresses[addr]
+    mfence
+settle
+```
+<!-- .element: style="text-align:left; font-size:12px;" -->
+
+----
+
 ##### Branch effects
 <!-- .element: style="text-align:left" -->
 
@@ -829,6 +873,25 @@ for solution in solutions:
 
 ----
 
+##### Branch effects
+<!-- .element: style="text-align:left" -->
+
+```cpp
+auto value = lut[i];
+```
+
+```cpp
+perf bench asm 'add r11, [rax]'
+  --march sapphirerapids
+  --config.memory.cache.dL1=100
+  --data.r11=0
+  --data.rax=0x4000
+  --data.memory.0x4000=1234
+  --branch=predictable
+```
+
+----
+
 ##### Codegen effects
 <!-- .element: style="text-align:left" -->
 
@@ -853,6 +916,7 @@ perf bench func hot_func --exec a.out
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
+// inlined multiple times
 #define PERF_LABEL(name)
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
@@ -864,23 +928,39 @@ perf bench func hot_func --exec a.out
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
-```asm
-hot_begin:
-  imul eax, eax, 31
-  add  eax, 17
-hot_end:
+----
+
+```cpp
+// labels across functions
+// labels inlined multiple times
+auto hot_path(int n) {
+    const char* r = {};
+    PERF_LABEL(hot_begin);        // mark region start
+    for (auto i = 0; i < n; ++i) {
+        r = process(arr[i]);      // your hot code here
+    }
+    PERF_LABEL(hot_end);          // mark region end
+    return r;
+}
 ```
+<!-- .element: style="text-align:left;font-size:20px" -->
+
+```asm
+.pushsection .perf.label, "awR?", @progbits
+.quad 0f           # address of the next label
+.asciz "hot_begin" # label name (null-terminated)
+.popsection
+0:                  # code continues here
+```
+<!-- .element: style="text-align:left;font-size:20px" -->
 
 ```
 objdump -sj .perf.label <file>
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
-```
-Across functions
-Inlined multipel times
-```
-
+rust,zig compatible
+<!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
