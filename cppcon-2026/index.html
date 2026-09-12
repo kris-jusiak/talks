@@ -163,7 +163,8 @@ https://github.com/karlrupp/microprocessor-trend-data
 #### Hardware effects
 <!-- .element: style="text-align:left" -->
 
-<img src="images/zen5.png" style="width: 80%; background:none; border:none; box-shadow:none;" />
+<img src="images/zen5.png" style="width: 82%; background:none; border:none; box-shadow:none;" />
+<!--<img src="images/zen5.png" style="width: 49%; background:none; border:none; box-shadow:none;" />-->
 
 https://chipsandcheese.com
 <!-- .element: style="text-align:left; margin: 0px 0px; font-size:22px;" -->
@@ -173,14 +174,14 @@ https://chipsandcheese.com
 #### System effects
 <!-- .element: style="text-align:left" -->
 
-<img src="images/linux.png" style="width: 70%; background:none; border:none; box-shadow:none;" />
+<img src="images/linux.png" style="width: 74%; background:none; border:none; box-shadow:none;" />
 
 https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left; margin: 0px 0px; font-size:22px;" -->
 
 ----
 
-#### Performance Is Not A Number
+#### Performance Is Not A Number!
 <!-- .element: style="text-align:left" -->
 
 <img src="images/perf.jpeg" style="width: 90%; background:none; border:none; box-shadow:none;" />
@@ -438,6 +439,19 @@ https://www.uops.info/instructions.xml
 ##### Simulation [[callgrind](https://valgrind.org/docs/manual/cl-manual.html), [gem5](https://www.gem5.org), ...]
 <!-- .element: style="text-align:left;" -->
 
+```cpp
+```
+
+```
+valgrind --tool=callgrind       # 5x-100x overhead
+         --cache-sim=yes
+         --branch-sim=yes
+         --collect-jumps=yes
+         --dump-instr=yes       #define CALLGRIND_START_INSTRUMENTATION
+         --instr-atstart=no     #define CALLGRIND_STOP_INSTRUMENTATION
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
 ----
 
 ##### Benchmarking [[google/benchmark](https://github.com/google/benchmark), [likwid](https://github.com/rrze-hpc/likwid), ...]
@@ -534,6 +548,14 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 
 <table>
 <tr>
+<td><pre style="font-size:19px;"><code>
+[[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
+       if (n % 15 == 0) { return "FizzBuzz"; }
+  else if (n % 3  == 0) { return "Fizz";     }
+  else if (n % 5  == 0) { return "Buzz";     }
+  return "Unknown";
+}
+</pre></code></td>
 <td><pre style="font-size:15px;"><code>
 imul eax, edi, 0xeeeeeeef
 lea rdx, [rip + 0xeb3]
@@ -553,14 +575,6 @@ cmp edi, 0x33333332
 cmovbe rdx, rax
 mov rax, rdx
 ret
-</pre></code></td>
-<td><pre style="font-size:20px;"><code>
-[[gnu::optimize("O3")]] constexpr auto fizz_buzz(int n) {
-       if (n % 15 == 0) { return "FizzBuzz"; }
-  else if (n % 3  == 0) { return "Fizz";     }
-  else if (n % 5  == 0) { return "Buzz";     }
-  return "Unknown";
-}
 </pre></code></td>
 </tr>
 </table>
@@ -932,11 +946,10 @@ perf bench func hot_func --exec a.out
 
 ----
 
-##### Regions
+##### `PERF_LABEL` [regions]
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-// inlined multiple times
 #define PERF_LABEL(name)
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
@@ -948,29 +961,16 @@ perf bench func hot_func --exec a.out
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
+inlined multiple times
+<!-- .element: style="text-align:right; font-size:22px;" -->
 ----
 
 ```cpp
-// labels across functions
-// labels inlined multiple times
-auto hot_path(int n) {
-    const char* r = {};
-    PERF_LABEL(hot_begin);        // mark region start
-    for (auto i = 0; i < n; ++i) {
-        r = process(arr[i]);      // your hot code here
-    }
-    PERF_LABEL(hot_end);          // mark region end
-    return r;
+auto hot_path(...) {
+    PERF_LABEL(hot_begin);
+    ...
+    PERF_LABEL(hot_end);
 }
-```
-<!-- .element: style="text-align:left;font-size:20px" -->
-
-```asm
-.pushsection .perf.label, "awR?", @progbits
-.quad 0f           # address of the next label
-.asciz "hot_begin" # label name (null-terminated)
-.popsection
-0:                  # code continues here
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
@@ -979,8 +979,10 @@ objdump -sj .perf.label <file>
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
-rust,zig compatible
-<!-- .element: style="text-align:right; font-size:22px;" -->
+`rust,zig` compatible
+can be across function boundries
+can be inlined multiple times
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
 
@@ -998,14 +1000,16 @@ page.write(bench) # harness + code
 CFUNCTYPE((addressof(from_buffer(page)))() # execute
 ```
 
+`[.jitdata] /tmp/perf-{pid}.map`
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
 ----
 
 ```cpp
-perf bench --save example.s --save example.o
+perf record -- perf bench --save example.s --save example.o
+perf bench func hot_path --exec hat_path.out -c hot_path.o
 ```
 
-.jitdata
-<!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
@@ -1014,7 +1018,7 @@ perf bench --save example.s --save example.o
 
 ----
 
-##### `info`
+##### `cpu-info`
 <!-- .element: style="text-align:left" -->
 
 ```
