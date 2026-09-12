@@ -72,7 +72,7 @@ Powered by linux-perf + perf-labs/perf
 ---
 
 ```asm
-apt install linux-tools-$(uname -r) 
+apt install linux-tools-$(uname -r)
 pip install git+https://github.com/perf-labs/perf.git
 ```
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:16px;" -->
@@ -198,26 +198,25 @@ https://makelinux.github.io/kernel/map
 
 ----
 
-### Always Measure
+#### Performance Monitoring Unit
 <!-- .element: style="text-align:left" -->
 
 <img src="images/perf_map.png" style="width: 43%; background:none; border:none; box-shadow:none;" />
 <img src="images/bpf.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
 
 ```
-Performance Monitoring Unit
-  └─ CPU                     Intel        Amd          Arm
-     ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
-     ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
-     ├─ Event sampling       PEBS         IBS          SPE
-     ├─ Branch Recording     LBR          LBR          BRBE
-     └─ Processor Trace      PT           -            ETM (CoreSight)
+ CPU                      Intel        Amd          Arm
+  ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+  ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+  ├─ Event sampling       PEBS         IBS          SPE
+  ├─ Branch Recording     LBR          LBR          BRBE
+  └─ Processor Trace      PT           -            ETM (CoreSight)
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
-##### Modern CPUs are `primarily` bottlenecked by
+#### Modern CPUs are `primarily` bottlenecked by
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -283,15 +282,27 @@ main;render 7
 
 ----
 
-##### Instrumentation [[bpfrace](https://github.com/bpftrace/bpftrace), ...]
+##### Instrumentation [[bpfrace](https://github.com/bpftrace/bpftrace), [bcc](https://github.com/iovisor/bcc), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
 sudo bpftrace -e '
-uprobe:./a.out:func
-{
-    @x[arg0] = count();
-}'
+    uprobe:./a.out:func { @start[tid] = nsecs; } # INT3
+    uretprobe:./a.out:func
+    {
+        @latency = hist((nsecs - @start[tid]) / 1000);
+        delete(@start[tid]);
+    }
+'
+```
+
+```
+@latency_us:
+[64, 128)            2 |@@               |
+[128, 256)           5 |@@@@@@           |
+[256, 512)          12 |@@@@@@@@@@@@@@@@ |
+[512, 1K)            8 |@@@@@@@@@@       |
+[1K, 2K)             3 |@@@@             |
 ```
 
 ----
@@ -341,13 +352,15 @@ func:
 </tr>
 </table>
 
+<!-- .element: style="text-align:left; font-size:14px;" -->
 <p align="left">
-<img src="images/metrics.png" style="width: 100%; height: 320px; background:white; border:none; box-shadow:none;" />
+<p style="text-align:left; font-size:18px;margin: 0px 0px;">Metrics</p>
+<img src="images/metrics.png" style="width: 100%; height: 300px; background:white; border:none; box-shadow:none;" />
 </p>
 
 ----
 
-##### Tracing [[linux-perf](https://perf.wiki.kernel.org), ...]
+##### Tracing [[linux-perf](https://perf.wiki.kernel.org), [magic-trace](https://github.com/janestreet/magic-trace), ...]
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -364,7 +377,9 @@ perf record \
 
 ```
 perf script --itrace=i --insn-trace=disasm -F+ipc
+```
 
+```
 push   %rbp                          —
 mov    %rsp,%rbp                     —
 sub    $0x20,%rsp                   1.00
@@ -380,7 +395,7 @@ Requires Intel-PT or ARM ETM (CoreSight)
 
 ----
 
-##### Machine-Code Analysis [[llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html), ...]
+##### Machine-Code Analysis [[llvm-mca](https://llvm.org/docs/commandguide/llvm-mca.html), [uica](https://uica.uops.info), ...]
 <!-- .element: style="text-align:left;" -->
 
 ```
@@ -420,25 +435,30 @@ https://www.uops.info/instructions.xml
 
 ----
 
-##### Benchmarking [[google/benchmark](https://github.com/google/benchmark), ...]
+##### Simulation [[callgrind](https://valgrind.org/docs/manual/cl-manual.html), [gem5](https://www.gem5.org), ...]
+<!-- .element: style="text-align:left;" -->
+
+----
+
+##### Benchmarking [[google/benchmark](https://github.com/google/benchmark), [likwid](https://github.com/rrze-hpc/likwid), ...]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
 /**
- * [+] iteration speed, isolation, understanding
- * [-] correlation (codegen, bias, noise, ...)
+ * [+] iteration speed (isolation, simplicity)
+ * [-] correlation (bias, noise, codgen, ...)
  */
 auto bench(invocable auto code, integral auto samples, integral auto iterations) {
     vector<std::chrono::steady_clock::duration> stats(samples);
-    for (auto s = 0u; s < samples; ++s) { // multiple runs
+    for (auto s = 0u; s < samples; ++s) { // statistics
         const auto start = chrono::steady_clock::now(); // perf counters
-        for (auto i = 0u; i < iterations; ++i) { // latency vs. throughput
-            keep(invoke(code)); // optimizing compiler
-        }
+        for (auto i = 0u; i < iterations; ++i) {
+            keep(invoke(code)); // do not optimize away
+        } // latency vs. throughput
         const auto stop = chrono::steady_clock::now();
         stats[s] = (stop - start) / iterations;
     }
-    return stats; // statistics
+    return stats;
 }
 ```
 <!-- .element: style="text-align:left; font-size:15px;" -->
@@ -450,7 +470,7 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
 ----
 
 ```
-What if we could measure "what if?"
+What if we could answer "what if?"
 ```
 <!-- .element: style="text-align:left; font-size:26px;" -->
 
@@ -587,11 +607,8 @@ rdi: 1,  2,  4 // else
 <!-- .element: style="text-align:left" -->
 
 ```
-sudo bpftrace -e '
-uprobe:./a.out:foo
-{
-    @x[arg0] = count();
-}
+b.attach_uprobe(name=BINARY, sym="steady", fn_name="trace_function")
+...
 ```
 
 ```cpp
@@ -599,7 +616,7 @@ perf record -e branch-misses,branch-refrences
 ```
 
 ```cpp
-perf bench func fizz_buzz -x a.out --trace trace.json
+perf bench func fizz_buzz -x a.out --data.rdi=[1,2,3]
 ```
 
 ----
@@ -673,8 +690,11 @@ https://gitlab.com/x86-psabis/x86-64-abi/-/jobs/artifacts/master/raw/x86-64-abi/
 ##### Benchmarking Harness [unroll vs. repeat]
 <!-- .element: style="text-align:left" -->
 
+`--backend unroll # (2N × code - N × nop) / N   = per-copy cost` https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
 ```
-# unroll:  (2N × code - N × nop) / N   = per-copy cost
+perf bench bench 'imul eax, 42' --backend unroll
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
 add mov eax, 42            add mov eax, 42
@@ -686,26 +706,26 @@ add mov eax, 42
 add mov eax, 42
 add mov eax, 42
 ```
+
+`--backend repeat # one call fn  - one call nop  = fn cost`
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```cpp
-# repeat:  one call fn  - one call nop  = fn cost
+perf bench asm -D
 measured (code) - overhead (nop) = true cost
 ```
-
-https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; font-size:20px; margin: 5px 0px;" -->
 
 ----
 
 ##### Hardware effects
 <!-- .element: style="text-align:left" -->
 
-```cpp
+<table>
+<tr>
+<td><pre style="font-size:15px"><code>
 0x0080: void unused();                     // layout
-
 0x0110: void func(auto value) {            // alignment
 0x0112:   auto var = ...;                  // stack
-
 0x0114:   for (...) {                      // alignment
 0x0118:     auto i = lookup_table[value];  // memory
 0x011C:     if (i == var) {                // branch
@@ -713,15 +733,15 @@ https://github.com/andreas-abel/nanoBench
 0x0124:     }
 0x0128:   }
 0x0128: }                                  // stack
-
 0x1000: lookup_table:                      // layout
-         ...
-```
+        ...
+</code></pre></td>
+<td>
+<img src="images/code.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
+</td>
+</tr>
+</table>
 <!-- .element: style="text-align:left; font-size:20px;" -->
-
-<p align="left">
-<img src="images/code.png" style="width: 30%; background:none; border:none; box-shadow:none;" />
-</p>
 
 https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
@@ -843,15 +863,15 @@ settle
     <img src="images/cpu2.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
   </td>
   <td>
-     <pre style="font-size:10px">
-struct Entry { bool valid{}; uint64_t tag{}; uint8_t hyst{}; }; // 2-bit counter
-std::array<Entry, 1 << 12> btb{};              // 4K entries, hash(ip) aliased
+     <pre style="font-size:10px"><code>
+std::array<branch, 1 << 12> btb{};
 auto predict(uint64_t ip, uint64_t target) {
-    auto& e = btb[(ip >> 2) & 0xFFF];          // aliasing: ips share an entry
-    if (e.valid && e.tag == ip) return e.hyst >= 2; // trained on 10'000 x 1/0
-    return target < ip ? TAKEN : NOT_TAKEN;    // cold: backward taken, forward not-taken
-} // update: if (!e.valid && !taken) return;   // never-taken: no BTB entry allocated
-   </pre>
+    auto& e = btb[(ip >> 2) & 0xFFF]; // branch aliasing
+    if (e.valid and e.tag == ip) {
+        return e.hist >= 2; // 10'000 x 1/0
+    }
+    return target < ip ? TAKEN : NOT_TAKEN; // cold: backward taken, forward not-taken
+} // update: if (!e.valid && !taken) return; // never-taken: no BTB entry allocated</code></pre>
   </td>
 </tr>
 </table>
@@ -860,7 +880,7 @@ auto predict(uint64_t ip, uint64_t target) {
 </p>
 
 ```
-perf bench asm 'cmp r11, [rax]; je hit; nop; hit:' --config.branch=predictable
+perf bench asm 'cmp r11, [rax]; je hit; nop; hit:' --config.branch=predictable --data[0x0001]=[1,2,3]
 perf bench asm 'cmp r11, [rax]; je hit; nop; hit:' --config.branch=unpredictable
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
@@ -912,7 +932,7 @@ perf bench func hot_func --exec a.out
 
 ----
 
-##### Begin..End [region]
+##### Regions
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -994,8 +1014,11 @@ perf bench --save example.s --save example.o
 
 ----
 
+##### `info`
+<!-- .element: style="text-align:left" -->
+
 ```
-lstopo
+$ lstopo
 ```
 <!-- .element: style="text-align:left;font-size:14px" -->
 
@@ -1005,7 +1028,7 @@ lstopo
 <!-- .element: style="text-align:left;font-size:14px" -->
 
 ```
-lscpu
+$ lscpu
 ```
 <!-- .element: style="text-align:left;font-size:14px" -->
 
@@ -1065,12 +1088,22 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html # vs llvm optimizer
 
 ----
 
-#### Top down Microarchitecture Analysis Method
+#### `profile → benchmark → ...`
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 <p align="left">
-<img src="images/td.png" style="width: 65%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+<img src="images/td1.png" style="width: 50%; background:none; border:none; box-shadow:none;margin: 0 0;" />
 </p>
+
+```cpp
+perf record ...
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+```cpp
+bpftrace ...
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```cpp
 perf bench func ".*" --mode latency --exec a.out \
@@ -1271,18 +1304,16 @@ perf bench region hot_begin..hot_end -e cycles/instructions --exec a.out | \
     "order": "random",
   },
   "branch": "unpredictable",
-  "memory": {
-    "heap": "random",
-    "stack": "random",
-    "cache": {
-      "dL1":  {"hit_rate":0},
-      "dL2":  {"hit_rate":0},
-      "dL3":  {"hit_rate":0},
-      "iL1":  {"hit_rate":0},
-      "iL2":  {"hit_rate":0},
-      "dTLB": {"hit_rate":0},
-      "iTLB": {"hit_rate":0},
-    }
+  "heap": "random",
+  "stack": "random",
+  "cache": {
+    "dL1":  {"hit_rate":0},
+    "dL2":  {"hit_rate":0},
+    "dL3":  {"hit_rate":0},
+    "iL1":  {"hit_rate":0},
+    "iL2":  {"hit_rate":0},
+    "dTLB": {"hit_rate":0},
+    "iTLB": {"hit_rate":0},
   }
 }
 ```
@@ -1300,7 +1331,10 @@ jitter
 <img src="images/hashing.png" style="width: 35%; background:white; border:none; box-shadow:none;" />
 </p>
 
+----
+
 ```cpp
+TODO notebook -> gh gist create
 perf bench func find --exec hash.out -e cycles,instructions | llvm-mca
 ```
 
