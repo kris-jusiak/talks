@@ -1549,20 +1549,49 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[TODO] fixup examples
-[[gnu::aligned(16), gnu::hot]] auto hot_func_v1(const int* v, int n) {
-    [[clang::code_align(64)]] for (int i = 0; i < n; ++i) {
+[[gnu::always_inline, gnu::hot]] auto hot_func(const int* v, int n) {
+    PERF_LABEL(hot_begin);
+    /*[[clang::code_align(64)]]*/ for (int i = 0; i < n; ++i) {
+        [TODO] fixup examples
         sum += table[v[i] & 63];
     }
+    PERF_LABEL(hot_end);
     return sum;
 }
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
-[[gnu::aligned(8), gnu::hot]] auto hot_func_v2(const int* v, int n) {
-    for (int i = 0; i < n; ++i) {
-        sum += table[v[i] & 63];
-    }
-    return sum;
-}
+```cpp
+hot_func(...); // inlined first time
+...
+hot_func(...); // inlined second time
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+```cpp
+#define PERF_LABEL(name) // "global" label
+    asm volatile(
+        ".pushsection perf.label, \"aw?\", @progbits\n"
+        ".quad 0f\n"
+        ".asciz \"" #name "\"\n"
+        ".popsection\n"
+        "0:\n"
+    ); name:
+```
+<!-- .element: style="text-align:left;font-size:20px" -->
+
+```cpp
+[TODO] show that perf lable doesn't add any instructions
+```
+
+```sh
+file        kind  label      address
+codegen.out label hot_begin  0x401154 # inlined first time
+codegen.out label hot_begin  0x401184 # inlined second time
+codegen.out label hot_end    0x401169
+codegen.out label hot_end    0x40119c
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1571,19 +1600,13 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 ##### Frontend Bound [Fetch Latency]
 <!-- .element: style="text-align:left" -->
 
-```sh
-g++16 -O3 func.cpp -o a.out                         # order: hot, cold
-g++16 -O3 func.cpp -o b.out -Wl,--sort-section=name # order: cold, hot
 ```
-<!-- .element: style="text-align:left; font-size:16px;" -->
-
-```
-perf bench func hot_func --exec codegen.o --mode latency -e cycles
-    --config.func.order=sequential
-    --config.func.order=random
-    --config.func.align=random
+perf bench region hot_begin..hot_end
+    --exec codegen.out
+    --mode latency
     --config.cache.L1i=hit_rate:0
-   #--config.func.order=hot
+    --config.func.align=16
+    --config.func.order=as-is
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1595,6 +1618,7 @@ perf bench func hot_func --exec codegen.o --mode latency -e cycles
 ```python
 import perf                                                           # python
 
+[TODO] finish the configs
 hot  = { "L1d": {"hit_rate":100} }
 warm = { "L1d": {"hit_rate":100} }
 cool = { "L1d": {"hit_rate":100} }
