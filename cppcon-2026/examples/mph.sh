@@ -41,6 +41,7 @@ for func in find_scan find_map find_mph; do
       echo "### ${func} branch=${branch} memory=${memory}"
       perf bench func "${func}" --name "${func}-${branch}-${memory}" \
         --exec mph.so --mode latency \
+        --config.runs=100 \
         -e cycles,instructions \
         --config.branch="${branch}" --config.cache="${memory}" \
         -o ../data/mph
@@ -48,5 +49,7 @@ for func in find_scan find_map find_mph; do
   done
 done
 perf view -e cycles,instructions/cycles -s p99 -- ../data/mph
-perf plot --config "${PLOT_CONFIG}" -t ecdf -e cycles -e instructions/cycles \
+perf plot --config "${PLOT_CONFIG}" -t ecdf -e cycles \
   -o ../images/mph_ecdf.png -- ../data/mph
+perf plot --config "${PLOT_CONFIG}" -t ecdf -e instructions/cycles \
+  -o ../images/mph_ecdf_ipc.png -- ../data/mph
