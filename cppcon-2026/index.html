@@ -1428,15 +1428,10 @@ backend bound     20–40     20–60  20–40</code></pre>
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-auto process(const unsigned char* arr, unsigned long n) {
+auto process(const std::byte* data, std::size_t n) {
     auto total = 0;
-    for (auto long i = 0; i < n; ++i) {
-        const auto v = arr[i]; // memory bound
-        if (v & 1) {           // branch (predictable)
-            total += v;
-        } else {
-            total -= v;
-        }
+    for (auto i = 0;; i < n; ++i) {
+        total += data[i];
     }
     return total;
 }
@@ -1487,6 +1482,7 @@ perf plot -t ecdf -- backend_bound
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
 <p align="left">
+[TODO] regenerate there should multiple cases here
 <img src="images/backend_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
@@ -1536,6 +1532,7 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 <p align="left">
+[TODO] regenerate perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 <img src="images/branch.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
@@ -1602,6 +1599,7 @@ codegen.out label hot_end    0x40119c
 <!-- .element: style="text-align:left" -->
 
 ```
+[TODO] results are just noise, fix it
 for l1i in 100 0; do for align in 16 1; do
   perf bench region hot_begin..hot_end
       --exec codegen.out
@@ -1648,12 +1646,15 @@ for size in [1, 64, 128, 256, 512, 1024]:
 ----
 
 ```sh
-perf plot -g config.branch,config.cache -t line -x data.arg1 -e instructions/cycles -- std_sort
+[TODO] regenerate both with new data
+perf plot -g '' -t line -x data.arg1 -e instructions/cycles -- std_sort
+perf plot -t ecdf -e instructions/cycles -- std_sort
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 <p align="left">
 <img src="images/sort_ipc.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
+<img src="images/sort_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
 ----
@@ -1756,6 +1757,7 @@ perf view -e cycles,instructions/cycles -s p99 -- mph
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
+[TODO] regenerate it can't be 1 cycle something is wrong
               file                name    mode stat cycles instructions/cycles
 mph_clang.o@9417a855    clang-mph_find-hot latency  p99   1.00                5.00
 mph_clang.o@9417a855  clang-mph_find-worst latency  p99 261.01                0.02
@@ -1769,6 +1771,7 @@ mph_clang.o@9417a855 clang-scan_find-worst latency  p99 374.45                1.
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
 ```cpp
+[TODO] regenerate after fixing the results
 perf plot -t ecdf -e cycles -- mph
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
