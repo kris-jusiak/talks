@@ -1005,6 +1005,7 @@ asm
 ```
 
 ```python
+[TODO] execute the code keep it simple
 def execute(code):                                          # python
     src = (ctypes.c_char * len(code)).from_buffer_copy(code)
     mm = mmap.mmap(-1, len(code),
@@ -1603,6 +1604,7 @@ codegen.out label hot_end    0x40119c
 <!-- .element: style="text-align:left" -->
 
 ```
+[TODO] run for L1I:100, 0 and func.align: 16, 1
 perf bench region hot_begin..hot_end
     --exec codegen.out
     --mode latency
@@ -1612,6 +1614,8 @@ perf bench region hot_begin..hot_end
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
+[TODO] genearete <img> for ecdf plot
+
 ----
 
 ##### `libstdc++.so`
@@ -1620,12 +1624,13 @@ perf bench region hot_begin..hot_end
 ```python
 import perf                                                           # python
 
-hot  = { "L1d": {"hit_rate":100} }
-warm = { "L1d": {"hit_rate":75} }
-cool = { "L1d": {"hit_rate":50} }
-cold = { "L1d": {"hit_rate":0}, ... }
+[TODO] fix syntax
+hot  = { L1d:0 }
+warm = { L1d:0, L2d:100 }
+cool = { L1d:0, L2d:0, L3d:100 }
+cold = { L1d:0, L2d:0, L3d:0 }
 
-for size in range(1, 1024):
+for size in [1, 64, 128, 256, 512, 1024]:
     for cache in ("hot", "warm", "cool", "cold"):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
@@ -1641,6 +1646,7 @@ for size in range(1, 1024):
 ----
 
 ```sh
+[TODO] regenerate
 perf plot -x data.arg1 -e instructions/cycles -- sort
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -1670,12 +1676,14 @@ https://github.com/qlibs/mph
 ----
 
 ```cpp
-g++-16 -std=c++26 -O3 -mbmi2 -c find.cpp -o find_gcc.o
+g++ -std=c++26 -O3 -mbmi2 -c find.cpp -o find_gcc.o
+clang++ -std=c++26 -O3 -mbmi2 -c find.cpp -o find_clang.o
 ```
 <!-- .element: style="text-align:left; font-size:10px;" -->
 
 ```cpp
-auto find_scan(const string_like auto symbol) noexcept:
+[TODO] update for int
+auto find_scan(int) noexcept:
   mov rax, [rdi]            # symbol bytes (8)
   xor ecx, ecx
 .Lnext:
@@ -1691,7 +1699,8 @@ auto find_scan(const string_like auto symbol) noexcept:
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
 ```cpp
-auto find_map(const string_like auto symbol) noexcept:
+[TODO] update for int
+auto find_map(int) noexcept:
   mov rax, [rdi]              # hash
   imul rax, rax, 0x9e3779b1
   shr rax, 32                 # bucket = hash % n_buckets
@@ -1714,7 +1723,8 @@ auto find_map(const string_like auto symbol) noexcept:
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
 ```cpp
-auto find_mph(const string_like auto symbol) noexcept:
+[TODO] update for int
+auto find_mph(int) noexcept:
   mov rax, [rdi]              # hash -> pext -> index
   pext rax, rax, r9
   lea rcx, [table + rax*8]
@@ -1729,7 +1739,7 @@ auto find_mph(const string_like auto symbol) noexcept:
 ```python
 import perf                                                    # python
 
-for cxx in ("g++-16", "clang++-22"):
+for cxx in ("gcc", "clang"):
     for func in ("scan", "map", "ph", "mph", "simd"):
         for config in (best, real, worst):
             perf.bench(
@@ -1750,6 +1760,7 @@ perf view -e cycles,instructions/cycles -s p99 -- mph
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
+[TODO] regenerate
               file                name    mode stat cycles instructions/cycles
 mph_clang.o@9417a855    clang-mph_find-hot latency  p99   1.00                5.00
 mph_clang.o@9417a855  clang-mph_find-worst latency  p99 261.01                0.02
@@ -1763,6 +1774,7 @@ mph_clang.o@9417a855 clang-scan_find-worst latency  p99 374.45                1.
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
 ```cpp
+[TODO] regenerate
 perf plot -t ecdf -e cycles -- mph
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
