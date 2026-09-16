@@ -43,7 +43,7 @@ chart branch_miss.png branch-misses ""                              data/fizz
 chart codegen_ecdf.png cycles       ""                              data/codegen
 chart fizz_ecdf.png   cycles        ""                              data/fizz
 chart backend_ecdf.png cycles       config.cache.L1d.hit_rate,file  data/backend
-chart mph_ecdf.png    cycles        ""                              data/mph
+chart mph_ecdf.png    cycles,instructions/cycles ""             data/mph
 chart branch.png      branch-misses,instructions/cycles ""           data/branch
 
 # std::sort scaling (IPC vs input size) and IPC distribution; see the deck

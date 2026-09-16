@@ -1,4 +1,4 @@
-// g++ -std=c++20 -O3 mph.cpp -I ~/projects/qlibs/mph/ -mbmi2 -c mph.o
+// g++ -std=c++20 -O3 mph.cpp -I ~/projects/qlibs/mph/ -mbmi2 -fPIC -shared -o mph.so
 #include <array>
 #include <cstdint>
 #include <unordered_map>
@@ -21,14 +21,15 @@ extern "C" int find_scan(std::uint64_t key) {
     return -1;
 }
 
-extern "C" int find_map(std::uint64_t key) {
-  static const auto map = [] {
+static const auto map = [] { // namespace-scope static
     std::unordered_map<unsigned, unsigned> map{};
     for (const auto& [k, v] : pairs) {
          map[k] = v;
     }
     return map;
-  }();
+}();
+
+extern "C" int find_map(std::uint64_t key) {
   const auto it = map.find(key);
   return it != map.end() ? it->second : -1;
 }

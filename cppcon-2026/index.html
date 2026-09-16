@@ -156,10 +156,10 @@ Does it matter, and if so, why and how much?
 <img src="images/range.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
 </td>
 <td>
-<pre><code>What if data spikes?
-What if the environment has jitter?
+<pre><code>What if data distribution changes?
 What if caches won’t be as hot?
 What if branches won’t be as predictable?
+What if the environment has more jitter?
 What if the code/data layout will change?&nbsp;&nbsp;
 What if ...?</code></pre>
 </td>
@@ -542,7 +542,7 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 ----
 
 ```
-code                       assembly             address encoding             comments
+code                       assembly             address encoding             comment
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
@@ -571,7 +571,7 @@ table:                                          402000                       // 
 
 ----
 
-##### AMD Zen5 [Bias] 
+##### AMD Zen5 [Bias]
 <!-- .element: style="text-align:left; font-size:24px;" -->
 
 <table style="width:113%;">
@@ -638,29 +638,29 @@ https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left" -->
 
 **Non-Intrusive**
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
     Benchmark existing binaries, libraries, and assembly without modifying code
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<!-- .element: style="text-align:left; font-size:17px;" -->
 
 **Complete Path Coverage**
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
     Discover and exercise all relevant execution paths
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<!-- .element: style="text-align:left; font-size:17px;" -->
 
 **Microarchitectural Control**
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
     "Control" relevant hardware state
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<!-- .element: style="text-align:left; font-size:17px;" -->
 
 **Statistical Robustness**
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
     Capture statistically robust measurements
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<!-- .element: style="text-align:left; font-size:17px;" -->
 
 **Native execution**
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
     Target and execute on real hardware
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<!-- .element: style="text-align:left; font-size:17px;" -->
 
 ----
 
@@ -668,32 +668,34 @@ https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left" -->
 
 ```python
-Machine Code                   # C++, Rust, Zig, Assembly, ...
-  → Symbolic Exploration       # path1, path2, ..., pathN
-     → Data Synthesis          # path1: rdi=[0], mem[addr]=[2], ...
-        → Benchmarking harness # loop: ... jnz .loop 
-           → Native Execution  # 0b010101010101100100010100111
+Machine Code                    # C++, Rust, Zig, Assembly, ...
+  → Symbolic Exploration        # path1, path2, ..., pathN
+     → Data Synthesis           # path1: rdi=[0], mem[addr]=[2], ...
+         → Benchmarking Harness # setup, loop: ... jnz .loop, teardown
+           → Native Execution   # 0b010101010101100100010100111
 ```
-
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```cpp
-[TODO] finish code and in-place assembly for the func function (like in perf annotate)
-int func(int key):
-    static constexpr const auto lut = [] {
-        / lookup table
-    }();
+int func(int key) {
+        static constexpr auto lut = {
+            // ...
+        };
+        static_assert(lut.size() == 1024);
 
-    if (key < lut.size()) {
-        mov eax, 42
-        return {};
-    }
+        if (key < lut.size()) {
+    cmp edi, 1024
+    jae .Lout
 
-    return lut[key];
+        return lut[key];
+    mov eax, [lut+rdi*4]
+    ret
 
 lut:
-    21
-    1
+    .long 21
+    .long 1
 ```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -822,7 +824,7 @@ https://github.com/andreas-abel/nanoBench
 <pre style="font-size:20px;"><code>n % 15 -> FizzBuzz
 n % 3  -> Fizz
 n % 5  -> Buzz
-     _ -> Unknown (cmov)
+_      -> Unknown (cmov)
 </pre></code></td>
 <td><pre style="font-size:15px;"><code>fizz_buzz(int):
   imul    eax, edi, -286331153
@@ -936,29 +938,46 @@ solutions = explore(project, fizz_buzz, fizz_buzz+size)         # python
 for solution in solutions:
     for state in solution["state"]:
         for reg in state["reg"]:
-            print(state.solver.eval_up_to(reg, 3))
+            print(state.solver.eval(reg))
 
         for read in state["mem_read"]:
-            print(state.solver.eval_up_to(read, 3))
+            print(state.solver.eval(read))
 
         for write in state["mem_write"]:
-            print(state.solver.eval_up_to(write, 3))
+            print(state.solver.eval(write))
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```cpp
-rdi             0x404028
-[0, 15, 30]     [0]        // rdi % 15 == 0
-[3,  6,  9]     [0]        // rdi % 3  == 0
-[5, 10, 20]     [0]        // rdi % 5  == 0
-[1,  2,  4]     [0]        // else
+rdi     0x404028
+[15]    [0]        // rdi % 15 == 0
+[3]     [0]        // rdi % 3  == 0
+[5]     [0]        // rdi % 5  == 0
+[1]     [0]        // else
 ```
 
 ----
 
-##### `Setup data`
+#### `Setup`
 <!-- .element: style="text-align:left" -->
 
+----
+
+##### `Branch`
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+je  .Lmiss
+```
+
+```cpp
+branches = for asm in assembly is_branch return ip
+```
+
+----
+
+###### `Data`
+<!-- .element: style="text-align:left; font-size:20px;" -->
 ```python
 data(state, n): # predictable                                           python
     return state.solver.eval_up_to(n)
@@ -970,21 +989,27 @@ data(state, n): # unpredcictable
 
 <div style="margin: 50px 0px;" />
 
+###### `Distribution`
+<!-- .element: style="text-align:left; font-size:20px;" -->
 ```cpp
-data.rdi=[0,0,0,0,0,0,...]              # predictable
-data.rdi=[1,1,1,2,2,2,...]              # predictable
-data.rdi=[1,3,5,1,3,5,...]              # predictable
-data.rdi=[0,2,4,6,8,...]                # predictable
-data.rdi=[0,0,0,1,0,0,0,1,...]          # unpredictable
-data.rdi=shuffle(0..n)                  # unpredictable
-data.rdi=sample(0..n, p=0.25)           # unpredictable
-data.rdi=zipf(0..n, s=1)                # unpredictable
+[0,0,0,0,0,0,...]              predictable
+[1,1,1,2,2,2,...]              predictable
+[1,3,5,1,3,5,...]              predictable
+[0,2,4,6,8,...]                predictable
+[0,0,0,1,0,0,0,1,...]          unpredictable
+shuffle(0..n)                  unpredictable
+sample(0..n, p=0.25)           unpredictable
+...
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 ----
 
-#### `Cache eviction`
+#### `Cache`
 <!-- .element: style="text-align:left;" -->
+
+```cpp
+add r11, [rax]
+```
 
 https://www.akkadia.org/drepper/cpumemory.pdf
 <!-- .element: style="text-align:left; font-size:22px;" -->
@@ -992,14 +1017,24 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 ----
 
 ```cpp
-enum class Level { L1, L2, L3, DRAM }; // data cache
+enum class Level {
+    L1d,
+    L2d,
+    L3d,
+    DRAM,
+};
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
+```cpp
+level = {
+    0x03232: L1d:100, L2d:70, L3d:50, DRAM:100
+}
+```
+
 ```python
 for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
-    [TODO] finish with cache distrubution for refesh (if L1, etc..)
-    refresh(level, addr)
+    refresh(level[addr], addr)
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1053,16 +1088,15 @@ https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.h
 
 ```cpp
 Assembly
-  → Setup Data
-      → Cache Eviction
-          → Benchmarking Harness
-              → Execution
+  → Setup (CPU, Data)
+      → Benchmarking Harness
+          → Execution
 ```
 
 ```python
 def execute(code):
     mm = mmap(
-        -1, 
+        -1,
         len(code),
         prot=PROT_READ | PROT_WRITE | PROT_EXEC,
         flags=MAP_PRIVATE | MAP_ANONYMOUS,
@@ -1079,14 +1113,13 @@ def execute(code):
 
 ```sh
 Function/Region
-  → Setup Process
+  → Mmap Process
       → Apply Relocations
           → Randomize Layout
               → /tmp/perf-PID.{map,dump}
-                  → Setup Data
-                      → Cache Eviction
-                          → Benchmarking Harness
-                              → Execution
+                  → Setup (CPU, Data)
+                      → Benchmarking Harness
+                          → Execution
 ```
 
 https://refspecs.linuxbase.org/elf/x86_64-abi.pdf
@@ -1109,8 +1142,9 @@ https://github.com/torvalds/linux/blob/master/tools/perf
 <!-- .element: style="text-align:left" -->
 
 ```
-lstopo
+lstopo # perf info cpu -c cpu,numa,arch,model,family,stepping,freq,L1i,L1d,L2,L3
 ```
+<!-- .element: style="text-align:left;font-size:18px" -->
 
 <p align="left">
 <img src="images/lstopo.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
@@ -1124,28 +1158,6 @@ lstopo
 
 ##### `cpu-info`
 <!-- .element: style="text-align:left" -->
-
-```
-perf info cpu -c cpu,numa,arch,model,family,stepping,freq,L1i,L1d,L2,L3
-```
-<!-- .element: style="text-align:left;font-size:18px" -->
-
-```sh
-cpu  numa  arch    model  family  stepping  freq    L1i   L1d   L2      L3
-  0     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
-  1     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
-  2     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
-  3     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
-  4     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
-  5     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
-  6     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
-  7     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
-  8     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
-  9     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
-```
-<!-- .element: style="text-align:left;font-size:16px" -->
-
----
 
 ```cpp
 def AlderlakePModel : SchedMachineModel {
@@ -1285,14 +1297,8 @@ perf plot -t ecdf -e duration_time/operations -- data/
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
 <p align="left">
-[TODO] regenerate image for fizz_buzz duration_time/operations
 <img src="images/co.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
-
-----
-
-#### `profile → ...`
-<!-- .element: style="text-align:left; font-size: 32px;" -->
 
 ----
 
@@ -1333,8 +1339,8 @@ perf plot -t ecdf -e duration_time/operations -- data/
 
 ----
 
-#### 'The Worst' Execution → 'what if'
-<!-- .element: style="text-align:left" -->
+#### 'The Worst' Execution → what if unexpected happens?
+<!-- .element: style="text-align:left; font-size:32px;" -->
 
 ```json
 {
@@ -1362,9 +1368,6 @@ perf plot -t ecdf -e duration_time/operations -- data/
 }
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
-
-jitter
-<!-- .element: style="text-align:right; font-size:20px;" -->
 
 ----
 
@@ -1421,7 +1424,7 @@ perf plot -t ecdf -- perf.data
 
 ----
 
-##### `data → config`
+##### `Data → Config`
 <!-- .element: style="text-align:left" -->
 
 ```json
@@ -1468,7 +1471,7 @@ import perf                                                 # python
 for config in (best, real, worst):
      perf.bench(
         exec="a.out",
-        func=".*", # region
+        func=".*",
         mode="latency",
         config=config,
         event=[
@@ -1524,11 +1527,6 @@ auto process(const std::byte* data, std::size_t n) {
 }
 ```
 
-```cpp
-g++-16 -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
-clang++-22 -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
-```
-
 ----
 
 ##### Backend bound [Memory Bound]
@@ -1552,7 +1550,7 @@ for hit_rate in [100, 50, 0]:  # hot → warm → cold
         func="process",
         mode="latency",
         config=config,
-        event="cycles"
+        event=["cycles"],
     )
 ```
 <!-- .element: style="text-align:left; font-size: 22px;" -->
@@ -1590,13 +1588,13 @@ alias bench='                                                                   
 <!-- .element: style="text-align:left; font-size: 18px;" -->
 
 ```
-bench --config.branch=predictable
-bench --config.branch=unpredictable
 bench --data.arg0=0
 bench --data.arg0=1
 bench --data.arg0=3
 bench --data.arg0=5
 bench --data.arg0=15
+bench --config.branch=predictable
+bench --config.branch=unpredictable
 bench --data.arg0=[$(seq 1 100000)] --config.branch=unpredictable
 bench --data.arg0=[$(seq 1 100000)] --config.branch=predictable
 ```
@@ -1613,7 +1611,6 @@ perf plot -t ecdf -e branch-misses -e cycles -- branch
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 <p align="left">
-[TODO] regenerate plot ecdf -e branch-misses -e cycles
 <img src="images/branch.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
@@ -1668,8 +1665,8 @@ for l1i in 100 0; do for align in 16 1; do
       --exec codegen.out
       --mode latency
       --config.cache.L1i=hit_rate:$l1i  # instruction cache
-      --config.func.align=$align        # function alignment
-      --config.func.order=as-is         # keep original function order, order=hot -> PGO
+      --config.func.align=$align        # alignment
+      --config.func.order=as-is         # as-is,hot,cold,random
 done; done
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -1816,16 +1813,19 @@ perf view -e cycles,instructions/cycles -s p99 -- find
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
-[TODO] regenerate with find_scan, find_map, find_mph
-           file                             name    mode stat  cycles instructions/cycles
- mph.o@3e8b8454        mph_find-predictable-cold latency  p99    3.00                8.00
- mph.o@3e8b8454         mph_find-predictable-hot latency  p99    3.00                8.00
- mph.o@3e8b8454      mph_find-unpredictable-cold latency  p99    3.00                8.00
- mph.o@3e8b8454       mph_find-unpredictable-hot latency  p99    3.00                8.00
- mph.o@3e8b8454       scan_find-predictable-cold latency  p99  372.10                2.32
- mph.o@3e8b8454        scan_find-predictable-hot latency  p99  153.00               10.00
- mph.o@3e8b8454     scan_find-unpredictable-cold latency  p99  460.08                2.32
- mph.o@3e8b8454      scan_find-unpredictable-hot latency  p99  157.50               10.00
+           file                         name    mode stat cycles instructions/cycles
+mph.so@06496688    find_map-predictable-cold latency  p99  47.01                0.24
+mph.so@06496688     find_map-predictable-hot latency  p99   5.00                3.33
+mph.so@06496688  find_map-unpredictable-cold latency  p99  44.03                0.32
+mph.so@06496688   find_map-unpredictable-hot latency  p99   6.00                2.51
+mph.so@06496688    find_mph-predictable-cold latency  p99  44.00                0.22
+mph.so@06496688     find_mph-predictable-hot latency  p99   1.00                8.00
+mph.so@06496688  find_mph-unpredictable-cold latency  p99  46.01                0.21
+mph.so@06496688   find_mph-unpredictable-hot latency  p99   1.00                8.00
+mph.so@06496688   find_scan-predictable-cold latency  p99 170.00                4.81
+mph.so@06496688    find_scan-predictable-hot latency  p99 158.00               16.00
+mph.so@06496688 find_scan-unpredictable-cold latency  p99 245.08                4.78
+mph.so@06496688  find_scan-unpredictable-hot latency  p99 176.01               16.00
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
@@ -1835,7 +1835,6 @@ perf plot -t ecdf -e cycles -e instructions/cycles -- find
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
-[TODO] regenerate -t ecdf -e cycles -e instructions/cycles with find_scan, find_map, find_mph
 <img src="images/mph_ecdf.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
 </p>
 
