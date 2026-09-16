@@ -1698,8 +1698,8 @@ https://github.com/qlibs/mph
 ----
 
 ```cpp
-g++ -std=c++26 -O3 -mbmi2 -c find.cpp -o find_gcc.o
-clang++ -std=c++26 -O3 -mbmi2 -c find.cpp -o find_clang.o
+g++ -std=c++26 -O3 -march=native -c find.cpp -o find_gcc.o
+clang++ -std=c++26 -O3 -march=native -c find.cpp -o find_clang.o
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
@@ -1757,13 +1757,13 @@ auto find_mph(int) noexcept:
 import perf                                                    # python
 
 for cxx in ("gcc", "clang"):
-    for func in ("scan", "map", "ph", "mph", "simd"):
+    for func in ("scan", "map", "mph"):
         for config in (best, real, worst):
             perf.bench(
                 exec=f"find_{cxx}.o",
                 func=func,
                 mode="latency",
-                config={"branch": "unpredictable", "cache": "warm"},
+                config=config,
                 event=["cycles", "instructions"],
             )
 ```
@@ -1772,7 +1772,7 @@ for cxx in ("gcc", "clang"):
 ----
 
 ```
-perf view -e cycles,instructions/cycles -s p99 -- mph
+perf view -e cycles,instructions/cycles -s p99 -- find
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
@@ -1790,7 +1790,7 @@ perf view -e cycles,instructions/cycles -s p99 -- mph
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
 ```sh
-perf plot -t ecdf -e cycles -- mph
+perf plot -t ecdf -e cycles -e instructions/cycles -- find
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
@@ -1836,70 +1836,6 @@ pip install git+https://github.com/perf-labs/perf.git
 
 #### - Citadel Securities - https://citadelsecurities.com/careers/engineering
 <!-- .element: style="text-align:left; margin: 5px 0; font-size:24px" -->
-
-
-<!--Empirical Cumulative Distribution Function (ECDF) shows the entire distribution without losing information-->
-<!--##### `JIT Code Generation` → assembly/object-->
-<!--[> .element: style="text-align:left" <]-->
-
-<!--```sh-->
-<!--perf bench func fizz_buzz --exec a.out -c -o bench.o-->
-<!--```-->
-<!--[> .element: style="text-align:left; font-size:22px" <]-->
-
-<!--```cpp-->
-<!--const char* fizz_buzz(int);-->
-<!--int main() {-->
-    <!--return fizz_buzz(15) == nullptr;-->
-<!--}-->
-<!--```-->
-<!--[> .element: style="text-align:left; font-size:22px" <]-->
-
-<!--```sh-->
-<!--$CXX main.cpp bench.o -o a.out && ssh $server ./a.out-->
-<!--```-->
-<!--[> .element: style="text-align:left; font-size:22px" <]-->
-
-<!-------->
-
-<!--`/tmp/perf-$PID.{map,dump}`-->
-<!--[> .element: style="text-align:left; font-size:22px;" <]-->
-
-<!--```-->
-<!--#START       SIZE SYMBOL-->
-<!--7f1234000000 120 foo-->
-<!--7f1234000120 80  bar-->
-<!--7f12340001a0 250 baz-->
-<!--```-->
-<!--[> .element: style="text-align:left; font-size:22px;" <]-->
-
-<!--```sh-->
-<!--alias record="record --event intel_pt/tsc,cyc=1/u --filter 'filter fizz_buzz @ ./a.out'"-->
-<!--alias bench="bench func fizz_buzz --exec a.out --mode latency --data.rdi=5 --event cycles"-->
-<!--perf record -- perf bench-->
-<!--```-->
-<!--[> .element: style="text-align:left; font-size:18px;" <]-->
-
-<!--```asm-->
-<!--imul eax, edi, 0xeeeeeeef-->
-<!--lea rdx, [rip + 0xeb3]-->
-<!--add eax, 0x8888888-->
-<!--cmp eax, 0x11111110-->
-<!--jbe .L40119a-->
-<!--```-->
-<!--[> .element: style="text-align:left; font-size:16px;" <]-->
-
-<!------->
-
-<!--```sh-->
-<!--perf mem record -t load,store -- perf bench func process --exec a.out --mode throughput-->
-<!--# DWARF-->
-<!--field.a-->
-<!--field.b-->
-<!--```-->
-<!--[> .element: style="text-align:left; font-size:16px;" <]-->
-
-
           </script>
         </section>
       </div>
