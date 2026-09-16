@@ -575,23 +575,19 @@ https://valgrind.org/docs/manual/cl-manual.html
  * [+] iteration speed (isolation, simplicity)
  * [-] correlation (bias, noise, codgen, ...)
  */
-auto bench(invocable auto code, integral auto samples, integral auto iterations) {
-    vector<chrono::steady_clock::duration> stats(samples);
-    for (auto s = 0u; s < samples; ++s) {                // statistics
-        const auto start = chrono::steady_clock::now();  // perf counters
-        for (auto i = 0u; i < iterations; ++i) {         // latency vs throughput
-            keep(invoke(code));                          // optimizing compiler
-        }
-        const auto stop = chrono::steady_clock::now();
-        stats[s] = (stop - start) / iterations;
-    }
-    return stats;
+auto bench(std::invocable auto code, std::integral auto iterations) {
+    const auto start = std::chrono::steady_clock::now();  // perf counters
+    for (auto i = 0u; i < iterations; ++i) {              // latency vs throughput
+        keep(std::invoke(code));                          // optimizing compiler
+    }                                                     // hardware effects
+    const auto stop = std::chrono::steady_clock::now();
+    return (stop - start) / iterations;
 }
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
-<img src="images/normal.png" style="width: 100%; height: 275px; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
+<img src="images/normal.png" style="width: 100%; height: 300px; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
 </p>
 
 ----
@@ -607,8 +603,8 @@ auto bench(invocable auto code, integral auto samples, integral auto iterations)
 <td>
 <pre><code>What if data spikes?
 What if the environment has jitter?
-What if caches won’t as hot?
-What if branches won’t as predictable?
+What if caches won’t be as hot?
+What if branches won’t be as predictable?
 What if the code/data layout will change?&nbsp;&nbsp;
 What if ...?</code></pre>
 </td>
@@ -629,7 +625,7 @@ What if ...?</code></pre>
 
 ----
 
-#### Symbolic Benchmarking
+#### 'Symbolic' Benchmarking
 <!-- .element: style="text-align:left" -->
 
 **Non-Intrusive**
@@ -644,13 +640,20 @@ What if ...?</code></pre>
 
 **Microarchitectural Control**
 <!-- .element: style="text-align:left; font-size:20px;" -->
-    Control relevant hardware state
+    "Control" relevant hardware state
 <!-- .element: style="text-align:left; font-size:15px;" -->
 
 **Statistical Robustness**
 <!-- .element: style="text-align:left; font-size:20px;" -->
-    Capture statistically robust measurements on real hardware
+    Capture statistically robust measurements
 <!-- .element: style="text-align:left; font-size:15px;" -->
+
+**Native execution**
+<!-- .element: style="text-align:left; font-size:20px;" -->
+    Target and execute on real hardware
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+----
 
 ```python
 Machine Code                   # C++, ...
@@ -658,7 +661,21 @@ Machine Code                   # C++, ...
       → Data Synthesis         # path1: rdi=[0], mem[addr]=[2], ...
           → Native Execution   # 0b010101010101100100010100111
 ```
-<!-- .element: class="fragment" -->
+
+
+```cpp
+int find():
+    static constexpr const auto = [] {
+        ///
+    };
+
+    mov     data = [1,2,3]
+
+
+LookupTAble:
+    21
+    1
+```
 
 ----
 
@@ -762,7 +779,6 @@ loop:             loop:
 
 https://github.com/andreas-abel/nanoBench
 <!-- .element: style="text-align:left; font-size:16px;" -->
-
 
 ----
 
@@ -940,13 +956,11 @@ data(state, n): # unpredcictable
 data.rdi=[0,0,0,0,0,0,...]              # predictable
 data.rdi=[1,1,1,2,2,2,...]              # predictable
 data.rdi=[1,3,5,1,3,5,...]              # predictable
-data.rdi=[3,5,1,1,3,5,3,1,1,1,0,...]    # unpredictable - uniform
-data.rdi=[0,1,2,3,4,5,0,1,2,3,4,5,...]  # periodic, stride 1
-data.rdi=[0,2,4,6,8,...]                # periodic, stride 2
-data.rdi=[0,0,0,1,0,0,0,1,...]          # sparse - mostly one path
-data.rdi=shuffle(0..n)                  # unpredictable - uniform
-data.rdi=sample(0..n, p=0.25)           # unpredictable - skewed
-data.rdi=zipf(0..n, s=1)                # unpredictable - heavy tail
+data.rdi=[0,2,4,6,8,...]                # predictable
+data.rdi=[0,0,0,1,0,0,0,1,...]          # unpredictable
+data.rdi=shuffle(0..n)                  # unpredictable
+data.rdi=sample(0..n, p=0.25)           # unpredictable
+data.rdi=zipf(0..n, s=1)                # unpredictable
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 ----
@@ -966,6 +980,7 @@ enum class Level { L1, L2, L3, DRAM }; // d-cache
 
 ```python
 for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
+    if L1 then # distribution
     refresh(level, addr)
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -1028,13 +1043,16 @@ asm
 
 ```python
 def execute(code):
-    mm = mmap.mmap(-1, len(code),
+    mm = mmap(
+        -1, 
+        len(code),
         prot=PROT_READ | PROT_WRITE | PROT_EXEC,
-        flags=MAP_PRIVATE | MAP_ANONYMOUS
+        flags=MAP_PRIVATE | MAP_ANONYMOUS,
     )
     mm.write(bytes(code))
     return ctypes.addressof(ctypes.c_char.from_buffer(mm))()
 ```
+<!-- .element: class="fragment" -->
 
 ----
 
@@ -1053,8 +1071,14 @@ function/region
                               → execute
 ```
 
-https://github.com/perf-labs/perf.git
-<!-- .element: style="text-align:left; font-size:20px;" -->
+https://refspecs.linuxbase.org/elf/x86_64-abi.pdf
+<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
+
+https://refspecs.linuxbase.org/elf/elfspec.pdf
+<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
+
+https://github.com/torvalds/linux/blob/master/tools/perf
+<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
 
 ----
 
@@ -1630,7 +1654,7 @@ for l1i in 100 0; do for align in 16 1; do
       --mode latency
       --config.cache.L1i=hit_rate:$l1i  # instruction cache
       --config.func.align=$align        # function alignment
-      --config.func.order=as-is         # keep original function order
+      --config.func.order=as-is         # keep original function order, order=hot -> PGO
 done; done
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
