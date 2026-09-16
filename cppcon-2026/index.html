@@ -1482,8 +1482,8 @@ auto process(const std::byte* data, std::size_t n) {
 ```
 
 ```cpp
-g++     -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
-clang++ -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
+g++-16 -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
+clang++-22 -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
 ```
 
 ----
@@ -1698,8 +1698,8 @@ https://github.com/qlibs/mph
 ----
 
 ```cpp
-g++ -std=c++26 -O3 -march=native -c find.cpp -o find_gcc.o
-clang++ -std=c++26 -O3 -march=native -c find.cpp -o find_clang.o
+g++-16 -std=c++26 -O3 -march=native -c find.cpp -o find_gcc.o
+clang++-22 -std=c++26 -O3 -march=native -c find.cpp -o find_clang.o
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
