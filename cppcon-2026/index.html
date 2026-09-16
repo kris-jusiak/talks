@@ -1665,7 +1665,7 @@ perf plot -t ecdf -g config.branch,config.cache -e instructions/cycles -- sort
 
 ```cpp
 find_scan (if/else)                    → branch
-find_map  (hash-map)                   → branch/cache
+find_map  (std::unordered_map)         → branch/cache
 find_mph  (pext + lookup table + cmov) → cache
 ```
 

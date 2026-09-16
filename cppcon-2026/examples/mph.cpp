@@ -5,6 +5,7 @@
 //                                                        # the scan explodes
 #include <array>
 #include <cstdint>
+#include <unordered_map>
 
 #include "/home/kris/projects/qlibs/mph/mph"
 
@@ -18,6 +19,15 @@ static constexpr auto pairs = [] {
 
 extern "C" int mph_find(std::uint64_t key) {
     return mph::lookup<pairs>(key); // pext + single table load, no branches
+}
+
+extern "C" int scan_find(std::uint64_t key) {
+    for (unsigned i = 0; i < 128; ++i) {
+        if (pairs[i].first == key) {
+            return pairs[i].second;
+        }
+    }
+    return -1;
 }
 
 extern "C" int scan_find(std::uint64_t key) {
