@@ -494,7 +494,7 @@ uOps Latency  RThroughput  MayLoad MayStore HasSideEffects   Instructions:
    1       1         0.20                                    add  eax, 42
    1       3         1.00                                    imul eax, eax, 42
 ```
-<!-- .element: class="fragment" style="text-align:left; font-size:15px; " -->
+<!-- .element: style="text-align:left; font-size:15px; " -->
 
 <div style="margin: 30px 0px;" />
 
@@ -504,7 +504,7 @@ echo 'add eax, 42; imul eax, eax, 42' | llvm-mca --mcpu=sapphirerapids --resourc
 SPRPort00   SPRPort01  ...  SPRPort05  SPRPort06 ... SPRPort11 ... # per iteration
      0.25        1.00            0.25       0.25          0.25
 ```
-<!-- .element: class="fragment" style="text-align:left; font-size:15px; " -->
+<!-- .element: style="text-align:left; font-size:15px; " -->
 
 <div style="margin: 30px 0px;" />
 
@@ -518,7 +518,7 @@ echo 'add eax, 42; imul eax, eax, 42' | llvm-mca --mcpu=sapphirerapids --timelin
 
 D=dispatched, e=executing, E=executed, R=retired
 ```
-<!-- .element: class="fragment" style="text-align:left; font-size:15px; " -->
+<!-- .element: style="text-align:left; font-size:15px; " -->
 
 https://uops.info/table.html
 <!-- .element: style="text-align:left; font-size: 18px;" -->
@@ -614,7 +614,6 @@ What if ...?</code></pre>
 </td>
 </tr>
 </table>
-<!-- .element: class="fragment" -->
 
 <table>
 <tr>
@@ -947,17 +946,6 @@ enum class Level { L1, L2, L3, DRAM };
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-```cpp
-[[nodiscard]] auto cache_lines(std::span<const std::uintptr_t> addrs) {
-    std::unordered_set<std::uintptr_t> lines{};
-    for (const auto addr : addrs) {
-        lines.insert(addr & ~(cache_line_size - 1));
-    }
-    return {lines.begin(), lines.end()};
-}
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
 ```python
 for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
     refresh(level, addr)
@@ -1019,11 +1007,11 @@ asm
 ```python
 def execute(code):                                          # python
     src = (ctypes.c_char * len(code)).from_buffer_copy(code)
-    mm = mmap.mmap(-1, len(code), 
-        prot=PROT_READ | PROT_WRITE | PROT_EXEC, 
+    mm = mmap.mmap(-1, len(code),
+        prot=PROT_READ | PROT_WRITE | PROT_EXEC,
         flags=MAP_PRIVATE | MAP_ANONYMOUS
     )
-    ctypes.memmove(mm, src, len(code)) 
+    ctypes.memmove(mm, src, len(code))
     return ctypes.cast(mm, ctypes.c_void_p).value
 ```
 
@@ -1331,7 +1319,7 @@ https://github.com/iovisor/bcc
 ```cpp
 perf record
     --event branch-instructions,branch-misses,cache-references,cache-misses
-    --output perf.data 
+    --output perf.data
     -- ./a.out
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -1584,6 +1572,15 @@ hot_func(...); // inlined second time
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
+```sh
+file        kind  label      address
+codegen.out label hot_begin  0x401154 # inlined first time
+codegen.out label hot_begin  0x401184 # inlined second time
+codegen.out label hot_end    0x401169
+codegen.out label hot_end    0x40119c
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
 ----
 
 ```cpp
@@ -1599,20 +1596,6 @@ hot_func(...); // inlined second time
 <!-- .element: style="text-align:left;font-size:20px" -->
 
 <div style="margin: 50px 0px;" />
-
-```
-perf info metadata -- exec a.out
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-```sh
-file        kind  label      address
-codegen.out label hot_begin  0x401154 # inlined first time
-codegen.out label hot_begin  0x401184 # inlined second time
-codegen.out label hot_end    0x401169
-codegen.out label hot_end    0x40119c
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -1676,9 +1659,9 @@ perf plot -x data.arg1 -e instructions/cycles -- sort
 </p>
 
 ```cpp
-find (scan - if/else)                    → branch
-find (mph  - pext + cmov + lookup table) → cache
-find (map  - hash map)                   → branch/cache
+find_scan (if/else)                    → branch
+find_map  (hash map)                   → branch/cache
+find_mph  (pext + cmov + lookup table) → cache
 ```
 
 https://github.com/qlibs/mph
@@ -1687,10 +1670,9 @@ https://github.com/qlibs/mph
 ----
 
 ```cpp
-g++-16     -std=c++26 -O3 -mbmi2 -c find.cpp -o find_gcc.o
-clang++-22 -std=c++26 -O3 -mbmi2 -c find.cpp -o find_clang.o
+g++-16 -std=c++26 -O3 -mbmi2 -c find.cpp -o find_gcc.o
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:10px;" -->
 
 ```cpp
 auto find_scan(const string_like auto symbol) noexcept:
@@ -1706,18 +1688,7 @@ auto find_scan(const string_like auto symbol) noexcept:
 .Lfound:
   ret
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-```cpp
-auto find_mph(const string_like auto symbol) noexcept:
-  mov rax, [rdi]              # hash -> pext -> index
-  pext rax, rax, r9
-  lea rcx, [table + rax*8]
-  mov rax, [rcx]              # single load, no branch
-  cmovne eax, edx             # cmov fixup for missing keys
-  ret
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:12px;" -->
 
 ```cpp
 auto find_map(const string_like auto symbol) noexcept:
@@ -1740,21 +1711,18 @@ auto find_map(const string_like auto symbol) noexcept:
   xor eax, eax
   ret
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-----
+<!-- .element: style="text-align:left; font-size:12px;" -->
 
 ```cpp
-constexpr auto symbols = std::array{
-  std::pair{"AMZN    "sv, 1},
-  std::pair{"AAPL    "sv, 2},
-  std::pair{"GOOGL   "sv, 3},
-  std::pair{"META    "sv, 4},
-  std::pair{"MSFT    "sv, 5},
-  std::pair{"NVDA    "sv, 6},
-  std::pair{"TSLA    "sv, 7},
-};
+auto find_mph(const string_like auto symbol) noexcept:
+  mov rax, [rdi]              # hash -> pext -> index
+  pext rax, rax, r9
+  lea rcx, [table + rax*8]
+  mov rax, [rcx]              # single load, no branch
+  cmovne eax, edx             # cmov fixup for missing keys
+  ret
 ```
+<!-- .element: style="text-align:left; font-size:12px;" -->
 
 ----
 
