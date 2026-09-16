@@ -1782,10 +1782,10 @@ auto find_map(int) noexcept:
 ```cpp
 auto find_mph(int) noexcept:
   mov eax, edi
-  pext rax, rax, r9
-  lea rcx, [table + rax*4]
+  pext rax, rax, r9             # parallel extract (-mbmi2)
+  lea rcx, [table + rax*4]      # lookup table
   mov eax, [rcx]
-  cmovne eax, edx
+  cmovne eax, edx               # conditional move
   ret
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
