@@ -899,9 +899,6 @@ rdi             0x404028
 [1,  2,  4]     [0]        // else
 ```
 
-Problem-space reduction
-<!-- .element: style="text-align:right; font-size:22px;" -->
-
 ----
 
 ##### `Setup data`
@@ -1014,9 +1011,6 @@ def execute(code):
     return ctypes.addressof(ctypes.c_char.from_buffer(mm))()
 ```
 
-write to object
-<!-- .element: style="text-align:right; font-size:18px;" -->
-
 ----
 
 ```cpp
@@ -1060,6 +1054,28 @@ lstopo
 
 ##### `cpu-info`
 <!-- .element: style="text-align:left" -->
+
+```
+perf info cpu -c cpu,numa,arch,model,family,stepping,freq,L1i,L1d,L2,L3
+```
+<!-- .element: style="text-align:left;font-size:20px" -->
+
+```sh
+cpu  numa  arch    model  family  stepping  freq    L1i   L1d   L2      L3
+  0     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
+  1     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
+  2     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
+  3     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
+  4     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
+  5     0  x86_64    154       6         3  2.6Ghz  32Kb  48Kb  1280Kb  24Mb
+  6     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
+  7     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
+  8     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
+  9     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
+```
+<!-- .element: style="text-align:left;font-size:18px" -->
+
+---
 
 ```cpp
 def AlderlakePModel : SchedMachineModel {
@@ -1173,13 +1189,12 @@ perf plot -t ecdf -e cycles -- cache
 <table style="width:120%">
 <tr>
   <td>
- <pre style="font-size:16px"><code>benchmark     cycles
------------- ----
+ <pre style="font-size:16px"><code>benchmark  cycles
+----------- -----
 L1d hit         4
 L2d hit        14
 L3d hit        75
-DRAM access   294
- </code></pre>
+DRAM access   294</code></pre>
   </td>
   <td>
   <img src="images/cache_lat.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
@@ -1477,12 +1492,11 @@ for hit_rate in [100, 50, 0]:  # hot → warm → cold
 
 
 ```sh
-perf plot -t ecdf -- backend_bound
+perf plot -t ecdf -g config.cache.L1d.hit_rate,file -- data/backend
 ```
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
 <p align="left">
-[TODO] regenerate there should multiple cases here
 <img src="images/backend_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
@@ -1532,7 +1546,6 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 <p align="left">
-[TODO] regenerate perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 <img src="images/branch.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
@@ -1549,11 +1562,12 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[[gnu::always_inline, gnu::hot]] auto hot_func(const int* v, int n) {
+/*[[gnu::aligend(16)]]*/
+[[gnu::always_inline]] auto hot_func(const auto* data, const std::size_t size) {
+    auto sum = 0;
     PERF_LABEL(hot_begin);
-    int sum = 0;
-    /*[[clang::code_align(64)]]*/ for (int i = 0; i < n; ++i) {
-        sum += table[v[i] & 63];
+    /*[[clang::code_align(64)]]*/ for (auto i = 0u; i < size; ++i) {
+        sum += lookup_table[data[i] & 63];
     }
     PERF_LABEL(hot_end);
     return sum;
@@ -1561,25 +1575,9 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-```cpp
-hot_func(...); // inlined first time
-...
-hot_func(...); // inlined second time
+<div style="margin: 50px 0px;" />
+
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-```sh
-file        kind  label      address
-codegen.out label hot_begin  0x401154 # inlined first time
-codegen.out label hot_begin  0x401184 # inlined second time
-codegen.out label hot_end    0x401169
-codegen.out label hot_end    0x40119c
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-----
-
-```cpp
 #define PERF_LABEL(name) // "global" label
     asm volatile(
         ".pushsection perf.label, \"aw?\", @progbits\n"
@@ -1589,9 +1587,24 @@ codegen.out label hot_end    0x40119c
         "0:\n"
     ); name:
 ```
-<!-- .element: style="text-align:left;font-size:20px" -->
+<!-- .element: style="text-align:left;font-size:16px" -->
 
-<div style="margin: 50px 0px;" />
+----
+
+```
+perf info metadata -- exec a.out
+```
+
+```sh
+file        kind  label      address
+codegen.out label hot_begin  0x401154 # inlined first time
+codegen.out label hot_begin  0x401184 # inlined second time
+...
+codegen.out label hot_end    0x401169
+codegen.out label hot_end    0x40119c
+...
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -1599,20 +1612,19 @@ codegen.out label hot_end    0x40119c
 <!-- .element: style="text-align:left" -->
 
 ```
-[TODO] results are just noise, fix it
 for l1i in 100 0; do for align in 16 1; do
   perf bench region hot_begin..hot_end
       --exec codegen.out
       --mode latency
-      --config.cache.L1i=hit_rate:$l1i
-      --config.func.align=$align
-      --config.func.order=as-is
+      --config.cache.L1i=hit_rate:$l1i  # instruction cache
+      --config.func.align=$align        # function alignment
+      --config.func.order=as-is         # keep original function order
 done; done
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 <p align="left">
-<img src="images/codegen_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/codegen_ecdf.png" style="width: 90%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
@@ -1623,20 +1635,19 @@ done; done
 ```python
 import perf                                                           # python
 
-hot  = {"L1d": {"hit_rate": 100}}
-warm = {"L1d": {"hit_rate": 0}, "L2d": {"hit_rate": 100}}
-cool = {"L1d": {"hit_rate": 0}, "L2d": {"hit_rate": 0}, "L3d": {"hit_rate": 100}}
-cold = {"L1d": {"hit_rate": 0}, "L2d": {"hit_rate": 0}, "L3d": {"hit_rate": 0}}
-caches = {"hot": hot, "warm": warm, "cool": cool, "cold": cold}
+hot  = {"L1d":{"hit_rate":100}}
+warm = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":100}}
+cool = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":100}}
+cold = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":0}}
 
 for size in [1, 64, 128, 256, 512, 1024]:
     for cache in ("hot", "warm", "cool", "cold"):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
-                exec="std_sort.so", # wrapper around std::sort (header-only, no symbol in libstdc++.so)
-                func="std_sort",
+                exec="libstdc++.so",
+                func="std::sort",
                 mode="latency",
-                config={"branch": branch, "cache": caches[cache]},
+                config={"branch": branch, "cache": cache},
                 data={"arg1": size},
                 event=["cycles,instructions"],
             )
@@ -1646,14 +1657,11 @@ for size in [1, 64, 128, 256, 512, 1024]:
 ----
 
 ```sh
-[TODO] regenerate both with new data
-perf plot -g '' -t line -x data.arg1 -e instructions/cycles -- std_sort
-perf plot -t ecdf -e instructions/cycles -- std_sort
+perf plot -t ecdf -g config.branch,config.cache -e instructions/cycles -- sort
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 <p align="left">
-<img src="images/sort_ipc.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 <img src="images/sort_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
@@ -1681,16 +1689,16 @@ https://github.com/qlibs/mph
 g++ -std=c++26 -O3 -mbmi2 -c find.cpp -o find_gcc.o
 clang++ -std=c++26 -O3 -mbmi2 -c find.cpp -o find_clang.o
 ```
-<!-- .element: style="text-align:left; font-size:10px;" -->
+<!-- .element: style="text-align:left; font-size:12px;" -->
 
 ```cpp
 auto find_scan(int) noexcept:
-  mov eax, edi              # key (int, 4 bytes)
+  mov eax, edi
   xor ecx, ecx
 .Lnext:
-  cmp [table + rcx*4], eax  # candidate (int)
+  cmp [table + rcx*4], eax
   je  .Lfound
-  add ecx, 1                # branchy: ~N/2 branch/op
+  add ecx, 1
   cmp ecx, N
   jb  .Lnext
 .Lfound:
@@ -1700,16 +1708,16 @@ auto find_scan(int) noexcept:
 
 ```cpp
 auto find_map(int) noexcept:
-  mov eax, edi              # key (int, 4 bytes)
+  mov eax, edi
   imul eax, eax, 0x9e3779b1
-  shr eax, 24               # bucket = hash % n_buckets
+  shr eax, 24
   mov rcx, [buckets + rax*8]
-  .Lchain:                    # branch/cache: walk the chain
+  .Lchain:
   test rcx, rcx
   je  .Lmiss
   cmp [rcx], eax
   jne .Lnext_link
-  mov eax, [rcx + 8]          # found
+  mov eax, [rcx + 8]
   ret
 .Lnext_link:
   mov rcx, [rcx + 16]
@@ -1722,11 +1730,11 @@ auto find_map(int) noexcept:
 
 ```cpp
 auto find_mph(int) noexcept:
-  mov eax, edi              # key (int, 4 bytes)
+  mov eax, edi
   pext rax, rax, r9
   lea rcx, [table + rax*4]
-  mov eax, [rcx]            # single load, no branch
-  cmovne eax, edx           # cmov fixup for missing keys
+  mov eax, [rcx]
+  cmovne eax, edx
   ret
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
@@ -1757,21 +1765,19 @@ perf view -e cycles,instructions/cycles -s p99 -- mph
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
-[TODO] regenerate it can't be 1 cycle something is wrong
-              file                name    mode stat cycles instructions/cycles
-mph_clang.o@9417a855    clang-mph_find-hot latency  p99   1.00                5.00
-mph_clang.o@9417a855  clang-mph_find-worst latency  p99 261.01                0.02
-mph_clang.o@9417a855   clang-scan_find-hot latency  p99   1.00               10.00
-mph_clang.o@9417a855 clang-scan_find-worst latency  p99 374.45                1.77
-  mph_gcc.o@5b94c0b8      gcc-mph_find-hot latency  p99   3.00                8.00
-  mph_gcc.o@5b94c0b8    gcc-mph_find-worst latency  p99   3.00                8.00
-  mph_gcc.o@5b94c0b8     gcc-scan_find-hot latency  p99   1.00               10.00
-  mph_gcc.o@5b94c0b8   gcc-scan_find-worst latency  p99 479.17                2.18
+           file                             name    mode stat  cycles instructions/cycles
+ mph.o@3e8b8454        mph_find-predictable-cold latency  p99    3.00                8.00
+ mph.o@3e8b8454         mph_find-predictable-hot latency  p99    3.00                8.00
+ mph.o@3e8b8454      mph_find-unpredictable-cold latency  p99    3.00                8.00
+ mph.o@3e8b8454       mph_find-unpredictable-hot latency  p99    3.00                8.00
+ mph.o@3e8b8454       scan_find-predictable-cold latency  p99  372.10                2.32
+ mph.o@3e8b8454        scan_find-predictable-hot latency  p99  153.00               10.00
+ mph.o@3e8b8454     scan_find-unpredictable-cold latency  p99  460.08                2.32
+ mph.o@3e8b8454      scan_find-unpredictable-hot latency  p99  157.50               10.00
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
-```cpp
-[TODO] regenerate after fixing the results
+```sh
 perf plot -t ecdf -e cycles -- mph
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->

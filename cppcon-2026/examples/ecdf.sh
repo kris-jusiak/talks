@@ -22,9 +22,9 @@ cat > "${PLOT_CONFIG}" <<'JSON'
 { "figure.figsize": [11, 5], "figure.dpi": 100 }
 JSON
 
-chart() { # chart event data...
-  local name="$1" event="$2"
-  shift 2
+chart() { # chart name event group data...
+  local name="$1" event="$2" group="$3"
+  shift 3
   for src in "$@"; do
     if [ ! -e "${ROOT}/${src}" ]; then
       echo "skip ${name} (missing ${src})"
@@ -32,17 +32,32 @@ chart() { # chart event data...
     fi
   done
   echo "### ${name} <- ${event} ${*}"
-  perf plot --config "${PLOT_CONFIG}" -t ecdf -e "${event}" \
+  local glags=()
+  if [ -n "${group}" ]; then glags=(-g "${group}"); fi
+  perf plot --config "${PLOT_CONFIG}" "${glags[@]}" -t ecdf -e "${event}" \
     -o "${ROOT}/images/${name}" -- "$@"
 }
 
-chart cache_lat.png   cycles        data/cache
-chart branch_miss.png branch-misses data/fizz
-chart codegen_ecdf.png cycles       data/codegen
-chart fizz_ecdf.png   cycles        data/fizz
-chart backend_ecdf.png cycles       data/backend
-chart mph_ecdf.png    cycles        data/mph
-chart branch.png      branch-misses data/branch
+chart cache_lat.png   cycles        ""                              data/cache
+chart branch_miss.png branch-misses ""                              data/fizz
+chart codegen_ecdf.png cycles       ""                              data/codegen
+chart fizz_ecdf.png   cycles        ""                              data/fizz
+chart backend_ecdf.png cycles       config.cache.L1d.hit_rate,file  data/backend
+chart mph_ecdf.png    cycles        ""                              data/mph
+chart branch.png      branch-misses,instructions/cycles ""           data/branch
+
+# std::sort scaling (IPC vs input size) and IPC distribution; see the deck
+# `libstdc++.so` section. Grouped by branch.predictability x cache so each
+# line/ECDF pools all input sizes (rev/sort pattern sets the branch config).
+echo "### sort_ipc.png <- instructions/cycles (line)"
+perf plot --config "${PLOT_CONFIG}" -t line -x data.rsi \
+  -g config.branch,config.cache -e instructions/cycles \
+  -o "${ROOT}/images/sort_ipc.png" -- data/std_sort
+
+echo "### sort_ecdf.png <- instructions/cycles (ecdf)"
+perf plot --config "${PLOT_CONFIG}" -t ecdf \
+  -g config.branch,config.cache -e instructions/cycles \
+  -o "${ROOT}/images/sort_ecdf.png" -- data/std_sort
 
 # perf.data is a `perf record` output; create one from a real workload if absent.
 if [ ! -e "${ROOT}/perf.data" ]; then
