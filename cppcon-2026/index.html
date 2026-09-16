@@ -548,6 +548,7 @@ code                       assembly             address encoding             com
 
 <p align="left">
 <img src="images/zen52.jpg" style="width: 15%; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
+<img src="images/code.png" style="width: 32%; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
 </p>
 
 ```cpp
@@ -627,10 +628,6 @@ https://makelinux.github.io/kernel/map
 
 #### 'Symbolic' Benchmarking
 <!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/range2.jpeg" style="width: 30%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-</p>
 
 ----
 
@@ -967,17 +964,13 @@ rdi     0x404028
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-je  .Lmiss
-```
-
-```cpp
-branches = for asm in assembly is_branch return ip
+je .Lmiss
 ```
 
 ----
 
-###### `Data`
-<!-- .element: style="text-align:left; font-size:20px;" -->
+##### `Data`
+<!-- .element: style="text-align:left; font-size:22px;" -->
 ```python
 data(state, n): # predictable                                           python
     return state.solver.eval_up_to(n)
@@ -989,22 +982,30 @@ data(state, n): # unpredcictable
 
 <div style="margin: 50px 0px;" />
 
-###### `Distribution`
+##### `Distribution (n > 10'000)`
 <!-- .element: style="text-align:left; font-size:20px;" -->
 ```cpp
-[0,0,0,0,0,0,...]              predictable
-[1,1,1,2,2,2,...]              predictable
-[1,3,5,1,3,5,...]              predictable
-[0,2,4,6,8,...]                predictable
-[0,0,0,1,0,0,0,1,...]          unpredictable
-shuffle(0..n)                  unpredictable
-sample(0..n, p=0.25)           unpredictable
+predictable   = [0,0,0,0,0,0,...]
+predictable   = [1,1,1,2,2,2,...]
+predictable   = [1,3,5,1,3,5,...]
+predictable   = [0,2,4,6,8,...,]
+unpredictable = [0,0,0,1,0,0,0,1,...]
+unpredictable = shuffle(0..n)
+unpredictable = sample(0..n, p=0.25)
 ...
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
+
+```asm
+- modern branch predictor can learn ~10'000 1/0 branches
+- cold: { backward = taken, forward = not_taken }
+- never-taken: no BTB entry allocated
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
 ----
 
-#### `Cache`
+##### `Cache`
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
@@ -1116,10 +1117,10 @@ Function/Region
   → Mmap Process
       → Apply Relocations
           → Randomize Layout
-              → /tmp/perf-PID.{map,dump}
                   → Setup (CPU, Data)
                       → Benchmarking Harness
-                          → Execution
+                          → /tmp/perf-PID.{map,dump}
+                             → Execution
 ```
 
 https://refspecs.linuxbase.org/elf/x86_64-abi.pdf
@@ -1339,7 +1340,7 @@ perf plot -t ecdf -e duration_time/operations -- data/
 
 ----
 
-#### 'The Worst' Execution → what if unexpected happens?
+#### 'The Worst' Execution → "what if" unexpected happens
 <!-- .element: style="text-align:left; font-size:32px;" -->
 
 ```json
@@ -1471,10 +1472,10 @@ import perf                                                 # python
 for config in (best, real, worst):
      perf.bench(
         exec="a.out",
-        func=".*",
+        func=".*",                              # any function
         mode="latency",
         config=config,
-        event=[
+        event=[                                 # seperate runs
             ["duration_time"],
             ["cycles", "instructions"],
             ["topdown-retiring",
@@ -1576,7 +1577,7 @@ perf plot -t ecdf -- backend
 <!-- .element: style="text-align:left" -->
 
 ```sh
-alias bench='                                                                      # sh
+alias bench='
     perf bench func fizz_buzz
     --exec a.out
     --mode latency
@@ -1613,13 +1614,6 @@ perf plot -t ecdf -e branch-misses -e cycles -- branch
 <p align="left">
 <img src="images/branch.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
-
-```asm
-- modern branch predictor can learn ~10'000 1/0 branches
-- cold: { backward = taken, forward = not_taken }
-- never-taken: no BTB entry allocated
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -1734,7 +1728,7 @@ https://github.com/qlibs/mph
 ----
 
 ```cpp
-g++-16 -std=c++26 -O3 -march=native -c find.cpp -o find_gcc.o
+g++-16     -std=c++26 -O3 -march=native -c find.cpp -o find_gcc.o
 clang++-22 -std=c++26 -O3 -march=native -c find.cpp -o find_clang.o
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
@@ -1807,7 +1801,7 @@ for cxx in ("gcc", "clang"):
 
 ----
 
-```
+```sh
 perf view --event cycles --stat p99 -- find
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
