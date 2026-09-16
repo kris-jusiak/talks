@@ -12,10 +12,6 @@ static constexpr auto pairs = [] {
     return a;
 }();
 
-extern "C" int find_mph(std::uint64_t key) {
-    return mph::lookup<pairs>(key);
-}
-
 extern "C" int find_scan(std::uint64_t key) {
     for (const auto& [k, v] : pairs) {
         if (k == key) {
@@ -35,6 +31,10 @@ extern "C" int find_map(std::uint64_t key) {
   }();
   const auto it = map.find(key);
   return it != map.end() ? it->second : -1;
+}
+
+extern "C" int find_mph(std::uint64_t key) {
+    return mph::lookup<pairs>(key);
 }
 
 int main(){}

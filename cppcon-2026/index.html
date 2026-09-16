@@ -86,7 +86,7 @@ pip install git+https://github.com/perf-labs/perf.git
 
 ----
 
-#### Nanosecond count?!
+#### Nanosecond count
 <!-- .element: style="text-align:left" -->
 
 <table style="margin:0; padding:0; border-collapse:collapse; width:100%;">
@@ -147,87 +147,28 @@ Does it matter, and if so, why and how much?
 
 ----
 
-##### Hardware effects
+##### `"what if" rule`
 <!-- .element: style="text-align:left" -->
 
-```cpp
-code                       asm                  address encoding
-
-void unused(int);                               401080                       // layout (.text)
-
-void func(int value) {     push rbp             401100  55                   // align (16b), icache
-  int var = ...;           mov rbp,rsp          401101  48 89 e5             // stack (frame)
-  for (...) {              nop                  401104  66 0f 1f 44 00 00    // alignment
-    int i = table[value];  mov eax,[rdi*4+0x20] 40110a  8B 04 BD 00 20 40 00 // dcache
-    if (i == var) {        cmp eax,ecx          401111  39 c8
-      ...                  je 0x40111d          401113  74 08                // branch predictor
-  }                        pop rbp              401115  5d                   // stack (unwind)
-}                          ret                  401116  c3
-
-table:                                          402000                       // layout (.rodata)
- .long 42                                       402000  20 00 00 00
- .long 123                                      402004  41 01 00 00
-                              ...
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
-
-https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
-<!-- .element: style="text-align:left; font-size:18px;" -->
-
-----
-
-##### AMD Zen5 [Bias] - https://chipsandcheese.com
-<!-- .element: style="text-align:left; font-size:24px;" -->
-
-<table style="width:120%">
+<table>
 <tr>
-  <td>
- <pre style="font-size:16px"><code>main:
- push ...
- mov  ...
- cmp  ...
- jbe  ...
- ...
- ret</code></pre>
-  </td>
-  <td>
-  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-  </td>
-  </tr>
+<td>
+<img src="images/range.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
+</td>
+<td>
+<pre><code>What if data spikes?
+What if the environment has jitter?
+What if caches won’t be as hot?
+What if branches won’t be as predictable?
+What if the code/data layout will change?&nbsp;&nbsp;
+What if ...?</code></pre>
+</td>
+</tr>
 </table>
+<!-- .element: class="fragment" -->
 
-----
-
-##### Linux 7.x [Noise]
-<!-- .element: style="text-align:left; font-size:24px;" -->
-
-<table style="width:103%">
-<tr>
-  <td>
- <pre style="font-size:16px"><code>int main() {
-  // ...
-}</code></pre>
-  </td>
-  <td>
-  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-  </td>
-  </tr>
-</table>
-
-https://makelinux.github.io/kernel/map
-<!-- .element: style="text-align:left; font-size:18px;" -->
-
-----
-
-#### Performance Is Not A Number!
-<!-- .element: style="text-align:left" -->
-
-<p align="left">
-<img src="images/perf.jpeg" style="width: 90%; background:none; border:none; box-shadow:none;" />
-</p>
-
-[Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left; font-size:20px;" -->
+Does it matter, and if so, why and how much?
+<!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
@@ -398,7 +339,7 @@ func:
   <td>
       <pre style="font-size:14px">
 func:
-  nopw
+  nop
   mov eax, 42
   nopw
   ret
@@ -452,7 +393,7 @@ perf script --itrace=i --insn-trace=disasm,intel -F+ipc
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 ```
-Instruction          IPC (instructions/cycle)
+Instruction          IPC (instructions/cycles)
 push   rbp           —
 mov    rbp, rsp      —
 sub    rsp, 0x20     1.00
@@ -579,7 +520,7 @@ auto bench(std::invocable auto code, std::integral auto iterations) {
     const auto start = std::chrono::steady_clock::now();  // perf counters
     for (auto i = 0u; i < iterations; ++i) {              // latency vs throughput
         keep(std::invoke(code));                          // optimizing compiler
-    }                                                     // hardware effects
+    }
     const auto stop = std::chrono::steady_clock::now();
     return (stop - start) / iterations;
 }
@@ -592,40 +533,108 @@ auto bench(std::invocable auto code, std::integral auto iterations) {
 
 ----
 
-##### `"what if" rule`
+#### Hardware effects
 <!-- .element: style="text-align:left" -->
 
-<table>
+https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+```
+code                       assembly             address encoding             comments
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+<p align="left">
+<img src="images/zen52.jpg" style="width: 15%; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
+</p>
+
+```cpp
+void unused(int);                               401080                       // layout (.text)
+
+void func(int value) {     push rbp             401100  55                   // align (16b), icache
+  int var = ...;           mov rbp,rsp          401101  48 89 e5             // stack (frame)
+  for (...) {              nop                  401104  66 0f 1f 44 00 00    // alignment
+    int i = table[value];  mov eax,[rdi*4+0x20] 40110a  8B 04 BD 00 20 40 00 // data cache
+    if (i == var) {        cmp eax,ecx          401111  39 c8
+      ...                  je 0x40111d          401113  74 08                // branch predictor
+  }                        pop rbp              401115  5d                   // stack (unwind)
+}                          ret                  401116  c3
+
+table:                                          402000                       // layout (.rodata)
+ .long 42                                       402000  20 00 00 00
+ .long 123                                      402004  41 01 00 00
+                              ...
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+----
+
+##### AMD Zen5 [Bias] 
+<!-- .element: style="text-align:left; font-size:24px;" -->
+
+<table style="width:113%;">
 <tr>
-<td>
-<img src="images/range.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
-</td>
-<td>
-<pre><code>What if data spikes?
-What if the environment has jitter?
-What if caches won’t be as hot?
-What if branches won’t be as predictable?
-What if the code/data layout will change?&nbsp;&nbsp;
-What if ...?</code></pre>
-</td>
-</tr>
+  <td>
+ <pre style="font-size:16px"><code>main:
+ push ...
+ mov  ...
+ cmp  ...
+ jbe  ...
+ ...
+ ret</code></pre>
+  </td>
+  <td>
+  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+  </tr>
 </table>
 
-<table>
+https://chipsandcheese.com
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+----
+
+##### Linux 7.x [Noise]
+<!-- .element: style="text-align:left; font-size:24px;" -->
+
+<table style="width:103%">
 <tr>
-<td>
-<img src="images/range2.jpeg" style="width: 87%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-</td>
-<td>
-<pre><code>What if we could answer "what if?"         </code></pre>
-</td>
-</tr>
+  <td>
+ <pre style="font-size:16px"><code>int main() {
+  // ...
+}</code></pre>
+  </td>
+  <td>
+  <img src="images/linux.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+  </tr>
 </table>
-<!-- .element: class="fragment" -->
+
+https://makelinux.github.io/kernel/map
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+----
+
+#### “If You Measure The Wrong Thing, You Can’t Improve The Right Thing!”
+<!-- .element: style="text-align:left; font-size:30px;" -->
+
+[Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
 #### 'Symbolic' Benchmarking
+<!-- .element: style="text-align:left" -->
+
+<p align="left">
+<img src="images/range2.jpeg" style="width: 30%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+----
+
+##### `Goals`
 <!-- .element: style="text-align:left" -->
 
 **Non-Intrusive**
@@ -655,31 +664,40 @@ What if ...?</code></pre>
 
 ----
 
+##### `Approach`
+<!-- .element: style="text-align:left" -->
+
 ```python
-Machine Code                   # C++, ...
+Machine Code                   # C++, Rust, Zig, Assembly, ...
   → Symbolic Exploration       # path1, path2, ..., pathN
-      → Data Synthesis         # path1: rdi=[0], mem[addr]=[2], ...
-          → Native Execution   # 0b010101010101100100010100111
+     → Data Synthesis          # path1: rdi=[0], mem[addr]=[2], ...
+        → Benchmarking harness # loop: ... jnz .loop 
+           → Native Execution  # 0b010101010101100100010100111
 ```
 
 
 ```cpp
-int find():
-    static constexpr const auto = [] {
-        ///
-    };
+[TODO] finish code and in-place assembly for the func function (like in perf annotate)
+int func(int key):
+    static constexpr const auto lut = [] {
+        / lookup table
+    }();
 
-    mov     data = [1,2,3]
+    if (key < lut.size()) {
+        mov eax, 42
+        return {};
+    }
 
+    return lut[key];
 
-LookupTAble:
+lut:
     21
     1
 ```
 
 ----
 
-#### Benchmarking harness
+##### `Benchmarking Harness`
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -850,10 +868,10 @@ def explore(project, start, end):                                      # python
 <div style="margin: 50px 0px;" />
 
 ```asm
-machine code
-  → blank state
-      → basic blocks
-          → solutions + traces
+Machine Code
+  → Blank State
+      → Basic Blocks
+          → Solutions + Traces
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -974,13 +992,13 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 ----
 
 ```cpp
-enum class Level { L1, L2, L3, DRAM }; // d-cache
+enum class Level { L1, L2, L3, DRAM }; // data cache
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```python
 for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
-    if L1 then # distribution
+    [TODO] finish with cache distrubution for refesh (if L1, etc..)
     refresh(level, addr)
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -1034,11 +1052,11 @@ https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.h
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-asm
-  → setup data
-      → cache eviction
-          → benchmarking harness
-              → execute
+Assembly
+  → Setup Data
+      → Cache Eviction
+          → Benchmarking Harness
+              → Execution
 ```
 
 ```python
@@ -1060,15 +1078,15 @@ def execute(code):
 <!-- .element: style="text-align:left" -->
 
 ```sh
-function/region
-  → setup process
-      → apply relocations
-          → randomize layout
+Function/Region
+  → Setup Process
+      → Apply Relocations
+          → Randomize Layout
               → /tmp/perf-PID.{map,dump}
-                  → setup data
-                      → cache eviction
-                          → benchmarking harness
-                              → execute
+                  → Setup Data
+                      → Cache Eviction
+                          → Benchmarking Harness
+                              → Execution
 ```
 
 https://refspecs.linuxbase.org/elf/x86_64-abi.pdf
@@ -1260,13 +1278,14 @@ DRAM access   294</code></pre>
 <!-- .element: style="text-align:left" -->
 
 ```sh
-perf bench func fizz_buzz --exec a.out --event cycles --mode latency -o data/
-perf bench func fizz_buzz --exec a.out --event cycles --mode throughput -o data/
-perf plot -e cycles/operations -- data/
+perf bench func fizz_buzz --exec a.out --mode latency -o data/
+perf bench func fizz_buzz --exec a.out --mode throughput -o data/
+perf plot -t ecdf -e duration_time/operations -- data/
 ```
-<!-- .element: style="text-align:left; font-size: 19px;" -->
+<!-- .element: style="text-align:left; font-size: 20px;" -->
 
 <p align="left">
+[TODO] regenerate image for fizz_buzz duration_time/operations
 <img src="images/co.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
@@ -1277,14 +1296,14 @@ perf plot -e cycles/operations -- data/
 
 ----
 
-<!--#### 'The Best, The Worst, The Real' Execution-->
-<!--[> .element: style="text-align:left" <]-->
+#### 'The Best, The Worst, The Real' Execution
+<!-- .element: style="text-align:left" -->
 
-<!--<p align="left">-->
-<!--<img src="images/range3.png" style="width: 58%; background:white; border:none; box-shadow:none; margin: 0 0;" />-->
-<!--</p>-->
+<p align="left">
+<img src="images/range3.png" style="width: 58%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
 
-<!-------->
+----
 
 #### 'The Best' Execution → happy path
 <!-- .element: style="text-align:left" -->
@@ -1563,7 +1582,8 @@ alias bench='                                                                   
     perf bench func fizz_buzz
     --exec a.out
     --mode latency
-    --event branch-misses,cycles,instructions
+    --event cycles
+    --event branch-misses
     --output branch
 '
 ```
@@ -1572,21 +1592,15 @@ alias bench='                                                                   
 ```
 bench --config.branch=predictable
 bench --config.branch=unpredictable
-bench --data.arg0=0 --config.branch=predictable
-bench --data.arg0=1 --config.branch=predictable
-bench --data.arg0=3 --config.branch=predictable
-bench --data.arg0=5 --config.branch=predictable
-bench --data.arg0=15 --config.branch=predictable
-bench --data.arg0=[$(seq 1 15)] --config.branch=predictable
-bench --data.arg0=[$(seq 1 15)] --config.branch=unpredictable
-bench --data.arg0=[$(seq 1 1024)] --config.branch=predictable
-bench --data.arg0=[$(seq 1 1024)] --config.branch=unpredictable
-bench --data.arg0=[$(shuf -i 1-15)] --config.branch=predictable
-bench --data.arg0=[$(shuf -i 1-15)] --config.branch=unpredictable
-bench --data.arg0=[$(shuf -i 1-1024)] --config.branch=predictable
-bench --data.arg0=[$(shuf -i 1-1024)] --config.branch=unpredictable
+bench --data.arg0=0
+bench --data.arg0=1
+bench --data.arg0=3
+bench --data.arg0=5
+bench --data.arg0=15
+bench --data.arg0=[$(seq 1 100000)] --config.branch=unpredictable
+bench --data.arg0=[$(seq 1 100000)] --config.branch=predictable
 ```
-<!-- .element: style="text-align:left; font-size: 18px;" -->
+<!-- .element: style="text-align:left; font-size: 20px;" -->
 
 ----
 
@@ -1594,11 +1608,12 @@ bench --data.arg0=[$(shuf -i 1-1024)] --config.branch=unpredictable
 <!-- .element: style="text-align:left" -->
 
 ```
-perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
+perf plot -t ecdf -e branch-misses -e cycles -- branch
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 <p align="left">
+[TODO] regenerate plot ecdf -e branch-misses -e cycles
 <img src="images/branch.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
@@ -1801,6 +1816,7 @@ perf view -e cycles,instructions/cycles -s p99 -- find
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
+[TODO] regenerate with find_scan, find_map, find_mph
            file                             name    mode stat  cycles instructions/cycles
  mph.o@3e8b8454        mph_find-predictable-cold latency  p99    3.00                8.00
  mph.o@3e8b8454         mph_find-predictable-hot latency  p99    3.00                8.00
@@ -1819,6 +1835,7 @@ perf plot -t ecdf -e cycles -e instructions/cycles -- find
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
+[TODO] regenerate -t ecdf -e cycles -e instructions/cycles with find_scan, find_map, find_mph
 <img src="images/mph_ecdf.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
 </p>
 
