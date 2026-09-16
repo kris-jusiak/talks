@@ -176,10 +176,10 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
 
 ----
 
-##### AMD Zen5 [Bias]
-<!-- .element: style="text-align:left;" -->
+##### AMD Zen5 [Bias] - https://chipsandcheese.com
+<!-- .element: style="text-align:left; font-size:24px;" -->
 
-<table>
+<table style="width:120%">
 <tr>
   <td>
  <pre style="font-size:16px"><code>main:
@@ -191,20 +191,17 @@ https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
  ret</code></pre>
   </td>
   <td>
-  <img src="images/cpu.png" style="width: 110%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+  <img src="images/cpu.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
   </td>
   </tr>
 </table>
 
-https://chipsandcheese.com
-<!-- .element: style="text-align:left; font-size:18px;" -->
-
 ----
 
 ##### Linux 7.x [Noise]
-<!-- .element: style="text-align:left;" -->
+<!-- .element: style="text-align:left; font-size:24px;" -->
 
-<table>
+<table style="width:103%">
 <tr>
   <td>
  <pre style="font-size:16px"><code>int main() {
@@ -712,33 +709,34 @@ bench:
 ##### `Latency vs Throughput`
 <!-- .element: style="text-align:left" -->
 
-```
-# unroll - (2N × code - N × code) / N
-imul eax, 42             imul eax, 42
-imul eax, 42      -      imul eax, 42
-imul eax, 42
-imul eax, 42
+```cpp
+# latency: unroll - (2N × code - N × code) / N (has to be branchless)
+{code}             {code}
+{code}       -     {code}
+{code}
+{code}
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-```
-# loop - subtract overhead (per iteration)
+```cpp
+# latency: loop - subtract overhead (per iteration)
 loop:             loop:
   {start}           {start}
-  {code}       -
+  {code}     -
   {stop}            {stop}
   dec <reg>         dec <reg>
   jnz loop          jnz loop
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-```
+```cpp
+# throughput: loop - subtract overhead (total)
+{start}           {start}
 loop:             loop:
-  {start}           {start}
-  {code}       -
-  {stop}            {stop}
+  {code}     -
   dec <reg>         dec <reg>
   jnz loop          jnz loop
+{stop}            {stop}
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -902,29 +900,33 @@ rdi             0x404028
 [1,  2,  4]     [0]        // else
 ```
 
-Problem-space reduction?
+Problem-space reduction
 <!-- .element: style="text-align:right; font-size:22px;" -->
 
 ----
 
-##### `setup data`
+##### `Setup data`
 <!-- .element: style="text-align:left" -->
 
 ```python
-data(state, n): # predictable
+data(state, n): # predictable                                           python
     return state.solver.eval_up_to(n)
 
 data(state, n): # unpredcictable
-    return shuffle(state.solver.eval_up_to(n))
+    return distribution(state.solver.eval_up_to(n))
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
+
+<div style="margin: 50px 0px;" />
 
 ```cpp
+data.rdi=[0,0,0,0,0,0,...]           # predictable
+data.rdi=[1,1,1,2,2,2,...]           # predictable
 data.rdi=[1,3,5,1,3,5,...]           # predictable
-data.rdi=[3,5,1,1,3,5,3,1,1,1,0,...] # unpredictable
+data.rdi=[3,5,1,1,3,5,3,1,1,1,0,...] # unpredictable - uniform
+[TODO] add different patterns and distributions
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
-
 ----
 
 #### `Cache eviction`
@@ -935,23 +937,39 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 
 ----
 
+```cpp
+enum class level {
+   L1,
+   L2,
+   L3,
+   DRAM,
+};
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+```cpp
+[[nodiscard]] auto cache_lines(std::span<const std::uintptr_t> addrs) {
+    std::unordered_set<std::uintptr_t> lines{};
+    for (const auto addr : addrs) {
+        lines.insert(addr & ~(cache_line_size - 1));
+    }
+    return {lines.begin(), lines.end()};
+}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
 ```python
-setup:
+setup:                                                                 # python
     for addr in cache_lines(state["mem_read"] + state["mem_write"]):
         refresh(level, addr)
 ```
-
-```asm
-level:
-  L1d, L2d, L3d, DRAM
-```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
 ```cpp
 template<Level level>
-auto refresh(const void* addr) {
-    assert(addr);
+auto refresh(const std::uintptr_t addr) {
     if constexpr (level == Level::L1) {
         load(addr);                              // L1d
         fence();
@@ -1000,6 +1018,7 @@ asm
 ```
 
 ```cpp
+[TODO] fix simple how to mmap (in perf/bench.py) and execute code (might be simplified)
 mmap(...)
 execute()
 ```
@@ -1157,16 +1176,22 @@ perf plot -t ecdf -e cycles -- cache
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
-<p align="left">
-<img src="images/cache_lat.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-</p>
-
-```cpp
-dL1: 4ns
-dL2: 14ns
-dL3: 75ns
-DRAM: 294ns
-```
+<table style="width:120%">
+<tr>
+  <td>
+ <pre style="font-size:16px"><code>benchmark     cycles
+------------ ----
+L1d hit         4
+L2d hit        14
+L3d hit        75
+DRAM access   294
+ </code></pre>
+  </td>
+  <td>
+  <img src="images/cache_lat.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+  </tr>
+</table>
 
 ----
 
@@ -1176,7 +1201,7 @@ DRAM: 294ns
 ```sh
 perf bench func fizz_buzz --exec a.out --mode latency -o data/
 perf bench func fizz_buzz --exec a.out --mode throughput -o data/
-perf view -e duration_time/operations -- data/
+perf plot -e duration_time/operations -- data/
 ```
 
 <p align="left">
@@ -1241,7 +1266,7 @@ perf view -e duration_time/operations -- data/
     },
     "func": {
         "align": "unaligned",
-        "order": "cold"
+        "order": "as-is"
     },
     "cache": {
         "L1i":  {"hit_rate": 0},
@@ -1304,11 +1329,12 @@ perf record
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```cpp
-perf plot -t ecdf -e cycles -- perf.data
+perf plot -t ecdf -e branch-misses,branch-references,cache-misses,cache-references -- perf.data
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 <p align="left">
+[TODO] fix perf_data.png to have branch-misses,branch-references,cache-misses,cache-references from example app but it should show non zeros
 <img src="images/perf_data.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
@@ -1407,6 +1433,20 @@ chain     58%       0%        40%       2%          → retiring (dep chain)
 ##### Backend bound [Memory Bound]
 <!-- .element: style="text-align:left" -->
 
+```cpp
+[TODO] provide simple example of memory bound
+```
+
+```cpp
+g++     -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
+clang++ -std=c++20 -O3 memory_bound.cpp -o memory_bound.out
+```
+
+----
+
+##### Backend bound [Memory Bound]
+<!-- .element: style="text-align:left" -->
+
 ```python
 import perf                                                    # python
 
@@ -1420,8 +1460,8 @@ for hit_rate in [100, 50, 0]:  # hot → warm → cold
         "branch": "predictable",
     }
 
-    df = perf.bench(
-        exec="memory.out",
+    perf.bench(
+        exec="memory_bound.out",
         func="process",
         mode="latency",
         config=config,
@@ -1432,8 +1472,9 @@ for hit_rate in [100, 50, 0]:  # hot → warm → cold
 
 ----
 
-##### Backend bound
+##### Backend bound [Memory Bound]
 <!-- .element: style="text-align:left" -->
+
 
 ```sh
 perf plot -t ecdf -- backend_bound
@@ -1441,6 +1482,7 @@ perf plot -t ecdf -- backend_bound
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
 <p align="left">
+[TODO] regenerate based on the above run (memory_bound.out for gcc,clang and hit rates)
 <img src="images/backend_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
@@ -1450,20 +1492,34 @@ perf plot -t ecdf -- backend_bound
 <!-- .element: style="text-align:left" -->
 
 ```sh
-alias bench='perf bench func fizz_buzz --exec a.out --mode latency'
+alias bench='
+    perf bench func fizz_buzz
+    --exec a.out
+    --mode latency
+    --event branch-misses,cycles,instructions
+    --output branch
+'
 ```
-<!-- .element: style="text-align:left; font-size: 20px;" -->
+<!-- .element: style="text-align:left; font-size: 18px;" -->
 
 ```
-bench -e branch-misses --config.branch=predictable
-bench -e branch-misses --config.branch=unpredictable
-bench -e cycles --data.arg0=1
-bench -e cycles --data.arg0=3
-bench -e cycles --data.arg0=5
-bench -e cycles --data.arg0=`shuf 1-64`
-bench -e branch-misses -o fizz
+bench --config.branch=predictable
+bench --config.branch=unpredictable
+bench --data.arg0=0 --config.branch=predictable
+bench --data.arg0=1 --config.branch=predictable
+bench --data.arg0=3 --config.branch=predictable
+bench --data.arg0=5 --config.branch=predictable
+bench --data.arg0=15 --config.branch=predictable
+bench --data.arg0=[$(seq 1 15)] --config.branch=predictable
+bench --data.arg0=[$(seq 1 15)] --config.branch=unpredictable
+bench --data.arg0=[$(seq 1 1024)] --config.branch=predictable
+bench --data.arg0=[$(seq 1 1024)] --config.branch=unpredictable
+bench --data.arg0=[$(shuf -i 1-15)] --config.branch=predictable
+bench --data.arg0=[$(shuf -i 1-15)] --config.branch=unpredictable
+bench --data.arg0=[$(shuf -i 1-1024)] --config.branch=predictable
+bench --data.arg0=[$(shuf -i 1-1024)] --config.branch=unpredictable
 ```
-<!-- .element: style="text-align:left; font-size: 20px;" -->
+<!-- .element: style="text-align:left; font-size: 18px;" -->
 
 ----
 
@@ -1471,15 +1527,18 @@ bench -e branch-misses -o fizz
 <!-- .element: style="text-align:left" -->
 
 ```
-perf view -- branch
-perf plot -t ecdf -e cycles,instructions,branch-misses,instructions/cycles -- branch
+perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 ```
-<!-- .element: style="text-align:left; font-size: 16px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+<p align="left">
+[TODO] create image/branch.png with bench runs above and plot ecdf as above
+<img src="images/branch.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
 
 ```asm
-- modern branch predictions can - 10'000 x 1/0
-- branch aliasing
-- cold: backward taken, forward not-taken
+- modern branch predictor can learn ~10'000 1/0 branches
+- cold: { backward = taken, forward = not_taken }
 - never-taken: no BTB entry allocated
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
@@ -1490,17 +1549,27 @@ perf plot -t ecdf -e cycles,instructions,branch-misses,instructions/cycles -- br
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-void unused(int);
-void hot_func() {
-    // ... performance critical code ...
+[TODO] fixup examples
+[[gnu::aligned(16), gnu::hot]] auto hot_func_v1(const int* v, int n) {
+    [[clang::code_align(64)]] for (int i = 0; i < n; ++i) {
+        sum += table[v[i] & 63];
+    }
+    return sum;
 }
 
-void unused(int n) {
-    for (auto i = 0; i < n; ++i) {
-        compute();
+[[gnu::aligned(8), gnu::hot]] auto hot_func_v2(const int* v, int n) {
+    for (int i = 0; i < n; ++i) {
+        sum += table[v[i] & 63];
     }
+    return sum;
 }
 ```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+##### Frontend Bound [Fetch Latency]
+<!-- .element: style="text-align:left" -->
 
 ```sh
 g++16 -O3 func.cpp -o a.out                         # order: hot, cold
@@ -1508,11 +1577,15 @@ g++16 -O3 func.cpp -o b.out -Wl,--sort-section=name # order: cold, hot
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
-```sh
-perf bench func hot_func --exec normal.out   --config.function.order=original
-perf bench func hot_func --exec shuffled.out --config.function.order=random
 ```
-<!-- .element: style="text-align:left; font-size:16px;" -->
+perf bench func hot_func --exec codegen.o --mode latency -e cycles
+    --config.func.order=sequential
+    --config.func.order=random
+    --config.func.align=random
+    --config.cache.L1i=hit_rate:0
+   #--config.func.order=hot
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -1523,9 +1596,11 @@ perf bench func hot_func --exec shuffled.out --config.function.order=random
 import perf                                                           # python
 
 hot  = { "L1d": {"hit_rate":100} }
+warm = { "L1d": {"hit_rate":100} }
+cool = { "L1d": {"hit_rate":100} }
 cold = { "L1d": {"hit_rate":0}, ... }
 
-for size in range(1, 1024, 2):
+for size in range(1, 1024):
     for cache in ("hot", "warm", "cool", "cold"):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
@@ -1559,11 +1634,9 @@ perf plot -x data.arg1 -e instructions/cycles -- sort
 </p>
 
 ```cpp
-find (scan - if/else)  → branch
-find (map  - hash map) → branch/cache
-find (ph   - pext + cmov + lookup table) → cache
-find (mph  - hash table in a register)
-find (simd - N at the same time)
+find (scan - if/else)                    → branch
+find (mph  - pext + cmov + lookup table) → cache
+find (map  - hash map)                   → branch/cache
 ```
 
 https://github.com/qlibs/mph
@@ -1579,6 +1652,7 @@ clang++-22 -std=c++26 -O3 -mbmi2 -c find.cpp -o find_clang.o
 
 ```cpp
 auto find_scan(const string_like auto symbol) noexcept:
+  [TODO]
   mov edx, [rcx + rax*8]
   cmp rdx, rdi
   jne .Lnext
@@ -1587,8 +1661,15 @@ auto find_scan(const string_like auto symbol) noexcept:
 
 ```cpp
 auto find_mph(const string_like auto symbol) noexcept:
+  [TODO]
   pext edi, edi, eax
   mov  eax, [rax + rdi*4]
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+```cpp
+auto find_map(const string_like auto symbol) noexcept:
+  [TODO]
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1627,20 +1708,12 @@ for cxx in ("g++-16", "clang++-22"):
 ----
 
 ```
-perf view -e cycles,instructions/cycles -s min,p10,p50,p99,max -- mph
+perf view -e cycles,instructions/cycles -s p99 -- mph
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
-name                    stat  cycles instructions/cycles
-clang-mph_find-hot      p50    1.00                 5.00
-clang-mph_find-worst    p50  252.00                 0.02
-clang-scan_find-hot     p50    1.00                10.00
-clang-scan_find-worst   p50  261.00                 0.06
-gcc-mph_find-hot        p50    3.00                 2.67
-gcc-mph_find-worst      p50    3.00                 2.67
-gcc-scan_find-hot       p50    1.00                10.00
-gcc-scan_find-worst     p50  276.50                 0.06
+[TODO] perf vie woutput
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
@@ -1650,6 +1723,7 @@ perf plot -t ecdf -e cycles -- mph
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
+[TODO] regenerate mph_ecdf.png with above runs
 <img src="images/mph_ecdf.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
 </p>
 
