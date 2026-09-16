@@ -920,11 +920,16 @@ data(state, n): # unpredcictable
 <div style="margin: 50px 0px;" />
 
 ```cpp
-data.rdi=[0,0,0,0,0,0,...]           # predictable
-data.rdi=[1,1,1,2,2,2,...]           # predictable
-data.rdi=[1,3,5,1,3,5,...]           # predictable
-data.rdi=[3,5,1,1,3,5,3,1,1,1,0,...] # unpredictable - uniform
-[TODO] add different patterns and distributions
+data.rdi=[0,0,0,0,0,0,...]              # predictable
+data.rdi=[1,1,1,2,2,2,...]              # predictable
+data.rdi=[1,3,5,1,3,5,...]              # predictable
+data.rdi=[3,5,1,1,3,5,3,1,1,1,0,...]    # unpredictable - uniform
+data.rdi=[0,1,2,3,4,5,0,1,2,3,4,5,...]  # periodic, stride 1
+data.rdi=[0,2,4,6,8,...]                # periodic, stride 2
+data.rdi=[0,0,0,1,0,0,0,1,...]          # sparse - mostly one path
+data.rdi=shuffle(0..n)                  # unpredictable - uniform
+data.rdi=sample(0..n, p=0.25)           # unpredictable - skewed
+data.rdi=zipf(0..n, s=1)                # unpredictable - heavy tail
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 ----
@@ -938,12 +943,7 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 ----
 
 ```cpp
-enum class Level {
-   L1,
-   L2,
-   L3,
-   DRAM,
-};
+enum class Level { L1, L2, L3, DRAM };
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -959,9 +959,8 @@ enum class Level {
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```python
-setup:                                                                 # python
-    for addr in cache_lines(state["mem_read"] + state["mem_write"]):
-        refresh(level, addr)
+for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
+    refresh(level, addr)
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1017,11 +1016,19 @@ asm
               → execute
 ```
 
-```cpp
-[TODO] fix simple how to mmap (in perf/bench.py) and execute code (might be simplified)
-mmap(...)
-execute()
+```python
+def execute(code):                                          # python
+    src = (ctypes.c_char * len(code)).from_buffer_copy(code)
+    mm = mmap.mmap(-1, len(code), 
+        prot=PROT_READ | PROT_WRITE | PROT_EXEC, 
+        flags=MAP_PRIVATE | MAP_ANONYMOUS
+    )
+    ctypes.memmove(mm, src, len(code)) 
+    return ctypes.cast(mm, ctypes.c_void_p).value
 ```
+
+write to object
+<!-- .element: style="text-align:right; font-size:18px;" -->
 
 ----
 
@@ -1323,18 +1330,18 @@ https://github.com/iovisor/bcc
 
 ```cpp
 perf record
-    --event branch-misses,branch-references,cache-misses,cache-references
-    --output perf.data -- ./a.out
+    --event branch-instructions,branch-misses,cache-references,cache-misses
+    --output perf.data 
+    -- ./a.out
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```cpp
-perf plot -t ecdf -e branch-misses,branch-references,cache-misses,cache-references -- perf.data
+perf plot -t ecdf -- perf.data
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 <p align="left">
-[TODO] fix perf_data.png to have branch-misses,branch-references,cache-misses,cache-references from example app but it should show non zeros
 <img src="images/perf_data.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
@@ -1416,14 +1423,14 @@ chain     58%       0%        40%       2%          → retiring (dep chain)
 <table>
 <tr>
 <td>
-<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
 <td>
-<pre style="font-size:12px;margin: 0 0;"><code>Level Category Desktop(%) Server(%) HPC(%)
------ -------- ---------- --------- ------
-1 retiring          20–50     10–30  30–70
-1 bad speculation    5–10      5–10    1–5
-1 frontend bound     5–10     10–25   5–10
-1 backend bound     20–40     20–60  20–40</code></pre>
+<pre style="font-size:12px;margin: 0 0;"><code>Category      Desktop(%) Server(%) HPC(%)
+------------- ---------- --------- ------
+retiring          20–50     10–30  30–70
+bad speculation    5–10      5–10    1–5
+frontend bound     5–10     10–25   5–10
+backend bound     20–40     20–60  20–40</code></pre>
 </td>
 </tr>
 </table>
@@ -1434,7 +1441,18 @@ chain     58%       0%        40%       2%          → retiring (dep chain)
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-[TODO] provide simple example of memory bound
+auto process(const unsigned char* arr, unsigned long n) {
+    auto total = 0;
+    for (auto long i = 0; i < n; ++i) {
+        const auto v = arr[i]; // memory bound
+        if (v & 1) {           // branch (predictable)
+            total += v;
+        } else {
+            total -= v;
+        }
+    }
+    return total;
+}
 ```
 
 ```cpp
@@ -1482,7 +1500,6 @@ perf plot -t ecdf -- backend_bound
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
 <p align="left">
-[TODO] regenerate based on the above run (memory_bound.out for gcc,clang and hit rates)
 <img src="images/backend_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
@@ -1532,7 +1549,6 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 <p align="left">
-[TODO] create image/branch.png with bench runs above and plot ecdf as above
 <img src="images/branch.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
@@ -1551,8 +1567,8 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 ```cpp
 [[gnu::always_inline, gnu::hot]] auto hot_func(const int* v, int n) {
     PERF_LABEL(hot_begin);
+    int sum = 0;
     /*[[clang::code_align(64)]]*/ for (int i = 0; i < n; ++i) {
-        [TODO] fixup examples
         sum += table[v[i] & 63];
     }
     PERF_LABEL(hot_end);
@@ -1582,9 +1598,12 @@ hot_func(...); // inlined second time
 ```
 <!-- .element: style="text-align:left;font-size:20px" -->
 
-```cpp
-[TODO] show that perf lable doesn't add any instructions
+<div style="margin: 50px 0px;" />
+
 ```
+perf info metadata -- exec a.out
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```sh
 file        kind  label      address
@@ -1618,10 +1637,9 @@ perf bench region hot_begin..hot_end
 ```python
 import perf                                                           # python
 
-[TODO] finish the configs
 hot  = { "L1d": {"hit_rate":100} }
-warm = { "L1d": {"hit_rate":100} }
-cool = { "L1d": {"hit_rate":100} }
+warm = { "L1d": {"hit_rate":75} }
+cool = { "L1d": {"hit_rate":50} }
 cold = { "L1d": {"hit_rate":0}, ... }
 
 for size in range(1, 1024):
@@ -1676,24 +1694,51 @@ clang++-22 -std=c++26 -O3 -mbmi2 -c find.cpp -o find_clang.o
 
 ```cpp
 auto find_scan(const string_like auto symbol) noexcept:
-  [TODO]
-  mov edx, [rcx + rax*8]
-  cmp rdx, rdi
-  jne .Lnext
+  mov rax, [rdi]            # symbol bytes (8)
+  xor ecx, ecx
+.Lnext:
+  mov rdx, [rdi + rcx*8]    # candidate
+  cmp rdx, rax
+  je  .Lfound
+  add ecx, 1                # branchy: ~N/2 branch/op
+  cmp ecx, N
+  jb  .Lnext
+.Lfound:
+  ret
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```cpp
 auto find_mph(const string_like auto symbol) noexcept:
-  [TODO]
-  pext edi, edi, eax
-  mov  eax, [rax + rdi*4]
+  mov rax, [rdi]              # hash -> pext -> index
+  pext rax, rax, r9
+  lea rcx, [table + rax*8]
+  mov rax, [rcx]              # single load, no branch
+  cmovne eax, edx             # cmov fixup for missing keys
+  ret
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```cpp
 auto find_map(const string_like auto symbol) noexcept:
-  [TODO]
+  mov rax, [rdi]              # hash
+  imul rax, rax, 0x9e3779b1
+  shr rax, 32                 # bucket = hash % n_buckets
+  mov rcx, [buckets + rax*8]
+  .Lchain:                    # branch/cache: walk the chain
+  test rcx, rcx
+  je  .Lmiss
+  mov rdx, [rcx]
+  cmp rdx, rax
+  jne .Lnext_link
+  mov rax, [rcx + 8]          # found
+  ret
+.Lnext_link:
+  mov rcx, [rcx + 16]
+  jmp .Lchain
+.Lmiss:
+  xor eax, eax
+  ret
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1737,7 +1782,15 @@ perf view -e cycles,instructions/cycles -s p99 -- mph
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
-[TODO] perf vie woutput
+              file                name    mode stat cycles instructions/cycles
+mph_clang.o@9417a855    clang-mph_find-hot latency  p99   1.00                5.00
+mph_clang.o@9417a855  clang-mph_find-worst latency  p99 261.01                0.02
+mph_clang.o@9417a855   clang-scan_find-hot latency  p99   1.00               10.00
+mph_clang.o@9417a855 clang-scan_find-worst latency  p99 374.45                1.77
+  mph_gcc.o@5b94c0b8      gcc-mph_find-hot latency  p99   3.00                8.00
+  mph_gcc.o@5b94c0b8    gcc-mph_find-worst latency  p99   3.00                8.00
+  mph_gcc.o@5b94c0b8     gcc-scan_find-hot latency  p99   1.00               10.00
+  mph_gcc.o@5b94c0b8   gcc-scan_find-worst latency  p99 479.17                2.18
 ```
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
@@ -1747,7 +1800,6 @@ perf plot -t ecdf -e cycles -- mph
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
-[TODO] regenerate mph_ecdf.png with above runs
 <img src="images/mph_ecdf.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
 </p>
 

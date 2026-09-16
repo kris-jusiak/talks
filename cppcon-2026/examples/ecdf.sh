@@ -42,15 +42,17 @@ chart codegen_ecdf.png cycles       data/codegen
 chart fizz_ecdf.png   cycles        data/fizz
 chart backend_ecdf.png cycles       data/backend
 chart mph_ecdf.png    cycles        data/mph
+chart branch.png      branch-misses data/branch
 
 # perf.data is a `perf record` output; create one from a real workload if absent.
 if [ ! -e "${ROOT}/perf.data" ]; then
-  echo "### record perf.data (a.out, cycles + branch/cache misses)"
+  echo "### record perf.data (a.out, branch + cache misses)"
   g++ -O2 -o /tmp/.perf_a.out "${ROOT}/examples/trace.cpp"
-  perf record -e cycles,branch-misses,cache-misses,cache-references \
-    -o "${ROOT}/perf.data" -- /tmp/.perf_a.out 2000000000
+  perf record \
+      --event branch-instructions,branch-misses,cache-references,cache-misses \
+      -o "${ROOT}/perf.data" -- /tmp/.perf_a.out 2000000000
   rm -f /tmp/.perf_a.out
 fi
-chart perf_data.png cycles perf.data
+chart perf_data.png branch-instructions,branch-misses,cache-references,cache-misses perf.data
 
 echo "done: $(ls -1 "${ROOT}"/images/*.png | wc -l) images"
