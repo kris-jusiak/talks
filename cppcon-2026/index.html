@@ -1562,7 +1562,7 @@ for hit_rate in [100, 50, 0]:  # hot → warm → cold
 
 
 ```sh
-perf plot -t ecdf -g config.cache.L1d.hit_rate,file -- data/backend
+perf plot -t ecdf -- backend
 ```
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
@@ -1660,7 +1660,7 @@ perf plot -t ecdf -e branch-misses -e cycles -- branch
 <!-- .element: style="text-align:left" -->
 
 ```
-for l1i in 100 0; do for align in 16 1; do
+for l1i in 0 100; do for align in 1 16; do
   perf bench region hot_begin..hot_end
       --exec codegen.out
       --mode latency
@@ -1688,7 +1688,7 @@ warm = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":100}}
 cool = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":100}}
 cold = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":0}}
 
-for size in [1, 64, 128, 256, 512, 1024]:
+for size in [1, 256, 512, 1024]:
     for cache in ("hot", "warm", "cool", "cold"):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
@@ -1705,7 +1705,7 @@ for size in [1, 64, 128, 256, 512, 1024]:
 ----
 
 ```sh
-perf plot -t ecdf -g config.branch,config.cache -e instructions/cycles -- sort
+perf plot -t ecdf -e instructions/cycles -- sort
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1808,7 +1808,7 @@ for cxx in ("gcc", "clang"):
 ----
 
 ```
-perf view -e cycles,instructions/cycles -s p99 -- find
+perf view --event cycles --stat p99 -- find
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
@@ -1830,7 +1830,7 @@ mph.so@06496688  find_scan-unpredictable-hot latency  p99 176.01               1
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
 ```sh
-perf plot -t ecdf -e cycles -e instructions/cycles -- find
+perf plot -t ecdf -e cycles -- find
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
