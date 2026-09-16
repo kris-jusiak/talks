@@ -1005,15 +1005,13 @@ asm
 ```
 
 ```python
-[TODO] execute the code keep it simple
-def execute(code):                                          # python
-    src = (ctypes.c_char * len(code)).from_buffer_copy(code)
+def execute(code):
     mm = mmap.mmap(-1, len(code),
         prot=PROT_READ | PROT_WRITE | PROT_EXEC,
         flags=MAP_PRIVATE | MAP_ANONYMOUS
     )
-    ctypes.memmove(mm, src, len(code))
-    return ctypes.cast(mm, ctypes.c_void_p).value
+    mm.write(bytes(code))
+    return ctypes.addressof(ctypes.c_char.from_buffer(mm))()
 ```
 
 write to object
@@ -1604,17 +1602,20 @@ codegen.out label hot_end    0x40119c
 <!-- .element: style="text-align:left" -->
 
 ```
-[TODO] run for L1I:100, 0 and func.align: 16, 1
-perf bench region hot_begin..hot_end
-    --exec codegen.out
-    --mode latency
-    --config.cache.L1i=hit_rate:0
-    --config.func.align=16
-    --config.func.order=as-is
+for l1i in 100 0; do for align in 16 1; do
+  perf bench region hot_begin..hot_end
+      --exec codegen.out
+      --mode latency
+      --config.cache.L1i=hit_rate:$l1i
+      --config.func.align=$align
+      --config.func.order=as-is
+done; done
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-[TODO] genearete <img> for ecdf plot
+<p align="left">
+<img src="images/codegen_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
 
 ----
 
@@ -1624,21 +1625,22 @@ perf bench region hot_begin..hot_end
 ```python
 import perf                                                           # python
 
-[TODO] fix syntax
-hot  = { L1d:0 }
-warm = { L1d:0, L2d:100 }
-cool = { L1d:0, L2d:0, L3d:100 }
-cold = { L1d:0, L2d:0, L3d:0 }
+hot  = {"L1d": {"hit_rate": 100}}
+warm = {"L1d": {"hit_rate": 0}, "L2d": {"hit_rate": 100}}
+cool = {"L1d": {"hit_rate": 0}, "L2d": {"hit_rate": 0}, "L3d": {"hit_rate": 100}}
+cold = {"L1d": {"hit_rate": 0}, "L2d": {"hit_rate": 0}, "L3d": {"hit_rate": 0}}
+caches = {"hot": hot, "warm": warm, "cool": cool, "cold": cold}
 
 for size in [1, 64, 128, 256, 512, 1024]:
     for cache in ("hot", "warm", "cool", "cold"):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
-                exec="libstdc++.so",
-                func="std::sort",
+                exec="std_sort.so", # wrapper around std::sort (header-only, no symbol in libstdc++.so)
+                func="std_sort",
                 mode="latency",
-                config={"branch": branch, "cache": cache},
-                event=["cycles", "instructions"],
+                config={"branch": branch, "cache": caches[cache]},
+                data={"arg1": size},
+                event=["cycles,instructions"],
             )
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
@@ -1646,8 +1648,7 @@ for size in [1, 64, 128, 256, 512, 1024]:
 ----
 
 ```sh
-[TODO] regenerate
-perf plot -x data.arg1 -e instructions/cycles -- sort
+perf plot -g config.branch,config.cache -t line -x data.arg1 -e instructions/cycles -- std_sort
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1682,13 +1683,11 @@ clang++ -std=c++26 -O3 -mbmi2 -c find.cpp -o find_clang.o
 <!-- .element: style="text-align:left; font-size:10px;" -->
 
 ```cpp
-[TODO] update for int
 auto find_scan(int) noexcept:
-  mov rax, [rdi]            # symbol bytes (8)
+  mov eax, edi              # key (int, 4 bytes)
   xor ecx, ecx
 .Lnext:
-  mov rdx, [rdi + rcx*8]    # candidate
-  cmp rdx, rax
+  cmp [table + rcx*4], eax  # candidate (int)
   je  .Lfound
   add ecx, 1                # branchy: ~N/2 branch/op
   cmp ecx, N
@@ -1699,19 +1698,17 @@ auto find_scan(int) noexcept:
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
 ```cpp
-[TODO] update for int
 auto find_map(int) noexcept:
-  mov rax, [rdi]              # hash
-  imul rax, rax, 0x9e3779b1
-  shr rax, 32                 # bucket = hash % n_buckets
+  mov eax, edi              # key (int, 4 bytes)
+  imul eax, eax, 0x9e3779b1
+  shr eax, 24               # bucket = hash % n_buckets
   mov rcx, [buckets + rax*8]
   .Lchain:                    # branch/cache: walk the chain
   test rcx, rcx
   je  .Lmiss
-  mov rdx, [rcx]
-  cmp rdx, rax
+  cmp [rcx], eax
   jne .Lnext_link
-  mov rax, [rcx + 8]          # found
+  mov eax, [rcx + 8]          # found
   ret
 .Lnext_link:
   mov rcx, [rcx + 16]
@@ -1723,13 +1720,12 @@ auto find_map(int) noexcept:
 <!-- .element: style="text-align:left; font-size:12px;" -->
 
 ```cpp
-[TODO] update for int
 auto find_mph(int) noexcept:
-  mov rax, [rdi]              # hash -> pext -> index
+  mov eax, edi              # key (int, 4 bytes)
   pext rax, rax, r9
-  lea rcx, [table + rax*8]
-  mov rax, [rcx]              # single load, no branch
-  cmovne eax, edx             # cmov fixup for missing keys
+  lea rcx, [table + rax*4]
+  mov eax, [rcx]            # single load, no branch
+  cmovne eax, edx           # cmov fixup for missing keys
   ret
 ```
 <!-- .element: style="text-align:left; font-size:12px;" -->
@@ -1760,7 +1756,6 @@ perf view -e cycles,instructions/cycles -s p99 -- mph
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ```sh
-[TODO] regenerate
               file                name    mode stat cycles instructions/cycles
 mph_clang.o@9417a855    clang-mph_find-hot latency  p99   1.00                5.00
 mph_clang.o@9417a855  clang-mph_find-worst latency  p99 261.01                0.02
@@ -1774,7 +1769,6 @@ mph_clang.o@9417a855 clang-scan_find-worst latency  p99 374.45                1.
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
 ```cpp
-[TODO] regenerate
 perf plot -t ecdf -e cycles -- mph
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
