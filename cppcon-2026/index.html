@@ -242,8 +242,8 @@ https://makelinux.github.io/kernel/map
 #### Performance [Monitoring Unit]
 <!-- .element: style="text-align:left" -->
 
-<img src="images/perf_map.png" style="width: 43%; background:none; border:none; box-shadow:none;" />
-<img src="images/bpf.png" style="width: 49%; background:none; border:none; box-shadow:none;" />
+<img src="images/perf_map.png" style="width: 48%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/bpf.png" style="width: 51%; background:none; border:none; box-shadow:none; margin; 0 0;" />
 
 ```
  CPU                      Intel        Amd          Arm
@@ -288,14 +288,14 @@ https://makelinux.github.io/kernel/map
 <table>
 <tr>
 <td>
-<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
 <td>
-<pre style="font-size:12px;margin: 0 0;"><code>Level Category Desktop(%) Server(%) HPC(%)
------ -------- ---------- --------- ------
-1 retiring          20–50     10–30  30–70
-1 bad speculation    5–10      5–10    1–5
-1 frontend bound     5–10     10–25   5–10
-1 backend bound     20–40     20–60  20–40</code></pre>
+<pre style="font-size:12px;margin: 0 0;"><code>Category      Desktop(%) Server(%) HPC(%)
+------------- ---------- --------- ------
+retiring          20–50     10–30  30–70
+bad speculation    5–10      5–10    1–5
+frontend bound     5–10     10–25   5–10
+backend bound     20–40     20–60  20–40</code></pre>
 </td>
 </tr>
 </table>
@@ -642,7 +642,7 @@ Machine Code                   # C++, ...
 
 ----
 
-#### Benchmarking Harness
+#### Benchmarking harness
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -938,7 +938,7 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 ----
 
 ```cpp
-enum class level {
+enum class Level {
    L1,
    L2,
    L3,
