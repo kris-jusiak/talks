@@ -993,6 +993,9 @@ https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.h
 
 ----
 
+###### `Native code generation [JIT/AOT] `
+<!-- .element: style="text-align:left" -->
+
 ```cpp
 asm
   → setup data
@@ -1013,7 +1016,10 @@ def execute(code):
 
 ----
 
-```cpp
+###### `Native code generation [JIT/AOT] `
+<!-- .element: style="text-align:left" -->
+
+```sh
 function/region
   → setup process
       → apply relocations
@@ -1058,7 +1064,7 @@ lstopo
 ```
 perf info cpu -c cpu,numa,arch,model,family,stepping,freq,L1i,L1d,L2,L3
 ```
-<!-- .element: style="text-align:left;font-size:20px" -->
+<!-- .element: style="text-align:left;font-size:18px" -->
 
 ```sh
 cpu  numa  arch    model  family  stepping  freq    L1i   L1d   L2      L3
@@ -1073,7 +1079,7 @@ cpu  numa  arch    model  family  stepping  freq    L1i   L1d   L2      L3
   8     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
   9     0  x86_64    154       6         3  2.6Ghz  64Kb  32Kb  2048Kb  24Mb
 ```
-<!-- .element: style="text-align:left;font-size:18px" -->
+<!-- .element: style="text-align:left;font-size:16px" -->
 
 ---
 
@@ -1087,7 +1093,7 @@ def AlderlakePModel : SchedMachineModel {
   ...
 }
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 https://github.com/llvm/llvm-project/tree/main/llvm/lib/Target
 <!-- .element: style="text-align:left; font-size: 18px; margin: 5px 0px;" -->
@@ -1506,7 +1512,7 @@ perf plot -t ecdf -g config.cache.L1d.hit_rate,file -- data/backend
 <!-- .element: style="text-align:left" -->
 
 ```sh
-alias bench='
+alias bench='                                                                      # sh
     perf bench func fizz_buzz
     --exec a.out
     --mode latency
@@ -1577,34 +1583,17 @@ perf plot -t ecdf -e branch-misses,instructions/cycles -- branch
 
 <div style="margin: 50px 0px;" />
 
+```cpp
+#define PERF_LABEL(name)                                 perf info metadata -- exec a.out
+    asm volatile(                                        file        kind  label      address
+        ".pushsection perf.label, \"aw?\", @progbits\n"  codegen.out label hot_begin  0x401154 # inlined
+        ".quad 0f\n"                                     codegen.out label hot_begin  0x401184 # inlined
+        ".asciz \"" #name "\"\n"                         ...
+        ".popsection\n"                                  codegen.out label hot_end    0x401169 # inlined
+        "0:\n"                                           codegen.out label hot_end    0x40119c # inlined
+    ); name:                                             ...
 ```
-#define PERF_LABEL(name) // "global" label
-    asm volatile(
-        ".pushsection perf.label, \"aw?\", @progbits\n"
-        ".quad 0f\n"
-        ".asciz \"" #name "\"\n"
-        ".popsection\n"
-        "0:\n"
-    ); name:
-```
-<!-- .element: style="text-align:left;font-size:16px" -->
-
-----
-
-```
-perf info metadata -- exec a.out
-```
-
-```sh
-file        kind  label      address
-codegen.out label hot_begin  0x401154 # inlined first time
-codegen.out label hot_begin  0x401184 # inlined second time
-...
-codegen.out label hot_end    0x401169
-codegen.out label hot_end    0x40119c
-...
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left;font-size:15px" -->
 
 ----
 
