@@ -632,12 +632,33 @@ What if ...?</code></pre>
 #### Symbolic Benchmarking
 <!-- .element: style="text-align:left" -->
 
+**Non-Intrusive**
+<!-- .element: style="text-align:left; font-size:20px;" -->
+    Benchmark existing binaries, libraries, and assembly without modifying code
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+**Complete Path Coverage**
+<!-- .element: style="text-align:left; font-size:20px;" -->
+    Discover and exercise all relevant execution paths
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+**Microarchitectural Control**
+<!-- .element: style="text-align:left; font-size:20px;" -->
+    Control relevant hardware state
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+**Statistical Robustness**
+<!-- .element: style="text-align:left; font-size:20px;" -->
+    Capture statistically robust measurements on real hardware
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
 ```python
 Machine Code                   # C++, ...
   → Symbolic Exploration       # path1, path2, ..., pathN
       → Data Synthesis         # path1: rdi=[0], mem[addr]=[2], ...
           → Native Execution   # 0b010101010101100100010100111
 ```
+<!-- .element: class="fragment" -->
 
 ----
 
@@ -939,7 +960,7 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 ----
 
 ```cpp
-enum class Level { L1, L2, L3, DRAM };
+enum class Level { L1, L2, L3, DRAM }; // d-cache
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -953,7 +974,8 @@ for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
 
 ```cpp
 template<Level level>
-auto refresh(const std::uintptr_t addr) {
+auto refresh(const void* addr) {
+    assert(addr);
     if constexpr (level == Level::L1) {
         load(addr);                              // L1d
         fence();
@@ -1214,13 +1236,14 @@ DRAM access   294</code></pre>
 <!-- .element: style="text-align:left" -->
 
 ```sh
-perf bench func fizz_buzz --exec a.out --mode latency -o data/
-perf bench func fizz_buzz --exec a.out --mode throughput -o data/
-perf plot -e duration_time/operations -- data/
+perf bench func fizz_buzz --exec a.out --event cycles --mode latency -o data/
+perf bench func fizz_buzz --exec a.out --event cycles --mode throughput -o data/
+perf plot -e cycles/operations -- data/
 ```
+<!-- .element: style="text-align:left; font-size: 19px;" -->
 
 <p align="left">
-<img src="images/lat_thr.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/co.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
