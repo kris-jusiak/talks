@@ -1,13 +1,8 @@
-// Minimal perfect-hash lookup (qlibs/mph) vs a linear scan, 128 keys.
-// Build: g++ -std=c++20 -O3 -mbmi2 -c mph.cpp -o mph.o
-// Bench: perf bench func mph_find --exec mph.o --mode latency -e cycles
-//   --config.branch=unpredictable --config.memory=cold   # mph stays flat,
-//                                                        # the scan explodes
+// g++ -std=c++20 -O3 mph.cpp -I ~/projects/qlibs/mph/ -mbmi2 -c mph.o
 #include <array>
 #include <cstdint>
 #include <unordered_map>
-
-#include "/home/kris/projects/qlibs/mph/mph"
+#include <mph>
 
 static constexpr auto pairs = [] {
     std::array<std::pair<unsigned, unsigned>, 128> a{};
@@ -22,7 +17,7 @@ extern "C" int find_mph(std::uint64_t key) {
 }
 
 extern "C" int find_scan(std::uint64_t key) {
-    for (const auto& [k, v] : pairs]
+    for (const auto& [k, v] : pairs) {
         if (k == key) {
             return v;
         }
@@ -31,13 +26,15 @@ extern "C" int find_scan(std::uint64_t key) {
 }
 
 extern "C" int find_map(std::uint64_t key) {
-  static constexpr auto map = [] {
+  static const auto map = [] {
     std::unordered_map<unsigned, unsigned> map{};
-    for (const auto& [k, v] : pairs]) {
+    for (const auto& [k, v] : pairs) {
          map[k] = v;
     }
     return map;
   }();
-  const auto it = mp.find(key);
-  return it != mp.end() ? it->second : -1;
+  const auto it = map.find(key);
+  return it != map.end() ? it->second : -1;
 }
+
+int main(){}
