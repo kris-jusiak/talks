@@ -1661,7 +1661,7 @@ perf plot -x data.arg1 -e instructions/cycles -- sort
 ```cpp
 find_scan (if/else)                    → branch
 find_map  (hash-map)                   → branch/cache
-find_mph  (pext + cmov + lookup table) → cache
+find_mph  (pext + lookup table + cmov) → cache
 ```
 
 https://github.com/qlibs/mph
