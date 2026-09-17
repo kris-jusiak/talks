@@ -871,11 +871,11 @@ rdi     0x404028
 
 ----
 
-##### `Branch Predictor`
+##### `Branch prediction`
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-je .Lmiss
+jmp .Lmiss
 ```
 
 ```asm
@@ -884,6 +884,50 @@ je .Lmiss
 - Never Taken: no BTB entry allocated
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
+
+----
+
+###### `Branch prediction`
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+cmp eax, 2;je +0;nop
+
+```cpp
+uint64_t load(const uint64_t* p) { return *p; }           // mov rax, [rdi]
+void store(uint64_t* p, uint64_t value) { *p = value; }   // mov [rdi], rsi
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+```cpp
+perf bench asm 'mov rax, [rdi]'           perf bench asm 'mov rax, [rdi]'
+    --mode latency                            --mode latency
+    --event cycles                            --event cycles
+    --config.cache.L1d=hit_rate:100           --config.cache.L1d=hit_rate:0
+    --name mov-hot                            --name mov-cold
+    --output cache                            --output cache
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+```cpp
+perf plot -t ecdf -e cycles -- cache
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+<table style="width:117%">
+<tr>
+  <td>
+ <pre style="font-size:16px"><code>benchmark  cycles
+----------- -----
+L1d hit         4
+L2d hit        14
+L3d hit        75
+DRAM access   294</code></pre>
+  </td>
+  <td>
+  <img src="images/cache_lat.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+  </tr>
+</table>
 
 ----
 
@@ -918,7 +962,7 @@ unpredictable = sample(0..n, p=0.25)
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-mov r11, [rax]
+mov rax, [rdi]
 ```
 
 https://www.akkadia.org/drepper/cpumemory.pdf
@@ -972,40 +1016,73 @@ https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.h
 
 ----
 
-```cpp
-// hirearchy
-level = {
-    0x03232: L1d:100, L2d:70, L3d:50, DRAM:100
-}
-```
+##### Cache eviction
+<!-- .element: style="text-align:left; font-size:24px; " -->
 
 ```python
 for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
-    refresh(addr, level[addr])
+    refresh(addr, distribution(cache(addr)))
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
+
+```cpp
+"cache": {
+    "default": {
+        "L1":   {"hit_rate": 100}, # hot
+    },
+    "0x0048F2A0" : {
+        "L1":   {"hit_rate": 100},
+    },
+    "0x00A73C18" : {
+        "L1":   {"hit_rate": 50},
+        "L2":   {"hit_rate": 100},
+        "L3":   {"hit_rate": 100},
+        "DRAM": {"hit_rate": 100},
+    },
+    "0x7FF2D4B0" : {
+        "L1":   {"hit_rate": 25},
+        "L2":   {"hit_rate": 50},
+        "L3":   {"hit_rate": 75},
+        "DRAM": {"hit_rate": 100},
+    },
+    "0x005C91E4" : {
+        "L1":   {"hit_rate": 0},
+        "L2":   {"hit_rate": 0},
+        "L3":   {"hit_rate": 0},
+        "DRAM": {"hit_rate": 100}, # cold
+    },
+    ...
+}
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
 ###### `Cache eviction`
-<!-- .element: style="text-align:left" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```cpp
-perf bench asm 'mov r11, [rax]'           perf bench asm 'mov r11, [rax]'
+uint64_t load(const uint64_t* p) { return *p; }           // mov rax, [rdi]
+void store(uint64_t* p, uint64_t value) { *p = value; }   // mov [rdi], rsi
+```
+<!-- .element: style="text-align:left; font-size:15px;" -->
+
+```cpp
+perf bench asm 'mov rax, [rdi]'           perf bench asm 'mov rax, [rdi]'
     --mode latency                            --mode latency
     --event cycles                            --event cycles
     --config.cache.L1d=hit_rate:100           --config.cache.L1d=hit_rate:0
     --name mov-hot                            --name mov-cold
     --output cache                            --output cache
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 ```cpp
 perf plot -t ecdf -e cycles -- cache
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
-<table style="width:120%">
+<table style="width:117%">
 <tr>
   <td>
  <pre style="font-size:16px"><code>benchmark  cycles
@@ -1598,27 +1675,30 @@ auto sum(const std::byte* data, std::size_t n) {
     return sum;
 }
 ```
+<!-- .element: style="text-align:left; font-size: 18px;" -->
 
 ```python
-for hit_rate in [100, 50, 0]:  # hot → warm → cold            # python
-    config = {
-        "cache": {
-          "L1d": {"hit_rate": hit_rate},
-          "L2d": {"hit_rate": 100},
-          "L3d": {"hit_rate": 100}
-        },
-        "branch": "predictable",
-    }
+for size in [1, 256, 512, 1024]:                                               # python
+    for branch in ("predictable", "unpredictable"):
+        for hit_rate in [100, 50, 0]:  # hot → warm → cold
+            config = {
+                "cache": {
+                  "L1d": {"hit_rate": hit_rate},
+                  "L2d": {"hit_rate": 100},
+                  "L3d": {"hit_rate": 100}
+                },
+                "branch": branch,
+            }
 
-    perf.bench(
-        exec="a.out",
-        func="sum",
-        mode="latency",
-        config=config,
-        event=["cycles"],
-    )
+            perf.bench(
+                exec="a.out",
+                func="sum",
+                mode="latency",
+                config=config,
+                event=["cycles"],
+            )
 ```
-<!-- .element: style="text-align:left; font-size: 22px;" -->
+<!-- .element: style="text-align:left; font-size: 18px;" -->
 
 ----
 
@@ -1721,7 +1801,6 @@ bench --config.branch=unpredictable                                   # uniform,
 ```
 perf plot -t bar -e cycles -- branch
 ```
-<!-- .element: style="text-align:left; font-size:15px; margin: 0 0;" -->
 
 <p align="left">
 <img src="images/b1.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
@@ -1732,7 +1811,6 @@ perf plot -t bar -e cycles -- branch
 ```
 perf plot -t ecdf -e cycles -- branch
 ```
-<!-- .element: style="text-align:left; font-size:15px; margin: 0 0;" -->
 
 <p align="left">
 <img src="images/b2.png" style="width: 120%; background:white; border:none; box-shadow:none; margin: 0 0;" />
@@ -1745,7 +1823,7 @@ perf plot -t ecdf -e cycles -- branch
 
 ```cpp
 /*[[gnu::aligned(16)]]*/
-[[gnu::hot, gnu::always_inline]] auto hot_func(const std::byte* data) {
+[[gnu::hot, gnu::always_inline]] auto hot_func(std::span<std::byte> data) {
     PERF_LABEL(hot_begin);
     /*[[clang::code_align(16)]]*/ for (auto i = 0; i < n; ++i) {
         // ...
@@ -1806,7 +1884,6 @@ for size in [1, 256, 512, 1024]:
 ```sh
 perf plot -t ecdf -e instructions/cycles -- sort
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
 
 <p align="left">
 <img src="images/sort_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
@@ -1951,19 +2028,19 @@ for cxx in ("gcc", "clang"):                                   # python
 ```sh
 perf plot -t ecdf -e cycles -- find
 ```
-<!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
-<img src="images/mph_ecdf.png" style="width: 50%; background:white; border:none; box-shadow:none;" />
+<img src="images/mph_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
+----
+
 ```sh
-perf plot -t ecdf -e cycles/instructions -- find
+perf plot -t ecdf -e instructions/cycles -- find
 ```
-<!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
-<img src="images/mph_ecdf_ipc.png" style="width: 50%; background:white; border:none; box-shadow:none;" />
+<img src="images/mph_ecdf_ipc.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
           </script>
         </section>
