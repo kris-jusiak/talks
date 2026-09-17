@@ -533,7 +533,7 @@ auto bench(std::invocable auto code, std::integral auto iterations) {
 
 ----
 
-#### Hardware effects
+### Hardware effects
 <!-- .element: style="text-align:left" -->
 
 https://people.cs.umass.edu/~emery/pubs/stabilizer-asplos13.pdf
@@ -683,109 +683,6 @@ lut:
     .long 1
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
-
-----
-
-##### `Benchmarking Harness`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-bench:
-  {setup}     # data / state
-  {start}     # rdtsc / rdpmc
-  {code}      # latency vs throughput
-  {stop}      # rdtscp / rdpmc
-  {teardown}
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-```
- CPU                      Intel        Amd          Arm
-  ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
-  └─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-`echo 2 | sudo tee /sys/devices/cpu_core/rdpmc`
-<!-- .element: style="text-align:right; font-size:18px;" -->
-
-----
-
-##### `Latency vs Throughput`
-<!-- .element: style="text-align:left" -->
-
-<table>
-<tr>
-<td>
-<img src="images/lat.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
-</td>
-<td>
-<pre><code style="width:760px">Latency
- ├─ Time it takes for a single operation to complete
- ├─ ns/op
- └─ func()
-</code></pre>
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td>
-<img src="images/thr.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
-</td>
-<td>
-<pre><code style="width:760px">Throughput
- ├─ Total number of operations
- ├  completed in a given amount of time
- ├─ ops/s, Gb/s, ...
- ├─ ns/ops - reciprocal throughput = inverse throughput
- └─ for (...) {
-      func()
-    }
-</code></pre>
-</td>
-</tr>
-</table>
-
-----
-
-##### `Latency vs Throughput`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-# latency: unroll - (2N × code - N × code) / N (has to be branchless)
-{code}             {code}
-{code}       -     {code}
-{code}
-{code}
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-```cpp
-# latency: loop - subtract overhead (per iteration)
-loop:             loop:
-  {start}           {start}
-  {code}     -
-  {stop}            {stop}
-  dec <reg>         dec <reg>
-  jnz loop          jnz loop
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-```cpp
-# throughput: loop - subtract overhead (total)
-{start}           {start}
-loop:             loop:
-  {code}     -
-  dec <reg>         dec <reg>
-  jnz loop          jnz loop
-{stop}            {stop}
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-https://github.com/andreas-abel/nanoBench
-<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -1066,6 +963,164 @@ for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
 
 ----
 
+###### `Cache eviction`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+perf bench asm 'mov r11, [rax]'           perf bench asm 'mov r11, [rax]'
+    --mode latency                            --mode latency
+    --event cycles                            --event cycles
+    --config.cache.L1d=hit_rate:100           --config.cache.L1d=hit_rate:0
+    --name mov-hot                            --name mov-cold
+    --output cache                            --output cache
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+```cpp
+perf plot -t ecdf -e cycles -- cache
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+<table style="width:120%">
+<tr>
+  <td>
+ <pre style="font-size:16px"><code>benchmark  cycles
+----------- -----
+L1d hit         4
+L2d hit        14
+L3d hit        75
+DRAM access   294</code></pre>
+  </td>
+  <td>
+  <img src="images/cache_lat.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+  </td>
+  </tr>
+</table>
+
+----
+
+##### `Benchmarking Harness`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+bench:
+  {setup}     # data / state
+  {start}     # rdtsc / rdpmc
+  {code}      # latency vs throughput
+  {stop}      # rdtscp / rdpmc
+  {teardown}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+```
+ CPU                      Intel        Amd          Arm
+  ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+  └─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+`echo 2 | sudo tee /sys/devices/cpu_core/rdpmc`
+<!-- .element: style="text-align:right; font-size:18px;" -->
+
+----
+
+##### `Latency vs Throughput`
+<!-- .element: style="text-align:left" -->
+
+<table>
+<tr>
+<td>
+<img src="images/lat.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
+</td>
+<td>
+<pre><code style="width:760px">Latency
+ ├─ Time it takes for a single operation to complete
+ ├─ ns/op
+ └─ func()
+</code></pre>
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+<img src="images/thr.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
+</td>
+<td>
+<pre><code style="width:760px">Throughput
+ ├─ Total number of operations
+ ├  completed in a given amount of time
+ ├─ ops/s, Gb/s, ...
+ ├─ ns/ops - reciprocal throughput = inverse throughput
+ └─ for (...) {
+      func()
+    }
+</code></pre>
+</td>
+</tr>
+</table>
+
+----
+
+##### `Latency vs Throughput`
+<!-- .element: style="text-align:left" -->
+
+```cpp
+# latency: unroll - (2N × code - N × code) / N (has to be branchless)
+{code}             {code}
+{code}       -     {code}
+{code}
+{code}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+```cpp
+# latency: loop - subtract overhead (per iteration)
+loop:             loop:
+  {start}           {start}
+  {code}     -
+  {stop}            {stop}
+  dec <reg>         dec <reg>
+  jnz loop          jnz loop
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+```cpp
+# throughput: loop - subtract overhead (total)
+{start}           {start}
+loop:             loop:
+  {code}     -
+  dec <reg>         dec <reg>
+  jnz loop          jnz loop
+{stop}            {stop}
+```
+<!-- .element: style="text-align:left; font-size:20px;" -->
+
+https://github.com/andreas-abel/nanoBench
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+----
+
+###### `Latency vs Throughput`
+<!-- .element: style="text-align:left" -->
+
+```sh
+perf bench func fizz_buzz --exec a.out --mode latency -o data/
+perf bench func fizz_buzz --exec a.out --mode throughput -o data/
+perf plot -t ecdf -e duration_time/operations -- data/
+```
+<!-- .element: style="text-align:left; font-size: 20px;" -->
+
+<p align="left">
+<img src="images/co.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+duration_time/operations = latency | inverse throughput (reciprocal throughput)
+<!-- .element: style="text-align:right; font-size: 16px;" -->
+
+----
+
 ##### `More...`
 <!-- .element: style="text-align:left;" -->
 
@@ -1203,9 +1258,6 @@ perf bench asm 'rdtsc' --mode latency | perf plot -t box
 
 ----
 
-###### `Instruction latency`
-<!-- .element: style="text-align:left" -->
-
 ```cpp
 perf bench asm 'add  eax, 0'    --mode latency -e cycles -o insn
 perf bench asm 'sub  eax, 0'    --mode latency -e cycles -o insn
@@ -1229,7 +1281,7 @@ perf plot -t bar -- insn
 add  eax, 0    latency   max   1.00
 sub  eax, 0    latency   max   1.00
 imul eax, 0    latency   max   3.00
-cdq; idiv ecx; latency   max  12.00
+cdq; idiv ecx; latency   max  15.00
 </code></pre>
 </td>
 </tr>
@@ -1244,67 +1296,12 @@ perf bench asm 'imul eax, 0;cdq; idiv ecx;' -S | llvm-mca
 #uOps Latency  Instruction
     1       3  imul eax, eax, 0
     1       1  cdq
-    1      12  idiv ecx
+    4      15  idiv ecx
 ```
 <!-- .element: style="text-align:left; font-size: 15px;" -->
 
 https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 <!-- .element: style="text-align:left; font-size:15px;" -->
-
-----
-
-###### `Cache eviction`
-<!-- .element: style="text-align:left" -->
-
-```cpp
-perf bench asm 'mov r11, [rax]'           perf bench asm 'mov r11, [rax]'
-    --mode latency                            --mode latency
-    --event cycles                            --event cycles
-    --config.cache.L1d=hit_rate:100           --config.cache.L1d=hit_rate:0
-    --name add-hot                            --name add-cold
-    --output cache                            --output cache
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
-
-```cpp
-perf plot -t ecdf -e cycles -- cache
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
-
-<table style="width:120%">
-<tr>
-  <td>
- <pre style="font-size:16px"><code>benchmark  cycles
------------ -----
-L1d hit         4
-L2d hit        14
-L3d hit        75
-DRAM access   294</code></pre>
-  </td>
-  <td>
-  <img src="images/cache_lat.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-  </td>
-  </tr>
-</table>
-
-----
-
-###### `Latency vs Throughput`
-<!-- .element: style="text-align:left" -->
-
-```sh
-perf bench func fizz_buzz --exec a.out --mode latency -o data/
-perf bench func fizz_buzz --exec a.out --mode throughput -o data/
-perf plot -t ecdf -e duration_time/operations -- data/
-```
-<!-- .element: style="text-align:left; font-size: 20px;" -->
-
-<p align="left">
-<img src="images/co.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-</p>
-
-duration_time/operations = latency | inverse throughput (reciprocal throughput)
-<!-- .element: style="text-align:right; font-size: 16px;" -->
 
 ----
 
