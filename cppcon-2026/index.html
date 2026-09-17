@@ -654,13 +654,13 @@ https://makelinux.github.io/kernel/map
 **- Complete Path Coverage** - Discover and exercise all relevant execution paths
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-**- Microarchitectural Control** - "Control" relevant hardware state
+**- Microarchitectural Control** - "Control" relevant hardware state (cpu is like a 'singleton')
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 **- Statistical Robustness** - Capture statistically robust measurements (performance is not a number)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-**- Native execution** - Target and execute on real hardware
+**- Native execution** - Execute on real hardware (hardware performance counters)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 ----
@@ -701,7 +701,7 @@ Machine Code                    # C++, Rust, Zig, Assembly, ...
   .long   3
   ...
 ```
-<!-- .element: style="text-align:left; font-size:16px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -921,21 +921,25 @@ if (value == 2); // cmp rdi, 2; je .Eq2
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
 ```cpp
-perf bench asm 'cmp rdi, 2;je +0;nop;'    perf bench asm 'cmp rdi, 2;je +0;nop;'
-    --mode latency                            --mode latency
-    --event cycles                            --event cycles
-    --config.branch=predictable               --config.branch=unpredictable
-    --name predictable                        --name unpredictable
-    --output branch                           --output branch
+perf bench asm 'cmp rdi, 2; je +0; nop'      perf bench asm 'cmp rdi, 2; je +0; nop'
+    --mode latency                               --mode latency
+    --event cycles                               --event cycles
+    --config.branch=predictable                  --config.branch=unpredictable
+    --name predictable                           --name unpredictable
+    --output branch                              --output branch
 ```
 <!-- .element: style="text-align:left; font-size:17px;" -->
+
+<div style="margin: 50px 0px;" />
 
 ```cpp
 perf plot -t ecdf -e cycles -- branch
 ```
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
+<p align="left">
 <img src="images/bpu.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
 
 cmov - conditional move
 <!-- .element: style="text-align:right; font-size: 15px;" -->
@@ -1092,6 +1096,7 @@ Code alignment
 Stack alignment/size
 Instruction cache
 Translation Lookaside Buffer (TLB)
+SIMD registers
 Execution ports
 Thread affinity/priority
 ...
@@ -1131,9 +1136,6 @@ https://refspecs.linuxbase.org/elf/x86_64-abi.pdf
 <!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
 
 https://refspecs.linuxbase.org/elf/elfspec.pdf
-<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
-
-https://github.com/torvalds/linux/blob/master/tools/perf
 <!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
 
 ----
@@ -1583,7 +1585,7 @@ perf plot -t ecdf -- perf.data
 
 ----
 
-#### `profile → benchmark`
+#### `Profile → Benchmark`
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 ```sh
@@ -1613,7 +1615,7 @@ perf bench {func,region} ".*"       # any function/region
 
 ----
 
-#### `profile → benchmark`
+#### `Profile → Benchmark`
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 ```cpp
@@ -1717,7 +1719,7 @@ bench --config.branch=predictable --data.arg0=3                       # 3,3,3,3,
 bench --config.branch=predictable --data.arg0=[$(seq -s, 1 100000)]   # 1,2,3,4,5,...,100000
 bench --config.branch=predictable                                     # uniform,normal,...
 ```
-<!-- .element: style="text-align:left; font-size: 16px;" -->
+<!-- .element: style="text-align:left; font-size: 17px;" -->
 
 ```
 bench --config.branch=unpredictable --data.arg0=0                     # 0,0,0,0,0,...,0
@@ -1725,18 +1727,9 @@ bench --config.branch=unpredictable --data.arg0=3                     # 3,3,3,3,
 bench --config.branch=unpredictable --data.arg0=[$(seq -s, 1 100000)] # 1,2,3,4,5,...,100000
 bench --config.branch=unpredictable                                   # uniform,normal,...
 ```
-<!-- .element: style="text-align:left; font-size: 16px;" -->
+<!-- .element: style="text-align:left; font-size: 17px;" -->
 
 ----
-
-```
-perf plot -t ecdf -e cycles -- branch
-```
-<!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
-
-<p align="left">
-<img src="images/b2.png" style="width: 90%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-</p>
 
 ```
 perf plot -t bar -e cycles -- branch
@@ -1744,7 +1737,16 @@ perf plot -t bar -e cycles -- branch
 <!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/b1.png" style="width: 77%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b1.png" style="width: 85%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+```
+perf plot -t ecdf -e cycles -- branch
+```
+<!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
+
+<p align="left">
+<img src="images/b2.png" style="width: 85%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
@@ -1764,27 +1766,28 @@ auto sum(const std::byte* data, std::size_t n) {
 <!-- .element: style="text-align:left; font-size: 18px;" -->
 
 ```python
-for size in [1, 256, 512, 1024]:                                               # python
-    for branch in ("predictable", "unpredictable"):
-        for hit_rate in [100, 50, 0]:  # hot → warm → cold
-            config = {
-                "cache": {
-                  "L1d": {"hit_rate": hit_rate},
-                  "L2d": {"hit_rate": 100},
-                  "L3d": {"hit_rate": 100}
-                },
-                "branch": branch,
-            }
+for mode in ("latency", "throughput"):                                              # python
+    for size in [1, 256, 512, 1024]:
+        for branch in ("predictable", "unpredictable"):
+            for hit_rate in [100, 50, 0]:  # hot → warm → cold
+                config = {
+                    "cache": {
+                      "L1d": {"hit_rate": hit_rate},
+                      "L2d": {"hit_rate": 100},
+                      "L3d": {"hit_rate": 100}
+                    },
+                    "branch": branch,
+                }
 
-            perf.bench(
-                exec="a.out",
-                func="sum",
-                mode="latency",
-                config=config,
-                event=["cycles"],
-            )
+                perf.bench(
+                    exec="a.out",
+                    func="sum",
+                    mode=mode,
+                    config=config,
+                    event=["cycles"],
+                )
 ```
-<!-- .element: style="text-align:left; font-size: 18px;" -->
+<!-- .element: style="text-align:left; font-size: 17px;" -->
 
 ----
 
@@ -1867,7 +1870,7 @@ for size in range(1, 2**10):
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-→ profile → [benchmark] → analyze → optimize ↻
+→ profile → benchmark → analyze → optimize ↻
 ```
 
 https://jupyter.org
