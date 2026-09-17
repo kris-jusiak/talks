@@ -167,35 +167,6 @@ What if ...?</code></pre>
 </table>
 <!-- .element: class="fragment" -->
 
-Does it matter, and if so, why and how much?
-<!-- .element: style="text-align:right; font-size:22px;" -->
-
-----
-
-#### "If You Can't Measure It, You Can't Improve It!"
-<!-- .element: style="text-align:left;" -->
-
-— Lord Kelvin (William Thomson)
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### Performance [Monitoring Unit]
-<!-- .element: style="text-align:left" -->
-
-<img src="images/perf_map.png" style="width: 48%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-<img src="images/bpf.png" style="width: 51%; background:none; border:none; box-shadow:none; margin; 0 0;" />
-
-```
- CPU                      Intel        Amd          Arm
-  ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
-  ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
-  ├─ Event sampling       PEBS         IBS          SPE
-  ├─ Branch Recording     LBR          LBR          BRBE
-  └─ Processor Trace      PT           -            ETM (CoreSight)
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
-
 ----
 
 #### Modern CPUs are primarily bottlenecked by
@@ -223,7 +194,38 @@ Does it matter, and if so, why and how much?
 
 ----
 
-#### Top down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
+#### "If You Can't Measure It, You Can't Improve It!"
+<!-- .element: style="text-align:left;" -->
+
+— Lord Kelvin (William Thomson)
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### `Always measure`
+<!-- .element: style="text-align:left" -->
+
+----
+
+#### Performance [Monitoring Unit]
+<!-- .element: style="text-align:left" -->
+
+<img src="images/perf_map.png" style="width: 48%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/bpf.png" style="width: 51%; background:none; border:none; box-shadow:none; margin; 0 0;" />
+
+```
+ CPU                      Intel        Amd          Arm
+  ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+  ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+  ├─ Event sampling       PEBS         IBS          SPE
+  ├─ Branch Recording     LBR          LBR          BRBE
+  └─ Processor Trace      PT           -            ETM (CoreSight)
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+----
+
+##### Top down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 <table>
@@ -842,7 +844,7 @@ rdi     0x404028
 
 ----
 
-#### `Setup`
+#### `Setup/Control`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -871,6 +873,7 @@ def data(addr, n):
 ```cpp
 predictable   = [0,0,0,0,0,0,...]
 predictable   = [1,1,1,2,2,2,...]
+predictable   = [1,2,3,4,5,6,...]
 predictable   = [1,3,5,1,3,5,...]
 predictable   = [0,2,4,6,8,...,]
 unpredictable = [0,0,0,1,0,0,0,1,...]
@@ -918,7 +921,6 @@ auto refresh(const void* addr, const auto level) {
     } else if constexpr (level == Level::L2) {
         flush(addr);                             // DRAM
         fence();
-        settle();
         prefetch<Level>(addr);                   // PREFETCHT1 hint
     } else if constexpr (level == Level::L3) {
         load(addr);                              // L1
@@ -957,7 +959,7 @@ level = {
 
 ```python
 for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
-    refresh(level[addr], addr)
+    refresh(addr, level[addr])
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -996,6 +998,21 @@ DRAM access   294</code></pre>
   </td>
   </tr>
 </table>
+
+----
+
+##### `More...`
+<!-- .element: style="text-align:left;" -->
+
+```cpp
+Code alignment
+Stack alignment/size
+Instruction cache
+Translation Lookaside Buffer (TLB)
+Execution ports
+Thread affinity/priority
+...
+```
 
 ----
 
@@ -1160,22 +1177,6 @@ duration_time/operations = latency | inverse throughput (reciprocal throughput)
 
 ----
 
-##### `More...`
-<!-- .element: style="text-align:left;" -->
-
-```cpp
-Code alignment
-Stack alignment/size
-Instruction cache
-Translation Lookaside Buffer (TLB)
-Execution ports
-Thread affinity/priority
-...
-```
-<!-- .element: class="fragment" -->
-
-----
-
 ### Case Studies
 <!-- .element: style="text-align:left" -->
 
@@ -1206,7 +1207,7 @@ lstopo # perf info cpu -c cpu,numa,arch,model,family,stepping,freq,L1i,L1d,L2,L3
 def AlderlakePModel : SchedMachineModel {
   let IssueWidth = 6; // Max uOps/Cycle
   let MicroOpBufferSize = 512;
-  let LoadLatency = 5;
+  let LoadLatency = 6;
   let MispredictPenalty = 14;
   let LoopMicroOpBufferSize = 72;
   ...
