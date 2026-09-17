@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -100,9 +100,9 @@ pip install git+https://github.com/perf-labs/perf.git
  - Improved Parallelism&nbsp;
  - ...</pre><pre style="font-size:14px">
 (~) Frequency
- - Base:  3–5 ghz
- - Boost: 5–6 ghz
- - Overclocked: ~9 ghz</pre>
+ - Base:  3–5 GHz
+ - Boost: 5–6 GHz
+ - Overclocked: ~9 GHz</pre>
   </td>
   <td>
     <img src="images/trend.png" style="width: 100%; background:none; border:none; box-shadow:none;" />
@@ -113,7 +113,7 @@ pip install git+https://github.com/perf-labs/perf.git
 https://github.com/karlrupp/microprocessor-trend-data
 <!-- .element: style="text-align:left; margin: 5px 0px; font-size:22px;" -->
 
-4Ghz CPU from 2006 != 4Ghz CPU from 2026
+4 Ghz CPU from 2006 != 4 Ghz CPU from 2026
 <!-- .element: style="text-align:right; margin: 5px 0px; font-size:18px;" -->
 
 ----
@@ -160,7 +160,7 @@ Does it matter, and if so, why and how much?
 What if caches won’t be as hot?
 What if branches won’t be as predictable?
 What if the environment has more jitter?
-What if the code/data layout will change?&nbsp;&nbsp;
+What if the code/data layout changes?&nbsp;&nbsp;
 What if ...?</code></pre>
 </td>
 </tr>
@@ -238,7 +238,7 @@ perf list # available performance monitoring events
 <!-- .element: style="text-align:left" -->
 
 ```asm
-- Top down Microarchitecture Analysis Method
+- Top-Down Microarchitecture Analysis Method
 
 - Sampling
 - Instrumentation
@@ -253,7 +253,7 @@ perf list # available performance monitoring events
 
 ----
 
-##### Top down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
+##### Top-Down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 <table>
@@ -457,7 +457,7 @@ Total Cycles:      400
 Total uOps:        200
 uOps Per Cycle:    0.50
 IPC:               0.50
-Block RThroughput: 1.0  # reciprocal throughput = inverse throughput
+Block RThroughput: 1.0  # reciprocal (inverse) throughput
 ```
 <!-- .element: style="text-align:left; font-size:15px; " -->
 
@@ -509,9 +509,9 @@ valgrind --tool=callgrind       # 5x-100x overhead
 ```cpp
 callgrind_annotate callgrind.out.*
 
-file:funcion  Ir          I1mr    D1mr    D1mw    Bc         Bcm       Bi       Bim
-a.out:main    1,523,401   12543   3421    1876    382,100    12,430    91,200   3,421
-a.out:func    842,100     6210    1987    921     201,300    6,210     42,100   1,201
+file:function  Ir          I1mr    D1mr    D1mw    Bc         Bcm       Bi       Bim
+a.out:main     1,523,401   12543   3421    1876    382,100    12,430    91,200   3,421
+a.out:func     842,100     6210    1987    921     201,300    6,210     42,100   1,201
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
@@ -538,12 +538,12 @@ https://valgrind.org/docs/manual/cl-manual.html
 ```cpp
 /**
  * [+] iteration speed (isolation, simplicity)
- * [-] correlation (bias, noise, codgen, ...)
+ * [-] correlaction (bias, noise, codegen, ...)
  */
 auto bench(std::invocable auto code, std::integral auto iterations) {
-    const auto start = std::chrono::steady_clock::now();  // perf counters
+    const auto start = std::chrono::steady_clock::now();  // or perf counters
     for (auto i = 0u; i < iterations; ++i) {              // latency vs throughput
-        keep(std::invoke(code));                          // optimizing compiler
+        keep(std::invoke(code));                          // defeat optimizing compiler
     }
     const auto stop = std::chrono::steady_clock::now();
     return (stop - start) / iterations;
@@ -642,7 +642,7 @@ https://makelinux.github.io/kernel/map
 
 ----
 
-#### “If You Measure The Wrong Thing, You Can’t Improve The Right Thing!”
+#### “If You Measure the Wrong Thing, You Can’t Improve the Right Thing!”
 <!-- .element: style="text-align:left; font-size:31px;" -->
 
 [Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
@@ -650,22 +650,22 @@ https://makelinux.github.io/kernel/map
 
 ----
 
-#### 'Symbolic' Benchmarking
+#### `Symbolic Benchmarking`
 <!-- .element: style="text-align:left" -->
 
-**- Non-Intrusive** - Benchmark existing binaries, libraries, and assembly without modifying code
+- **Non-Intrusive** - Benchmark existing binaries, libraries, and assembly without modifying code
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-**- Complete Path Coverage** - Discover and exercise all relevant execution paths
+- **Complete Path Coverage** - Discover and exercise all relevant execution paths (symbolic exploration)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-**- Microarchitectural Control** - "Control" relevant hardware state (cpu is like a 'singleton')
+- **Microarchitectural Control** - "control" relevant hardware state (branch, cache, ...)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-**- Statistical Robustness** - Capture statistically robust measurements (performance is not a number)
+- **Statistical Robustness** - Capture statistically robust measurements (performance is not a number)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-**- Native execution** - Execute on real hardware (hardware performance counters)
+- **Native execution** - Execute on real hardware (hardware performance counters)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 ----
@@ -683,53 +683,39 @@ Machine Code                    # C++, Rust, Zig, Assembly, ...
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
 ```cpp
-[[gnu::hot, gnu::optimize("O3")]] auto func(const std::integral auto key) -> int {
-    // static constexpr std::array lut = { ... };
+[[gnu::hot, gnu::optimize("O3")]] auto func(const int key) -> int {
+    static constexpr std::array lut = { ... };
 
-    // if (key < lut.size()) [[unlikely]] {
-        cmp rdi, 1024
-        jbe .L_out_of_range
-        // return {};
-    // }
+    if (key < lut.size()) [[unlikely]] {
+        // cmp rdi, 1024
+        // jb .L_out_of_range
+        return {};
+    }
 
-    // return lut[key];
-    mov eax, DWORD PTR "func::lut"[0+rdi*4]     // <-- path1: rdi < 1024,  mem=[0+rdi*4]
+    // mov eax, "func::lut"[0+rdi*4]    # path1: rdi < 1024, mem=[0+rdi*4]
+    return lut[key];
 
-   .L_out_of_range:                             // <-- path0: rdi >= 1024, mem=[]
-        xor eax, eax
-        ret
+    // .L_out_of_range:                 # path0: rdi >= 1024, mem=[]
+    //      xor eax, eax
+    //      ret
 }
-
-"func::lut":                                    // .rodata
-  .long   1
-  .long   2
-  .long   3
-  ...
+    // "func::lut":                     # .rodata
+    //     .long 1
+    //     ...
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
 #### `Symbolic Exploration`
 <!-- .element: style="text-align:left" -->
 
-```sh
-       x = ? (symbolic)
-           │
-      cmp x, 10
-           │
-     ┌─────┴─────┐
-     │           │
-constraint   constraint
-  x > 10       x <= 10
-     │           │
-  State 1      State 2
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+VEX Intermediate Representation - https://github.com/angr/pyvex
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
-##### `Explore`
+##### `Explore -> States`
 <!-- .element: style="text-align:left" -->
 
 <table>
@@ -777,7 +763,8 @@ _      -> Unknown (cmov)
 ```python
 def explore(begin, end):                                      # python
     state = blank_state(addr=begin)
-    # state.solver.add(rdi <= 5 and rdi > 100) # constraints
+    # state.solver.add(rdi <= 5)  # constraints
+    # state.solver.add(rdi > 100) # constraints
 
     state.inspect.b("mem_read",  when=angr.BP_AFTER, action=on_mem_read)
     state.inspect.b("mem_write", when=angr.BP_AFTER, action=on_mem_write)
@@ -793,7 +780,7 @@ def explore(begin, end):                                      # python
 
 ```asm
 Machine Code
-  → Sybmolic states
+  → Symbolic states
       → Symbolic exploration
           → Solutions [IP, Constraints, Registers, Memory]
 ```
@@ -861,15 +848,16 @@ solutions = explore(fizz_buzz, fizz_buzz+size)               # python
 
 ```python
 for solution in solutions:
-    for state in solution["state"]:
-        for reg in state["reg"]:
-            print(state.solver.eval(reg))
+    state = solution["state"]
 
-        for read in state["mem_read"]:
-            print(state.solver.eval(read))
+    for name, expr in state["reg"]:
+        print(name, state.solver.eval(expr))
 
-        for write in state["mem_write"]:
-            print(state.solver.eval(write))
+    for name, expr in state["mem_read"]:
+        print(name, state.solver.eval(expr))
+
+    for name, expr in state["mem_write"]:
+        print(name, state.solver.eval(expr))
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
@@ -896,9 +884,9 @@ jmp .Lmiss
 ```
 
 ```asm
-- Modern branch predictor can learn ~10'000 1/0 branches
-- No history: { backward = taken, forward = not_taken }
-- Never Taken: no BTB entry allocated
+- Modern branch predictor can learn ~10'000 taken/non-taken branches
+- BTFNT - Backward Taken, Forward Not Taken (no history)
+- NT - Never Taken (no Branch Target Buffer entry allocated)
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
@@ -911,7 +899,7 @@ jmp .Lmiss
 <!-- .element: style="text-align:left; font-size:18px;" -->
 ```python
 def data(addr, n):
-    return distribution(state.solver.eval_up_to(state(addr), n))
+    return distribution(state.solver.eval_up_to(expr(addr), n))
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -938,7 +926,7 @@ unpredictable = sample(0..n, p=0.25)
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```cpp
-if (value == 2); // cmp rdi, 2; je .Eq2
+if (value == 2) // cmp rdi, 2; je .Eq2
 ```
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
@@ -963,7 +951,7 @@ perf plot -t ecdf -e cycles -- branch
 <img src="images/bpu.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
-cmov - conditional move
+CMOV - conditional move
 <!-- .element: style="text-align:right; font-size: 15px;" -->
 
 ----
@@ -984,7 +972,7 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 <!-- .element: style="text-align:left; font-size:24px; " -->
 
 ```cpp
-enum class Level { L1, L2, L3, DRAM }; // d-cache
+enum class Level { L1, L2, L3, DRAM }; // data-cache
 ```
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
@@ -1031,7 +1019,7 @@ https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.h
 
 ```python
 for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
-    refresh(addr, distribution(cache(addr)))
+    refresh(addr, distribution(hit_rate(addr)))
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1114,14 +1102,14 @@ DRAM access   294</code></pre>
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-Code alignment
-Stack alignment/size
-Instruction cache
-Translation Lookaside Buffer (TLB)
-SIMD registers
-Execution ports
-Thread affinity/priority
-...
+- Code alignment
+- Stack alignment/size
+- Instruction cache
+- Translation Lookaside Buffer (TLB)
+- SIMD registers
+- Execution ports
+- Thread affinity/priority
+- ...
 ```
 
 ----
@@ -1131,7 +1119,7 @@ Thread affinity/priority
 
 ----
 
-###### `Native code generation [JIT/AOT] `
+###### `Native code generation [JIT/AOT]`
 <!-- .element: style="text-align:left" -->
 
 ```
@@ -1144,7 +1132,7 @@ Assembly
 
 ```
 Function or Region
-  → MMAP Process
+  → mmap Process
       → Apply Relocations
           → Randomize Layout
               → Setup (CPU, Data)
@@ -1191,7 +1179,7 @@ https://refspecs.linuxbase.org/elf/elfspec.pdf
 <div style="margin: 50px 0px;" />
 
 ```
-perf info metadata -- exec region.out
+perf info metadata --exec region.out
 ```
 <!-- .element: style="text-align:left;font-size:18px" -->
 
@@ -1304,7 +1292,7 @@ loop:             loop:
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-uops.info - https://arxiv.org/pdf/1810.04610
+`uops.info` - https://arxiv.org/pdf/1810.04610
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
@@ -1356,7 +1344,7 @@ lstopo # perf info cpu -c cpu,numa,arch,model,family,stepping,freq,L1i,L1d,L2,L3
 
 ```cpp
 def AlderlakePModel : SchedMachineModel {
-  let IssueWidth = 6; // Max uOps/Cycle
+  let IssueWidth = 6; // max uops/cycle
   let MicroOpBufferSize = 512;
   let LoadLatency = 6;
   let MispredictPenalty = 14;
@@ -1384,7 +1372,7 @@ perf bench asm 'rdtsc' --mode latency | perf plot -t box
 <img src="images/tune.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
-`The benchmark should control the noise, not the noise control the benchmark`
+`The benchmark should control the noise, not let the noise control the benchmark`
 <!-- .element: style="text-align:right;font-size:16px" -->
 
 ----
@@ -1441,7 +1429,7 @@ https://uops.info/table.html
 
 ----
 
-#### 'The Best, The Real, The Worst' Possible Execution
+#### "The Best, The Real, The Worst" Possible Execution
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
@@ -1450,7 +1438,7 @@ https://uops.info/table.html
 
 ----
 
-#### 'The Best' Possible Execution
+#### "The Best" Possible Execution
 <!-- .element: style="text-align:left" -->
 
 ```json
@@ -1479,7 +1467,7 @@ https://uops.info/table.html
 
 ----
 
-#### 'The Worst' Possible Execution
+#### "The Worst" Possible Execution
 <!-- .element: style="text-align:left;" -->
 
 ```json
@@ -1511,7 +1499,7 @@ https://uops.info/table.html
 
 ----
 
-#### 'The Real' Possible Execution
+#### "The Real" Execution
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -1572,7 +1560,7 @@ perf plot -t ecdf -- perf.data
 
 ----
 
-#### 'The Real' Possible Execution
+#### 'The Real' Execution
 <!-- .element: style="text-align:left" -->
 
 ```json
@@ -1628,7 +1616,7 @@ perf bench {func,region} ".*"       # any function/region
 
 ----
 
-##### Top down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
+##### Top-Down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 <p align="left">
@@ -1643,9 +1631,9 @@ perf bench {func,region} ".*"       # any function/region
 ```cpp
 # latency/best
 name                 retiring  bad-spec  fe-bound  be-bound
-sum                  24%       3%        8%        65%         → backend bound
-hot_begin..hot_end   28%       5%        56%        9%         → fronted bound
-fizz_buzz            22%       48%       20%       10%         → bad speculation
+sum                  68%       4%        8%        20%         → retiring
+hot_begin..hot_end   72%       3%        10%       15%         → retiring
+fizz_buzz            65%       6%        9%        20%         → retiring
 ...
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
@@ -1653,9 +1641,9 @@ fizz_buzz            22%       48%       20%       10%         → bad speculati
 ```cpp
 # latency/real
 name                 retiring  bad-spec  fe-bound  be-bound
-sum                  24%       3%        8%        65%         → backend bound
-hot_begin..hot_end   28%       5%        56%        9%         → fronted bound
-fizz_buzz            22%       48%       20%       10%         → bad speculation
+sum                  38%       12%       15%       35%         → retiring
+hot_begin..hot_end   30%       8%        28%       34%         → backend bound
+fizz_buzz            30%       32%       14%       24%         → bad speculation
 ...
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
@@ -1663,9 +1651,9 @@ fizz_buzz            22%       48%       20%       10%         → bad speculati
 ```cpp
 # latency/worst
 name                 retiring  bad-spec  fe-bound  be-bound
-sum                  24%       3%        8%        65%         → backend bound
-hot_begin..hot_end   28%       5%        56%        9%         → fronted bound
-fizz_buzz            22%       48%       20%       10%         → bad speculation
+sum                  12%       20%       13%       55%         → backend bound
+hot_begin..hot_end   15%       12%       23%       50%         → backend bound
+fizz_buzz            10%       35%       15%       40%         → backend bound
 ...
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
@@ -1773,7 +1761,7 @@ perf plot -t ecdf -e cycles -- branch
 
 ----
 
-##### Backend bound [Memory Bound]
+##### Backend Bound [Memory Bound]
 <!-- .element: style="text-align:left" -->
 
 ```cpp
@@ -1789,7 +1777,7 @@ auto sum(const std::byte* data, std::size_t n) {
 
 ```python
 for mode in ("latency", "throughput"):                                              # python
-    for size in [1, 256, 512, 1024]:
+    for size in [8, 16, 64, 128, 256, 512, 1024]:
         for branch in ("predictable", "unpredictable"):
             for hit_rate in [100, 50, 0]:  # hot → warm → cold
                 config = {
@@ -1813,7 +1801,7 @@ for mode in ("latency", "throughput"):                                          
 
 ----
 
-##### Backend bound [Memory Bound]
+##### Backend Bound [Memory Bound]
 <!-- .element: style="text-align:left" -->
 
 
@@ -1835,7 +1823,7 @@ perf plot -t ecdf -- backend
 /*[[gnu::aligned(16)]]*/
 [[gnu::hot, gnu::always_inline]] auto hot_func(std::span<std::byte> data) {
     PERF_LABEL(hot_begin);
-    /*[[clang::code_align(16)]]*/ for (auto i = 0; i < n; ++i) {
+    /*[[clang::code_align(16)]]*/ for (...) {
         // ...
     }
     PERF_LABEL(hot_end);
@@ -1940,9 +1928,9 @@ pip install git+https://github.com/perf-labs/perf.git
 </p>
 
 ```cpp
-find_scan (if/else)                    → branch
-find_map  (std::unordered_map)         → branch/cache
-find_mph  (pext + lookup table + cmov) → cache
+find_scan (if/else)             → branch
+find_map  (std::unordered_map)  → branch/cache
+find_mph  (PEXT + LUT + CMOV)   → cache
 ```
 
 https://github.com/qlibs/mph
@@ -2001,7 +1989,7 @@ auto find_mph(int) noexcept:
 ----
 
 ```python
-for cxx in ("gcc", "clang"):                                                   # python
+for cxx in ("g++-16", "clang++-22"):                                                # python
     for func in ("scan", "map", "mph"):
         for config in (best, real, worst):
             perf.bench(
