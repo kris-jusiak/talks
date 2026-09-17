@@ -675,33 +675,38 @@ https://makelinux.github.io/kernel/map
 
 ```python
 Machine Code                    # C++, Rust, Zig, Assembly, ...
-  → Symbolic Exploration        # path1, path2, ..., pathN
-     → Data Synthesis           # path1: rdi=[0], mem[addr]=[2], ...
+  → Symbolic Exploration        # path0, path1, ..., pathN
+     → Data Synthesis           # path0: rdi=[0], mem[addr]=[2], ...
          → Benchmarking Harness # setup, loop: ... jnz .loop, teardown
            → Native Execution   # 0b010101010101100100010100111
 ```
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```cpp
-int func(int key) {
-        static constexpr auto lut = {
-            // ...
-        };
-        static_assert(lut.size() == 1024);
+[[gnu::hot, gnu::optimize("O3")]] auto func(const std::integral auto key) -> int {
+    // static constexpr std::array lut = { ... };
 
-        if (key < lut.size()) {
-    cmp edi, 1024
-    jae .Lout
+    // if (key < lut.size()) [[unlikely]] {
+        cmp rdi, 1024
+        jbe .L_out_of_range
+        // return {};
+    // }
 
-        return lut[key];
-    mov eax, [lut+rdi*4]
-    ret
+    // return lut[key];
+    mov eax, DWORD PTR "func::lut"[0+rdi*4]     // <-- path1: rdi < 1024,  mem=[0+rdi*4]
 
-lut:
-    .long 21
-    .long 1
+   .L_out_of_range:                             // <-- path0: rdi >= 1024, mem=[]
+        xor eax, eax
+        ret
+}
+
+"func::lut":                                    // .rodata
+  .long   1
+  .long   2
+  .long   3
+  ...
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -1106,11 +1111,11 @@ perf info metadata -- exec region.out
 <!-- .element: style="text-align:left;font-size:18px" -->
 
 ```sh
-hot_begin  0x401154 # inlined (different machine code)
-hot_end    0x401169 # inlined
+hot_begin  0x401154 # inlined / different machine code
+hot_end    0x401169 # inlined / different machine code
 ...
-hot_begin  0x401184 # inlined (different machine code)
-hot_end    0x40119c # inlined
+hot_begin  0x401184 # inlined / different machine code
+hot_end    0x40119c # inlined / different machine code
 ```
 <!-- .element: style="text-align:left;font-size:18px" -->
 
