@@ -1386,7 +1386,7 @@ perf plot -t bar -- insn
 <table>
 <tr>
 <td>
-<img src="images/cmp0.png" style="width: 90%; background:none; border:none; box-shadow:none;margin: 0 0;" />
+<img src="images/cmp0.png" style="width: 95%; background:none; border:none; box-shadow:none;margin: 0 0;" />
 </td>
 <td>
 <pre style="font-size:14px"><code>name           mode     stat cycles
@@ -1730,22 +1730,21 @@ bench --config.branch=unpredictable                                   # uniform,
 ----
 
 ```
+perf plot -t ecdf -e cycles -- branch
+```
+<!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
+
+<p align="left">
+<img src="images/b2.png" style="width: 90%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+```
 perf plot -t bar -e cycles -- branch
 ```
 <!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/b1.png" style="width: 80%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-</p>
-
-```
-perf plot -t ecdf -e cycles -- branch
-```
-<!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
-
-
-<p align="left">
-<img src="images/b2.png" style="width: 90%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b1.png" style="width: 77%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
