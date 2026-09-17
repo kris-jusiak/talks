@@ -480,8 +480,8 @@ D=dispatched, e=executing, E=executed, R=retired
 ```
 <!-- .element: style="text-align:left; font-size:15px; " -->
 
-https://uops.info/table.html
-<!-- .element: style="text-align:left; font-size: 18px;" -->
+https://llvm.org/docs/CommandGuide/llvm-exegesis.html
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -648,30 +648,25 @@ https://makelinux.github.io/kernel/map
 #### 'Symbolic' Benchmarking
 <!-- .element: style="text-align:left" -->
 
-----
-
-##### `Goals`
-<!-- .element: style="text-align:left" -->
-
 **- Non-Intrusive** - Benchmark existing binaries, libraries, and assembly without modifying code
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 **- Complete Path Coverage** - Discover and exercise all relevant execution paths
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 **- Microarchitectural Control** - "Control" relevant hardware state
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-**- Statistical Robustness** - Capture statistically robust measurements
-<!-- .element: style="text-align:left; font-size:22px;" -->
+**- Statistical Robustness** - Capture statistically robust measurements (performance is not a number)
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 **- Native execution** - Target and execute on real hardware
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 ----
 
 ##### `Approach`
-<!-- .element: style="text-align:left" -->
+<!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```python
 Machine Code                    # C++, Rust, Zig, Assembly, ...
@@ -680,7 +675,7 @@ Machine Code                    # C++, Rust, Zig, Assembly, ...
          → Benchmarking Harness # setup, loop: ... jnz .loop, teardown
            → Native Execution   # 0b010101010101100100010100111
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ```cpp
 [[gnu::hot, gnu::optimize("O3")]] auto func(const std::integral auto key) -> int {
@@ -761,17 +756,17 @@ _      -> Unknown (cmov)
 ----
 
 ```python
-def explore(project, start, end):                                      # python
-    state = project.factory.blank_state(addr=start)
+def explore(begin, end):                                      # python
+    state = blank_state(addr=begin)
     # state.solver.add(rdi <= 5 and rdi > 100)
 
     state.inspect.b("mem_read",  when=angr.BP_AFTER, action=on_mem_read)
     state.inspect.b("mem_write", when=angr.BP_AFTER, action=on_mem_write)
 
-    simgr = project.factory.simulation_manager(state)
-    simgr.explore(find=end)
+    sim = simulation(state)
+    sim.explore(find=end)
 
-    return simgr.found + simgr.active + simgr.deadended
+    return sim.found + sim.active + sim.deadended
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -791,7 +786,7 @@ https://docs.angr.io/en/latest/core-concepts/symbolic.html
 ----
 
 ```
-explore(project, fizz_buzz, fizz_buzz+size)
+explore(fizz_buzz, fizz_buzz+size)
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -838,7 +833,7 @@ explore(project, fizz_buzz, fizz_buzz+size)
 ----
 
 ```python
-solutions = explore(project, fizz_buzz, fizz_buzz+size)         # python
+solutions = explore(fizz_buzz, fizz_buzz+size)               # python
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
@@ -921,12 +916,12 @@ unpredictable = sample(0..n, p=0.25)
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```cpp
-if (value); // test rdi, rdi; jne .Label
+if (value == 2); // cmp rdi, 2; je .Eq2
 ```
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
 ```cpp
-perf bench asm 'cmp rax, 2;je +0;nop;'    perf bench asm 'cmp rax, 2;je +0;nop;'
+perf bench asm 'cmp rdi, 2;je +0;nop;'    perf bench asm 'cmp rdi, 2;je +0;nop;'
     --mode latency                            --mode latency
     --event cycles                            --event cycles
     --config.branch=predictable               --config.branch=unpredictable
@@ -959,7 +954,7 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 
 ----
 
-##### Cache eviction
+##### Cache-line eviction
 <!-- .element: style="text-align:left; font-size:24px; " -->
 
 ```cpp
@@ -1005,7 +1000,7 @@ https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.h
 
 ----
 
-##### Cache eviction
+##### `Cache-line eviction`
 <!-- .element: style="text-align:left; font-size:24px; " -->
 
 ```python
@@ -1047,7 +1042,7 @@ for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
 
 ----
 
-###### `Cache eviction`
+###### `Cache-line eviction`
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ```cpp
@@ -1285,7 +1280,7 @@ loop:             loop:
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-https://github.com/andreas-abel/nanoBench
+uops.info - https://arxiv.org/pdf/1810.04610
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
@@ -1417,12 +1412,12 @@ perf bench asm 'imul eax, 0;cdq; idiv ecx;' -S | llvm-mca
 ```
 <!-- .element: style="text-align:left; font-size: 16px;" -->
 
-https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; font-size:16px;" -->
+https://uops.info/table.html
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 ----
 
-#### 'The Best, The Real, The Worst' Execution
+#### 'The Best, The Real, The Worst' Possible Execution
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
@@ -1431,7 +1426,7 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 ----
 
-#### 'The Best' Execution
+#### 'The Best' Possible Execution
 <!-- .element: style="text-align:left" -->
 
 ```json
@@ -1460,7 +1455,7 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 ----
 
-#### 'The Worst' Execution
+#### 'The Worst' Possible Execution
 <!-- .element: style="text-align:left;" -->
 
 ```json
@@ -1492,7 +1487,7 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 ----
 
-#### 'The Real' Execution
+#### 'The Real' Possible Execution
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -1553,7 +1548,7 @@ perf plot -t ecdf -- perf.data
 
 ----
 
-#### 'The Real' Execution
+#### 'The Real' Possible Execution
 <!-- .element: style="text-align:left" -->
 
 ```json
@@ -1593,9 +1588,10 @@ perf plot -t ecdf -- perf.data
 
 ```sh
 perf bench {func,region} ".*"       # any function/region
-    --mode {latency,throughput}
-    --config {best,real,worst}      # 'perf.data'
+    --exec a.out
     --data data.json                # 'trace.data'
+    --config {best,real,worst}      # 'perf.data'
+    --mode {latency,throughput}
     --event duration_time,          # seperate run
             instructions,
             cycles
@@ -1649,60 +1645,6 @@ fizz_buzz            22%       48%       20%       10%         → bad speculati
 ...
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
-
-----
-
-##### Backend bound [Memory Bound]
-<!-- .element: style="text-align:left" -->
-
-```cpp
-auto sum(const std::byte* data, std::size_t n) {
-    auto sum = 0;
-    for (auto i = 0; i < n; ++i) {
-        sum += data[i];
-    }
-    return sum;
-}
-```
-<!-- .element: style="text-align:left; font-size: 18px;" -->
-
-```python
-for size in [1, 256, 512, 1024]:                                               # python
-    for branch in ("predictable", "unpredictable"):
-        for hit_rate in [100, 50, 0]:  # hot → warm → cold
-            config = {
-                "cache": {
-                  "L1d": {"hit_rate": hit_rate},
-                  "L2d": {"hit_rate": 100},
-                  "L3d": {"hit_rate": 100}
-                },
-                "branch": branch,
-            }
-
-            perf.bench(
-                exec="a.out",
-                func="sum",
-                mode="latency",
-                config=config,
-                event=["cycles"],
-            )
-```
-<!-- .element: style="text-align:left; font-size: 18px;" -->
-
-----
-
-##### Backend bound [Memory Bound]
-<!-- .element: style="text-align:left" -->
-
-
-```sh
-perf plot -t ecdf -- backend
-```
-<!-- .element: style="text-align:left; font-size: 20px;" -->
-
-<p align="left">
-<img src="images/backend_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
-</p>
 
 ----
 
@@ -1790,19 +1732,74 @@ bench --config.branch=unpredictable                                   # uniform,
 ```
 perf plot -t bar -e cycles -- branch
 ```
+<!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/b1.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b1.png" style="width: 80%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
-
-----
 
 ```
 perf plot -t ecdf -e cycles -- branch
 ```
+<!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
+
 
 <p align="left">
-<img src="images/b2.png" style="width: 120%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b2.png" style="width: 90%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+----
+
+##### Backend bound [Memory Bound]
+<!-- .element: style="text-align:left" -->
+
+```cpp
+auto sum(const std::byte* data, std::size_t n) {
+    auto sum = 0;
+    for (auto i = 0; i < n; ++i) {
+        sum += data[i];
+    }
+    return sum;
+}
+```
+<!-- .element: style="text-align:left; font-size: 18px;" -->
+
+```python
+for size in [1, 256, 512, 1024]:                                               # python
+    for branch in ("predictable", "unpredictable"):
+        for hit_rate in [100, 50, 0]:  # hot → warm → cold
+            config = {
+                "cache": {
+                  "L1d": {"hit_rate": hit_rate},
+                  "L2d": {"hit_rate": 100},
+                  "L3d": {"hit_rate": 100}
+                },
+                "branch": branch,
+            }
+
+            perf.bench(
+                exec="a.out",
+                func="sum",
+                mode="latency",
+                config=config,
+                event=["cycles"],
+            )
+```
+<!-- .element: style="text-align:left; font-size: 18px;" -->
+
+----
+
+##### Backend bound [Memory Bound]
+<!-- .element: style="text-align:left" -->
+
+
+```sh
+perf plot -t ecdf -- backend
+```
+<!-- .element: style="text-align:left; font-size: 20px;" -->
+
+<p align="left">
+<img src="images/backend_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
 </p>
 
 ----
@@ -1822,26 +1819,23 @@ perf plot -t ecdf -e cycles -- branch
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
-----
-
-##### Frontend Bound [Fetch Latency]
-<!-- .element: style="text-align:left" -->
-
-```
-for l1i in 0 100; do for align in 1 16; do
-  perf bench region hot_begin..hot_end
-      --exec codegen.out
-      --mode latency
-      --config.cache.L1i=hit_rate:$l1i  # i-cache
-      --config.func.align=$align        # alignment
-      --config.func.order=as-is         # as-is,hot,cold,random
-done; done
+```python
+for cxx in ("g++-16", "clang+-22"):                                   # python
+    for hit_rate in [100, 50, 0]:  # hot → warm → cold
+        for order in ("as-is", "hot", "cold", "random"):
+            for align in [1, 8, 16]:
+                perf.bench(
+                    exec=f"{cxx}.out",
+                    region=["hot_begin", "hot_end"],
+                    config={
+                        "func":  { "align": align, "order": order },
+                        "cache": { "L1i": f"hit_rate:{hit_rate}" },
+                    },
+                    mode="latency",
+                    event=["duration_time"],
+                )
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
-
-<p align="left">
-<img src="images/codegen_ecdf.png" style="width: 90%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-</p>
 
 ----
 
@@ -1854,7 +1848,7 @@ warm = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":100}}
 cool = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":100}}
 cold = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":0}}
 
-for size in [1, 256, 512, 1024]:
+for size in range(1, 2**10):
     for cache in ("hot", "warm", "cool", "cold"):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
@@ -1867,16 +1861,6 @@ for size in [1, 256, 512, 1024]:
             )
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
-
-----
-
-```sh
-perf plot -t ecdf -e instructions/cycles -- sort
-```
-
-<p align="left">
-<img src="images/sort_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
-</p>
 
 ----
 
@@ -1943,12 +1927,6 @@ https://github.com/qlibs/mph
 ----
 
 ```cpp
-g++-16     -std=c++26 -O3 -march=native -c find.cpp -o find_gcc.o
-clang++-22 -std=c++26 -O3 -march=native -c find.cpp -o find_clang.o
-```
-<!-- .element: style="text-align:left; font-size:12px;" -->
-
-```cpp
 auto find_scan(int) noexcept:
   mov eax, edi
   xor ecx, ecx
@@ -1961,7 +1939,7 @@ auto find_scan(int) noexcept:
 .Lfound:
   ret
 ```
-<!-- .element: style="text-align:left; font-size:12px;" -->
+<!-- .element: style="text-align:left; font-size:13px;" -->
 
 ```cpp
 auto find_map(int) noexcept:
@@ -1983,7 +1961,7 @@ auto find_map(int) noexcept:
   xor eax, eax
   ret
 ```
-<!-- .element: style="text-align:left; font-size:12px;" -->
+<!-- .element: style="text-align:left; font-size:13px;" -->
 
 ```cpp
 auto find_mph(int) noexcept:
@@ -1994,12 +1972,12 @@ auto find_mph(int) noexcept:
   cmovne eax, edx               # conditional move
   ret
 ```
-<!-- .element: style="text-align:left; font-size:12px;" -->
+<!-- .element: style="text-align:left; font-size:13px;" -->
 
 ----
 
 ```python
-for cxx in ("gcc", "clang"):                                   # python
+for cxx in ("gcc", "clang"):                                                   # python
     for func in ("scan", "map", "mph"):
         for config in (best, real, worst):
             perf.bench(
@@ -2010,26 +1988,15 @@ for cxx in ("gcc", "clang"):                                   # python
                 event=["cycles", "instructions"],
             )
 ```
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-```sh
-perf plot -t ecdf -e cycles -- find
-```
-
-<p align="left">
-<img src="images/mph_ecdf.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
-</p>
-
-----
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ```sh
 perf plot -t ecdf -e instructions/cycles -- find
 ```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 <p align="left">
-<img src="images/mph_ecdf_ipc.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
+<img src="images/mph_ecdf_ipc.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
 </p>
           </script>
         </section>
