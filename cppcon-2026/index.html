@@ -169,6 +169,23 @@ What if ...?</code></pre>
 
 ----
 
+#### "If You Can't Measure It, You Can't Improve It!"
+<!-- .element: style="text-align:left;" -->
+
+— Lord Kelvin (William Thomson)
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+----
+
+#### `Always measure`
+<!-- .element: style="text-align:left" -->
+
+```
+How? What? When?
+```
+
+----
+
 #### Modern CPUs are primarily bottlenecked by
 <!-- .element: style="text-align:left" -->
 
@@ -194,20 +211,26 @@ What if ...?</code></pre>
 
 ----
 
-#### "If You Can't Measure It, You Can't Improve It!"
-<!-- .element: style="text-align:left;" -->
-
-— Lord Kelvin (William Thomson)
-<!-- .element: style="text-align:left; font-size:22px;" -->
-
-----
-
-#### `Always measure`
+#### `Approaches`
 <!-- .element: style="text-align:left" -->
 
+```asm
+- Top down Microarchitecture Analysis Method
+
+- Sampling
+- Instrumentation
+- Tracing
+- Machine Code Analysis
+- Simulation
+
+- Benchmarking
+
+...
+```
+
 ----
 
-#### Performance [Monitoring Unit]
+#### Performance Monitoring Unit
 <!-- .element: style="text-align:left" -->
 
 <img src="images/perf_map.png" style="width: 48%; background:none; border:none; box-shadow:none; margin: 0 0;" />
@@ -418,46 +441,40 @@ Requires Intel-PT or ARM ETM (CoreSight)
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-echo 'add eax, 42; imul eax, eax, 42' | llvm-mca --mcpu=sapphirerapids --iterations 100
-Instructions:      200  # 1 + 1
-Total Cycles:      400  # 1*100 + 3*100
-Total uOps:        200  # 1*100 + 1*100
-uOps Per Cycle:    0.50 # uops:200/cycles:400
-IPC:               0.50 # instructions:200/cycles:400
+echo 'add eax, 42; imul eax, eax, 42' | llvm-mca --mcpu=sapphirerapids --iterations 100 --all-views
+```
+<!-- .element: style="text-align:left; font-size:15px; " -->
+
+```
+# Summary
+Instructions:      200
+Total Cycles:      400
+Total uOps:        200
+uOps Per Cycle:    0.50
+IPC:               0.50
 Block RThroughput: 1.0  # reciprocal throughput = inverse throughput
 ```
 <!-- .element: style="text-align:left; font-size:15px; " -->
 
-<div style="margin: 30px 0px;" />
-
-```cpp
-echo 'add eax, 42; imul eax, eax, 42' | llvm-mca --mcpu=sapphirerapids --summary-view
-
+```
+# Instruction Info
 uOps Latency  RThroughput  MayLoad MayStore HasSideEffects   Instructions:
    1       1         0.20                                    add  eax, 42
    1       3         1.00                                    imul eax, eax, 42
 ```
 <!-- .element: style="text-align:left; font-size:15px; " -->
 
-<div style="margin: 30px 0px;" />
-
-```cpp
-echo 'add eax, 42; imul eax, eax, 42' | llvm-mca --mcpu=sapphirerapids --resource-pressure
-
+```
+# Resource Pressure
 SPRPort00   SPRPort01  ...  SPRPort05  SPRPort06 ... SPRPort11 ... # per iteration
      0.25        1.00            0.25       0.25          0.25
-```
-<!-- .element: style="text-align:left; font-size:15px; " -->
 
-<div style="margin: 30px 0px;" />
-
-```cpp
-echo 'add eax, 42; imul eax, eax, 42' | llvm-mca --mcpu=sapphirerapids --timeline -iterations 2
-
+# Timeline
 [0,0]  DeER .    .   .   add  eax, 42
 [0,1]  D=eeeER   .   .   imul eax, eax, 42
 [1,0]  D====eER  .   .   add  eax, 42
 [1,1]  D=====eeeER   .   imul eax, eax, 42
+...
 
 D=dispatched, e=executing, E=executed, R=retired
 ```
@@ -624,7 +641,7 @@ https://makelinux.github.io/kernel/map
 <!-- .element: style="text-align:left; font-size:31px;" -->
 
 [Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -844,7 +861,7 @@ rdi     0x404028
 
 ----
 
-#### `Setup/Control`
+#### `Setup`
 <!-- .element: style="text-align:left" -->
 
 ----
@@ -855,6 +872,13 @@ rdi     0x404028
 ```cpp
 je .Lmiss
 ```
+
+```asm
+- Modern branch predictor can learn ~10'000 1/0 branches
+- No history: { backward = taken, forward = not_taken }
+- Never Taken: no BTB entry allocated
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -882,13 +906,6 @@ unpredictable = sample(0..n, p=0.25)
 ...
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
-
-```asm
-- modern branch predictor can learn ~10'000 1/0 branches
-- cold: { backward = taken, forward = not_taken }
-- never-taken: no BTB entry allocated
-```
-<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -1461,15 +1478,16 @@ perf plot -t ecdf -- perf.data
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 ```sh
-perf bench {func,region} ".*"               # any function/region
+perf bench {func,region} ".*"       # any function/region
     --mode {latency,throughput}
     --config {best,real,worst}
-    --event duration_time                   # seperate run
-    --event topdown-retiring,               # seperate run
+    --event duration_time,           # seperate run
+            instructions,
+            cycles
+    --event topdown-retiring,       # seperate run
             topdown-bad-spec,
             topdown-fe-bound,
             topdown-be-bound
-    --event cycles,instructions             # seperate run
 ```
 <!-- .element: class="fragment" -->
 
@@ -1563,26 +1581,34 @@ perf plot -t ecdf -- backend
 ##### Bad Speculation [Branch Mispredicts]
 <!-- .element: style="text-align:left" -->
 
+```cpp
+[[gnu::optimize("O3")]] auto fizz_buzz(int n) {
+       if (n % 15 == 0) { return "FizzBuzz"; }
+  else if (n % 3  == 0) { return "Fizz";     }
+  else if (n % 5  == 0) { return "Buzz";     }
+  return "Unknown";
+}
+```
+<!-- .element: style="text-align:left; font-size: 20px;" -->
+
 ```sh
 alias bench='
     perf bench func fizz_buzz
     --exec a.out
     --mode latency
-    --event cycles
-    --event branch-misses
+    --event cycles,instructions,branch-misses
     --output branch
 '
 ```
-<!-- .element: style="text-align:left; font-size: 18px;" -->
+<!-- .element: style="text-align:left; font-size: 20px;" -->
 
 ```
 bench --data.arg0=0
-bench --data.arg0=1
 bench --data.arg0=3
-bench --data.arg0=5
-bench --data.arg0=15
-bench --data.arg0=[$(seq 1 100000)] --config.branch=unpredictable
-bench --data.arg0=[$(seq 1 100000)] --config.branch=predictable
+bench --data.arg0=[$(seq 1 100000)]
+
+bench --config.branch=unpredictable
+bench --config.branch=predictable
 ```
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
@@ -1592,7 +1618,7 @@ bench --data.arg0=[$(seq 1 100000)] --config.branch=predictable
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-bench -S --data.arg0=0      bench -S --data.arg0=3       bench -S --data.arg0=5
+--data.arg0=0               --data.arg0=3                --data.arg0=[$(seq 1 100000)]
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
