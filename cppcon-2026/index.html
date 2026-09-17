@@ -1059,7 +1059,7 @@ bench:
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 `echo 2 | sudo tee /sys/devices/cpu_core/rdpmc`
-<!-- .element: style="text-align:right; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -1459,30 +1459,23 @@ perf plot -t ecdf -- perf.data
 #### `profile → benchmark`
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
-----
-
-```python
-import perf                                                 # python
-
-for config in (best, real, worst):
-     perf.bench(
-        exec="a.out",
-        func=".*",                              # any function
-        mode="latency",
-        config=config,
-        event=[                                 # seperate runs
-            ["duration_time"],
-            ["cycles", "instructions"],
-            ["topdown-retiring",
-             "topdown-bad-spec",
-             "topdown-fe-bound",
-             "topdown-be-bound"]
-        ]
-    )
+```sh
+perf bench {func,region} ".*"               # any function/region
+    --mode {latency,throughput}
+    --config {best,real,worst}
+    --event duration_time                   # seperate run
+    --event topdown-retiring,               # seperate run
+            topdown-bad-spec,
+            topdown-fe-bound,
+            topdown-be-bound
+    --event cycles,instructions             # seperate run
 ```
-<!-- .element: style="text-align:left;" -->
+<!-- .element: class="fragment" -->
 
 ----
+
+#### `profile → benchmark`
+<!-- .element: style="text-align:left; font-size: 32px;" -->
 
 ```cpp
 name      retiring  bad-spec  fe-bound  be-bound    → section
@@ -1529,9 +1522,7 @@ auto process(const std::byte* data, std::size_t n) {
 <!-- .element: style="text-align:left" -->
 
 ```python
-import perf                                                    # python
-
-for hit_rate in [100, 50, 0]:  # hot → warm → cold
+for hit_rate in [100, 50, 0]:  # hot → warm → cold            # python
     config = {
         "cache": {
           "L1d": {"hit_rate": hit_rate},
@@ -1668,8 +1659,6 @@ done; done
 <!-- .element: style="text-align:left" -->
 
 ```python
-import perf                                                           # python
-
 hot  = {"L1d":{"hit_rate":100}}
 warm = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":100}}
 cool = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":100}}
@@ -1777,9 +1766,7 @@ auto find_mph(int) noexcept:
 ----
 
 ```python
-import perf                                                    # python
-
-for cxx in ("gcc", "clang"):
+for cxx in ("gcc", "clang"):                                   # python
     for func in ("scan", "map", "mph"):
         for config in (best, real, worst):
             perf.bench(
