@@ -202,6 +202,11 @@ How? What? When?
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
+```
+perf list # available performance monitoring events
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
 ----
 
 #### Modern CPUs are primarily bottlenecked by
@@ -672,7 +677,7 @@ https://makelinux.github.io/kernel/map
 Machine Code                    # C++, Rust, Zig, Assembly, ...
   → Symbolic Exploration        # path0, path1, ..., pathN
      → Data Synthesis           # path0: rdi=[0], mem[addr]=[2], ...
-         → Benchmarking Harness # setup, loop: ... jnz .loop, teardown
+        → Benchmarking Harness  # setup, latency/throughput, teardown
            → Native Execution   # 0b010101010101100100010100111
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
@@ -707,6 +712,20 @@ Machine Code                    # C++, Rust, Zig, Assembly, ...
 
 #### `Symbolic Exploration`
 <!-- .element: style="text-align:left" -->
+
+```sh
+       x = ? (symbolic)
+           │
+      cmp x, 10
+           │
+     ┌─────┴─────┐
+     │           │
+constraint   constraint
+  x > 10       x <= 10
+     │           │
+  State 1      State 2
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -758,7 +777,7 @@ _      -> Unknown (cmov)
 ```python
 def explore(begin, end):                                      # python
     state = blank_state(addr=begin)
-    # state.solver.add(rdi <= 5 and rdi > 100)
+    # state.solver.add(rdi <= 5 and rdi > 100) # constraints
 
     state.inspect.b("mem_read",  when=angr.BP_AFTER, action=on_mem_read)
     state.inspect.b("mem_write", when=angr.BP_AFTER, action=on_mem_write)
@@ -774,9 +793,9 @@ def explore(begin, end):                                      # python
 
 ```asm
 Machine Code
-  → Blank State
-      → Basic Blocks
-          → Solutions + Traces
+  → Sybmolic states
+      → Symbolic exploration
+          → Solutions [IP, Constraints, Registers, Memory]
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -829,6 +848,9 @@ explore(fizz_buzz, fizz_buzz+size)
 
 #### `Data Synthesis`
 <!-- .element: style="text-align:left" -->
+
+[Satisfiability Modulo Theories (SMT)](https://en.wikipedia.org/wiki/Satisfiability_modulo_theories)
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
 
@@ -921,12 +943,12 @@ if (value == 2); // cmp rdi, 2; je .Eq2
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
 ```cpp
-perf bench asm 'cmp rdi, 2; je +0; nop'      perf bench asm 'cmp rdi, 2; je +0; nop'
-    --mode latency                               --mode latency
-    --event cycles                               --event cycles
-    --config.branch=predictable                  --config.branch=unpredictable
-    --name predictable                           --name unpredictable
-    --output branch                              --output branch
+perf bench asm 'cmp rdi, 2; je +2; nop; nop'    perf bench asm 'cmp rdi, 2; je +1; nop; nop'
+    --mode latency                                  --mode latency
+    --event cycles                                  --event cycles
+    --config.branch=predictable                     --config.branch=unpredictable
+    --name predictable                              --name unpredictable
+    --output branch                                 --output branch
 ```
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
@@ -1851,7 +1873,7 @@ cool = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":100}}
 cold = {"L1d":{"hit_rate":0}, "L2d":{"hit_rate":0}, "L3d":{"hit_rate":0}}
 
 for size in range(1, 2**10):
-    for cache in ("hot", "warm", "cool", "cold"):
+    for cache in (hot, warm, cool, cold):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
                 exec="libstdc++.so",
@@ -1859,7 +1881,7 @@ for size in range(1, 2**10):
                 mode="latency",
                 config={"branch": branch, "cache": cache},
                 data={"arg1": size},
-                event=["cycles,instructions"],
+                event=["cycles", "instructions"],
             )
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
