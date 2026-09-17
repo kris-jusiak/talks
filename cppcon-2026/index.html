@@ -634,30 +634,20 @@ https://makelinux.github.io/kernel/map
 ##### `Goals`
 <!-- .element: style="text-align:left" -->
 
-**Non-Intrusive**
+**Non-Intrusive** - Benchmark existing binaries, libraries, and assembly without modifying code
 <!-- .element: style="text-align:left; font-size:22px;" -->
-    Benchmark existing binaries, libraries, and assembly without modifying code
-<!-- .element: style="text-align:left; font-size:17px;" -->
 
-**Complete Path Coverage**
+**Complete Path Coverage** - Discover and exercise all relevant execution paths
 <!-- .element: style="text-align:left; font-size:22px;" -->
-    Discover and exercise all relevant execution paths
-<!-- .element: style="text-align:left; font-size:17px;" -->
 
-**Microarchitectural Control**
+**Microarchitectural Control** - "Control" relevant hardware state
 <!-- .element: style="text-align:left; font-size:22px;" -->
-    "Control" relevant hardware state
-<!-- .element: style="text-align:left; font-size:17px;" -->
 
-**Statistical Robustness**
+**Statistical Robustness** - Capture statistically robust measurements
 <!-- .element: style="text-align:left; font-size:22px;" -->
-    Capture statistically robust measurements
-<!-- .element: style="text-align:left; font-size:17px;" -->
 
-**Native execution**
+**Native execution** - Target and execute on real hardware
 <!-- .element: style="text-align:left; font-size:22px;" -->
-    Target and execute on real hardware
-<!-- .element: style="text-align:left; font-size:17px;" -->
 
 ----
 
@@ -972,17 +962,14 @@ je .Lmiss
 ##### `Data`
 <!-- .element: style="text-align:left; font-size:22px;" -->
 ```python
-data(state, n): # predictable                                           python
-    return state.solver.eval_up_to(n)
-
-data(state, n): # unpredcictable
-    return distribution(state.solver.eval_up_to(n))
+def data(addr, n):
+    return distribution(state.solver.eval_up_to(state(addr), n))
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 <div style="margin: 50px 0px;" />
 
-##### `Distribution (n > 10'000)`
+##### `Distribution`
 <!-- .element: style="text-align:left; font-size:20px;" -->
 ```cpp
 predictable   = [0,0,0,0,0,0,...]
@@ -1009,7 +996,7 @@ unpredictable = sample(0..n, p=0.25)
 <!-- .element: style="text-align:left;" -->
 
 ```cpp
-add r11, [rax]
+mov r11, [rax]
 ```
 
 https://www.akkadia.org/drepper/cpumemory.pdf
@@ -1017,17 +1004,55 @@ https://www.akkadia.org/drepper/cpumemory.pdf
 
 ----
 
-```cpp
-enum class Level {
-    L1d,
-    L2d,
-    L3d,
-    DRAM,
-};
-```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+##### Cache eviction
+<!-- .element: style="text-align:left; font-size:24px; " -->
 
 ```cpp
+enum class Level { L1, L2, L3, DRAM }; // d-cache
+```
+<!-- .element: style="text-align:left; font-size:17px;" -->
+
+```cpp
+auto refresh(const void* addr, const auto level) {
+    assert(addr);
+    if constexpr (level == Level::L1) {
+        load(addr);                              // L1
+        fence();
+    } else if constexpr (level == Level::L2) {
+        flush(addr);                             // DRAM
+        fence();
+        settle();
+        prefetch<Level>(addr);                   // PREFETCHT1 hint
+    } else if constexpr (level == Level::L3) {
+        load(addr);                              // L1
+        fence();
+        demote(addr);                            // CLDEMOTE hint
+    } else {
+        flush(addr);                             // DRAM
+        fence();
+    }
+    settle();
+}
+```
+<!-- .element: style="text-align:left; font-size:17px;" -->
+
+```asm
+PREFETCHNTA  Non-temporal
+PREFETCHT0   Hint into all cache levels (L1 priority)
+PREFETCHT1   Hint into L2/L3, lower L1 priority
+PREFETCHT2   Hint into L2/L3 with even lower urgency
+CLFLUSH{OPT} Flush Cache Line
+CLDEMOTE     Hint into more distant level (Xeon, Sapphire Rapids, ...)
+```
+<!-- .element: style="text-align:left; font-size:13px; margin: 0 0;" -->
+
+https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+----
+
+```cpp
+// hirearchy
 level = {
     0x03232: L1d:100, L2d:70, L3d:50, DRAM:100
 }
@@ -1041,41 +1066,19 @@ for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
 
 ----
 
+##### `More...`
+<!-- .element: style="text-align:left;" -->
+
 ```cpp
-template<Level level>
-auto refresh(const void* addr) {
-    assert(addr);
-    if constexpr (level == Level::L1) {
-        load(addr);                              // L1d
-        fence();
-    } else if constexpr (level == Level::L2) {
-        flush(addr);                             // DRAM
-        fence();
-        settle();
-        prefetch<Level>(addr);                   // PREFETCHT1 hint
-    } else if constexpr (level == Level::L3) {
-        load(addr);                              // L1d
-        demote(addr);                            // CLDEMOTE hint
-    } else {
-        flush(addr);                             // DRAM
-        fence();
-    }
-    settle();
-}
+Code alignment
+Stack alignment/size
+Instruction cache
+Translation Lookaside Buffer (TLB)
+Execution ports
+Thread affinity/priority
+...
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
-
-```asm
-PREFETCHNTA Non-temporal
-PREFETCHT0  Hint into all cache levels (L1 priority)
-PREFETCHT1  Hint into L2/L3, lower L1 priority
-PREFETCHT2  Hint into L2/L3 with even lower urgency
-CLDEMOTE    Hint into more distant level (Xeon, Sapphire Rapids, ...)
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
-
-https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: class="fragment" -->
 
 ----
 
@@ -1162,7 +1165,7 @@ lstopo # perf info cpu -c cpu,numa,arch,model,family,stepping,freq,L1i,L1d,L2,L3
 
 ```cpp
 def AlderlakePModel : SchedMachineModel {
-  let IssueWidth = 6;
+  let IssueWidth = 6; // Max uOps/Cycle
   let MicroOpBufferSize = 512;
   let LoadLatency = 5;
   let MispredictPenalty = 14;
@@ -1170,13 +1173,12 @@ def AlderlakePModel : SchedMachineModel {
   ...
 }
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
 
 https://github.com/llvm/llvm-project/tree/main/llvm/lib/Target
-<!-- .element: style="text-align:left; font-size: 18px; margin: 5px 0px;" -->
+<!-- .element: style="text-align:left; font-size: 20px; margin: 5px 0px;" -->
 
 https://github.com/gcc-mirror/gcc/tree/master/gcc/config
-<!-- .element: style="text-align:left; font-size: 18px; margin: 5px 0px;" -->
+<!-- .element: style="text-align:left; font-size: 20px; margin: 5px 0px;" -->
 
 ----
 
@@ -1255,7 +1257,7 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 <!-- .element: style="text-align:left" -->
 
 ```cpp
-perf bench asm 'add r11, [rax]'           perf bench asm 'add r11, [rax]'
+perf bench asm 'mov r11, [rax]'           perf bench asm 'mov r11, [rax]'
     --mode latency                            --mode latency
     --event cycles                            --event cycles
     --config.cache.L1d=hit_rate:100           --config.cache.L1d=hit_rate:0
@@ -1301,9 +1303,12 @@ perf plot -t ecdf -e duration_time/operations -- data/
 <img src="images/co.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
+duration_time/operations = latency | inverse throughput (reciprocal throughput)
+<!-- .element: style="text-align:right; font-size: 16px;" -->
+
 ----
 
-#### 'The Best, The Worst, The Real' Execution
+#### 'The Best, The Real, The Worst' Execution
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
@@ -1594,8 +1599,6 @@ bench --data.arg0=1
 bench --data.arg0=3
 bench --data.arg0=5
 bench --data.arg0=15
-bench --config.branch=predictable
-bench --config.branch=unpredictable
 bench --data.arg0=[$(seq 1 100000)] --config.branch=unpredictable
 bench --data.arg0=[$(seq 1 100000)] --config.branch=predictable
 ```
@@ -1658,7 +1661,7 @@ for l1i in 0 100; do for align in 1 16; do
   perf bench region hot_begin..hot_end
       --exec codegen.out
       --mode latency
-      --config.cache.L1i=hit_rate:$l1i  # instruction cache
+      --config.cache.L1i=hit_rate:$l1i  # i-cache
       --config.func.align=$align        # alignment
       --config.func.order=as-is         # as-is,hot,cold,random
 done; done
@@ -1802,34 +1805,21 @@ for cxx in ("gcc", "clang"):
 ----
 
 ```sh
-perf view --event cycles --stat p99 -- find
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
-
-```sh
-           file                         name    mode stat cycles instructions/cycles
-mph.so@06496688    find_map-predictable-cold latency  p99  47.01                0.24
-mph.so@06496688     find_map-predictable-hot latency  p99   5.00                3.33
-mph.so@06496688  find_map-unpredictable-cold latency  p99  44.03                0.32
-mph.so@06496688   find_map-unpredictable-hot latency  p99   6.00                2.51
-mph.so@06496688    find_mph-predictable-cold latency  p99  44.00                0.22
-mph.so@06496688     find_mph-predictable-hot latency  p99   1.00                8.00
-mph.so@06496688  find_mph-unpredictable-cold latency  p99  46.01                0.21
-mph.so@06496688   find_mph-unpredictable-hot latency  p99   1.00                8.00
-mph.so@06496688   find_scan-predictable-cold latency  p99 170.00                4.81
-mph.so@06496688    find_scan-predictable-hot latency  p99 158.00               16.00
-mph.so@06496688 find_scan-unpredictable-cold latency  p99 245.08                4.78
-mph.so@06496688  find_scan-unpredictable-hot latency  p99 176.01               16.00
-```
-<!-- .element: style="text-align:left; font-size:14px;" -->
-
-```sh
 perf plot -t ecdf -e cycles -- find
 ```
 <!-- .element: style="text-align:left; font-size:16px;" -->
 
 <p align="left">
-<img src="images/mph_ecdf.png" style="width: 80%; background:white; border:none; box-shadow:none;" />
+<img src="images/mph_ecdf.png" style="width: 50%; background:white; border:none; box-shadow:none;" />
+</p>
+
+```sh
+perf plot -t ecdf -e cycles/instructions -- find
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+<p align="left">
+<img src="images/mph_ecdf_ipc.png" style="width: 50%; background:white; border:none; box-shadow:none;" />
 </p>
 
 ----
