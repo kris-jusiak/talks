@@ -186,6 +186,24 @@ How? What? When?
 
 ----
 
+#### Performance Monitoring Unit
+<!-- .element: style="text-align:left" -->
+
+<img src="images/perf_map.png" style="width: 48%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/bpf.png" style="width: 51%; background:none; border:none; box-shadow:none; margin; 0 0;" />
+
+```
+ CPU                      Intel        Amd          Arm
+  ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
+  ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
+  ├─ Event sampling       PEBS         IBS          SPE
+  ├─ Branch Recording     LBR          LBR          BRBE
+  └─ Processor Trace      PT           -            ETM (CoreSight)
+```
+<!-- .element: style="text-align:left; font-size:16px;" -->
+
+----
+
 #### Modern CPUs are primarily bottlenecked by
 <!-- .element: style="text-align:left" -->
 
@@ -227,24 +245,6 @@ How? What? When?
 
 ...
 ```
-
-----
-
-#### Performance Monitoring Unit
-<!-- .element: style="text-align:left" -->
-
-<img src="images/perf_map.png" style="width: 48%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-<img src="images/bpf.png" style="width: 51%; background:none; border:none; box-shadow:none; margin; 0 0;" />
-
-```
- CPU                      Intel        Amd          Arm
-  ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0
-  ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0
-  ├─ Event sampling       PEBS         IBS          SPE
-  ├─ Branch Recording     LBR          LBR          BRBE
-  └─ Processor Trace      PT           -            ETM (CoreSight)
-```
-<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
