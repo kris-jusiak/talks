@@ -1542,11 +1542,20 @@ perf bench {func,region} ".*"       # any function/region
 
 ----
 
+##### Top down Microarchitecture Analysis Method [[Intel](https://rcs.uwaterloo.ca/~ali/cs854-f23/papers/topdown.pdf), [AMD](https://docs.amd.com/r/en-US/57368-uProf-user-guide/7.9.-Micro-Architecture-Analysis), [ARM](https://support.arm.com/documentation/109542/02/Arm-Topdown-methodology), ...]
+<!-- .element: style="text-align:left; font-size: 32px;" -->
+
+<p align="left">
+<img src="images/td.png" style="width: 80%; background:none; border:none; box-shadow:none; margin: 0 0;" />
+</p>
+
+----
+
 #### `profile → benchmark`
 <!-- .element: style="text-align:left; font-size: 32px;" -->
 
 ```cpp
-# latency/real/
+# latency/best
 name                 retiring  bad-spec  fe-bound  be-bound
 sum                  24%       3%        8%        65%         → backend bound
 hot_begin..hot_end   28%       5%        56%        9%         → fronted bound
@@ -1555,20 +1564,25 @@ fizz_buzz            22%       48%       20%       10%         → bad speculati
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
-<table>
-<tr>
-<td>
-<img src="images/td.png" style="width: 100%; background:none; border:none; box-shadow:none; margin: 0 0;" />
-<td>
-<pre style="font-size:12px;margin: 0 0;"><code>Category      Desktop(%) Server(%) HPC(%)
-------------- ---------- --------- ------
-retiring          20–50     10–30  30–70
-bad speculation    5–10      5–10    1–5
-frontend bound     5–10     10–25   5–10
-backend bound     20–40     20–60  20–40</code></pre>
-</td>
-</tr>
-</table>
+```cpp
+# latency/real
+name                 retiring  bad-spec  fe-bound  be-bound
+sum                  24%       3%        8%        65%         → backend bound
+hot_begin..hot_end   28%       5%        56%        9%         → fronted bound
+fizz_buzz            22%       48%       20%       10%         → bad speculation
+...
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+```cpp
+# latency/worst
+name                 retiring  bad-spec  fe-bound  be-bound
+sum                  24%       3%        8%        65%         → backend bound
+hot_begin..hot_end   28%       5%        56%        9%         → fronted bound
+fizz_buzz            22%       48%       20%       10%         → bad speculation
+...
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
@@ -1584,11 +1598,6 @@ auto sum(const std::byte* data, std::size_t n) {
     return sum;
 }
 ```
-
-----
-
-##### Backend bound [Memory Bound]
-<!-- .element: style="text-align:left" -->
 
 ```python
 for hit_rate in [100, 50, 0]:  # hot → warm → cold            # python
@@ -1715,8 +1724,10 @@ perf plot -t bar -e cycles -- branch
 <!-- .element: style="text-align:left; font-size:15px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/b1.png" style="width: 80%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b1.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
+
+----
 
 ```
 perf plot -t ecdf -e cycles -- branch
@@ -1724,7 +1735,7 @@ perf plot -t ecdf -e cycles -- branch
 <!-- .element: style="text-align:left; font-size:15px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/b2.png" style="width: 95%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b2.png" style="width: 120%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
