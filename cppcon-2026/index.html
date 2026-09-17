@@ -1590,6 +1590,39 @@ bench --data.arg0=[$(seq 1 100000)] --config.branch=predictable
 ##### Bad Speculation [Branch Mispredicts]
 <!-- .element: style="text-align:left" -->
 
+```cpp
+bench -S --data.arg0=0      bench -S --data.arg0=3       bench -S --data.arg0=5
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+```cpp
+imul eax, edi, 0xeeeeeeef   imul eax, edi, 0xeeeeeeef    imul eax, edi, 0xeeeeeeef
+lea rdx, [rip + 0xeb3]      lea rdx, [rip + 0xeb3]       lea rdx, [rip + 0xeb3]
+add eax, 0x8888888          add eax, 0x8888888           add eax, 0x8888888
+cmp eax, 0x11111110         cmp eax, 0x11111110          cmp eax, 0x11111110
+jbe .L40119a                jbe .L40119a                 jbe .L40119a
+.L40119a:                   imul eax, edi, 0xaaaaaaab    imul eax, edi, 0xaaaaaaab
+mov rax, rdx                lea rdx, [rip + 0xea3]       lea rdx, [rip + 0xea3]
+ret                         add eax, 0x2aaaaaaa          add eax, 0x2aaaaaaa
+                            cmp eax, 0x55555554          cmp eax, 0x55555554
+                            jbe .L40119a                 jbe .L40119a
+                            .L40119a:                    imul edi, edi, 0xcccccccd
+                            mov rax, rdx                 lea rdx, [rip + 0xe8f]
+                            ret                          lea rax, [rip + 0xe7e]
+                                                         add edi, 0x19999999
+                                                         cmp edi, 0x33333332
+                                                         cmovbe rdx, rax
+                                                         .L40119a:
+                                                         mov rax, rdx
+                                                         ret
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+----
+
+##### Bad Speculation [Branch Mispredicts]
+<!-- .element: style="text-align:left" -->
+
 ```
 perf plot -t ecdf -e branch-misses -e cycles -- branch
 ```
