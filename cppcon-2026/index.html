@@ -619,7 +619,7 @@ https://makelinux.github.io/kernel/map
 ----
 
 #### “If You Measure The Wrong Thing, You Can’t Improve The Right Thing!”
-<!-- .element: style="text-align:left; font-size:30px;" -->
+<!-- .element: style="text-align:left; font-size:31px;" -->
 
 [Producing Wrong Data Without Doing Anything Obviously Wrong](https://users.cs.northwestern.edu/~robby/courses/322-2013-spring/mytkowicz-wrong-data.pdf)
 <!-- .element: style="text-align:left; font-size:18px;" -->
@@ -634,19 +634,19 @@ https://makelinux.github.io/kernel/map
 ##### `Goals`
 <!-- .element: style="text-align:left" -->
 
-**Non-Intrusive** - Benchmark existing binaries, libraries, and assembly without modifying code
+**- Non-Intrusive** - Benchmark existing binaries, libraries, and assembly without modifying code
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
-**Complete Path Coverage** - Discover and exercise all relevant execution paths
+**- Complete Path Coverage** - Discover and exercise all relevant execution paths
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
-**Microarchitectural Control** - "Control" relevant hardware state
+**- Microarchitectural Control** - "Control" relevant hardware state
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
-**Statistical Robustness** - Capture statistically robust measurements
+**- Statistical Robustness** - Capture statistically robust measurements
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
-**Native execution** - Target and execute on real hardware
+**- Native execution** - Target and execute on real hardware
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
 ----
@@ -999,6 +999,45 @@ DRAM access   294</code></pre>
 
 ----
 
+#### `Native Execution`
+<!-- .element: style="text-align:left" -->
+
+----
+
+###### `Native code generation [JIT/AOT] `
+<!-- .element: style="text-align:left" -->
+
+```
+Assembly
+  → Setup (CPU, Data)
+      → Benchmarking Harness
+          → Execution
+```
+<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
+
+```
+Function or Region
+  → MMAP Process
+      → Apply Relocations
+          → Randomize Layout
+                  → Setup (CPU, Data)
+                      → Benchmarking Harness
+                          → /tmp/perf-PID.{map,dump}
+                             → Execution
+```
+<!-- .element: style="text-align:left; font-size:20px; " -->
+
+https://refspecs.linuxbase.org/elf/x86_64-abi.pdf
+<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
+
+https://refspecs.linuxbase.org/elf/elfspec.pdf
+<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
+
+https://github.com/torvalds/linux/blob/master/tools/perf
+<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
+
+----
+
 ##### `Benchmarking Harness`
 <!-- .element: style="text-align:left" -->
 
@@ -1106,8 +1145,8 @@ https://github.com/andreas-abel/nanoBench
 <!-- .element: style="text-align:left" -->
 
 ```sh
-perf bench func fizz_buzz --exec a.out --mode latency -o data/
-perf bench func fizz_buzz --exec a.out --mode throughput -o data/
+perf bench func fizz_buzz --exec fizz_buzz.out --mode latency -o data/
+perf bench func fizz_buzz --exec fizz_buzz.out --mode throughput -o data/
 perf plot -t ecdf -e duration_time/operations -- data/
 ```
 <!-- .element: style="text-align:left; font-size: 20px;" -->
@@ -1134,61 +1173,6 @@ Thread affinity/priority
 ...
 ```
 <!-- .element: class="fragment" -->
-
-----
-
-#### `Native Execution`
-<!-- .element: style="text-align:left" -->
-
-----
-
-###### `Native code generation [JIT/AOT] `
-<!-- .element: style="text-align:left" -->
-
-```cpp
-Assembly
-  → Setup (CPU, Data)
-      → Benchmarking Harness
-          → Execution
-```
-
-```python
-def execute(code):
-    mm = mmap(
-        -1,
-        len(code),
-        prot=PROT_READ | PROT_WRITE | PROT_EXEC,
-        flags=MAP_PRIVATE | MAP_ANONYMOUS,
-    )
-    mm.write(bytes(code))
-    return ctypes.addressof(ctypes.c_char.from_buffer(mm))()
-```
-<!-- .element: class="fragment" -->
-
-----
-
-###### `Native code generation [JIT/AOT] `
-<!-- .element: style="text-align:left" -->
-
-```sh
-Function/Region
-  → Mmap Process
-      → Apply Relocations
-          → Randomize Layout
-                  → Setup (CPU, Data)
-                      → Benchmarking Harness
-                          → /tmp/perf-PID.{map,dump}
-                             → Execution
-```
-
-https://refspecs.linuxbase.org/elf/x86_64-abi.pdf
-<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
-
-https://refspecs.linuxbase.org/elf/elfspec.pdf
-<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
-
-https://github.com/torvalds/linux/blob/master/tools/perf
-<!-- .element: style="text-align:left; font-size:20px; margin: 0 0;" -->
 
 ----
 
@@ -1264,12 +1248,12 @@ perf bench asm 'sub  eax, 0'    --mode latency -e cycles -o insn
 perf bench asm 'imul eax, 0'    --mode latency -e cycles -o insn
 perf bench asm 'cdq; idiv ecx;' --mode latency -e cycles -o insn
 ```
-<!-- .element: style="text-align:left; font-size: 15px;" -->
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 ```
 perf plot -t bar -- insn
 ```
-<!-- .element: style="text-align:left; font-size: 15px;" -->
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 <table>
 <tr>
@@ -1290,7 +1274,7 @@ cdq; idiv ecx; latency   max  15.00
 ```cpp
 perf bench asm 'imul eax, 0;cdq; idiv ecx;' -S | llvm-mca
 ```
-<!-- .element: style="text-align:left; font-size: 15px;" -->
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 ```cpp
 #uOps Latency  Instruction
@@ -1298,10 +1282,10 @@ perf bench asm 'imul eax, 0;cdq; idiv ecx;' -S | llvm-mca
     1       1  cdq
     4      15  idiv ecx
 ```
-<!-- .element: style="text-align:left; font-size: 15px;" -->
+<!-- .element: style="text-align:left; font-size: 16px;" -->
 
 https://llvm.org/docs/CommandGuide/llvm-exegesis.html
-<!-- .element: style="text-align:left; font-size:15px;" -->
+<!-- .element: style="text-align:left; font-size:16px;" -->
 
 ----
 
@@ -1314,10 +1298,11 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 ----
 
-#### 'The Best' Execution → happy path
+#### 'The Best' Execution
 <!-- .element: style="text-align:left" -->
 
 ```json
+# config.json
 {
     "stack": {
         "align": "aligned"
@@ -1342,13 +1327,13 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 
 ----
 
-#### 'The Worst' Execution → "what if" unexpected happens
-<!-- .element: style="text-align:left; font-size:32px;" -->
+#### 'The Worst' Execution
+<!-- .element: style="text-align:left;" -->
 
 ```json
+# config.json
 {
     "stack": {
-        "size":  "random",
         "align": "unaligned"
     },
     "code": {
@@ -1377,6 +1362,11 @@ https://llvm.org/docs/CommandGuide/llvm-exegesis.html
 #### 'The Real' Execution
 <!-- .element: style="text-align:left" -->
 
+----
+
+###### `trace.data`
+<!-- .element: style="text-align:left" -->
+
 ```python
 BPF_PROGRAM = r"""
     int trace(struct pt_regs *ctx) {
@@ -1389,7 +1379,7 @@ BPF_PROGRAM = r"""
 
 ```cpp
 b = BPF(text=BPF_PROGRAM)
-b.attach_uprobe(name="./a.out", sym=".*", fn_name="trace")
+b.attach_uprobe(name="./fizz_buzz.out", sym=".*", fn_name="trace")
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
@@ -1408,6 +1398,9 @@ https://github.com/iovisor/bcc
 
 ----
 
+###### `perf.data`
+<!-- .element: style="text-align:left" -->
+
 ```cpp
 perf record
     --event branch-instructions,branch-misses,cache-references,cache-misses
@@ -1422,12 +1415,12 @@ perf plot -t ecdf -- perf.data
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 <p align="left">
-<img src="images/perf_data.png" style="width: 100%; background:white; border:none; box-shadow:none;" />
+<img src="images/perf_data.png" style="width: 90%; background:white; border:none; box-shadow:none;" />
 </p>
 
 ----
 
-##### `Data → Config`
+#### 'The Real' Execution
 <!-- .element: style="text-align:left" -->
 
 ```json
