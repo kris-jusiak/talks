@@ -888,51 +888,10 @@ jmp .Lmiss
 ----
 
 ###### `Branch prediction`
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:24px;" -->
 
-cmp eax, 2;je +0;nop
-
-```cpp
-uint64_t load(const uint64_t* p) { return *p; }           // mov rax, [rdi]
-void store(uint64_t* p, uint64_t value) { *p = value; }   // mov [rdi], rsi
-```
-<!-- .element: style="text-align:left; font-size:15px;" -->
-
-```cpp
-perf bench asm 'mov rax, [rdi]'           perf bench asm 'mov rax, [rdi]'
-    --mode latency                            --mode latency
-    --event cycles                            --event cycles
-    --config.cache.L1d=hit_rate:100           --config.cache.L1d=hit_rate:0
-    --name mov-hot                            --name mov-cold
-    --output cache                            --output cache
-```
-<!-- .element: style="text-align:left; font-size:15px;" -->
-
-```cpp
-perf plot -t ecdf -e cycles -- cache
-```
-<!-- .element: style="text-align:left; font-size:15px;" -->
-
-<table style="width:117%">
-<tr>
-  <td>
- <pre style="font-size:16px"><code>benchmark  cycles
------------ -----
-L1d hit         4
-L2d hit        14
-L3d hit        75
-DRAM access   294</code></pre>
-  </td>
-  <td>
-  <img src="images/cache_lat.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
-  </td>
-  </tr>
-</table>
-
-----
-
-##### `Data`
-<!-- .element: style="text-align:left; font-size:22px;" -->
+###### `Data`
+<!-- .element: style="text-align:left; font-size:18px;" -->
 ```python
 def data(addr, n):
     return distribution(state.solver.eval_up_to(state(addr), n))
@@ -942,7 +901,7 @@ def data(addr, n):
 <div style="margin: 50px 0px;" />
 
 ##### `Distribution`
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
 ```cpp
 predictable   = [0,0,0,0,0,0,...]
 predictable   = [1,1,1,2,2,2,...]
@@ -955,6 +914,36 @@ unpredictable = sample(0..n, p=0.25)
 ...
 ```
 <!-- .element: style="text-align:left; font-size:20px;" -->
+
+----
+
+###### `Branch prediction`
+<!-- .element: style="text-align:left; font-size:22px;" -->
+
+```cpp
+if (value); // test rdi, rdi; jne .Label
+```
+<!-- .element: style="text-align:left; font-size:17px;" -->
+
+```cpp
+perf bench asm 'cmp rax, 2;je +0;nop;'    perf bench asm 'cmp rax, 2;je +0;nop;'
+    --mode latency                            --mode latency
+    --event cycles                            --event cycles
+    --config.branch=predictable               --config.branch=unpredictable
+    --name predictable                        --name unpredictable
+    --output branch                           --output branch
+```
+<!-- .element: style="text-align:left; font-size:17px;" -->
+
+```cpp
+perf plot -t ecdf -e cycles -- branch
+```
+<!-- .element: style="text-align:left; font-size:17px;" -->
+
+<img src="images/bpu.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+
+cmov - conditional move
+<!-- .element: style="text-align:right; font-size: 15px;" -->
 
 ----
 
@@ -1030,16 +1019,16 @@ for addr in cache_lines(state["mem_read"] + state["mem_write"]):      # python
     "default": {
         "L1":   {"hit_rate": 100}, # hot
     },
-    "0x0048F2A0" : {
+    "0x0048f2a0" : {
         "L1":   {"hit_rate": 100},
     },
-    "0x00A73C18" : {
+    "0x00a73c18" : {
         "L1":   {"hit_rate": 50},
         "L2":   {"hit_rate": 100},
         "L3":   {"hit_rate": 100},
         "DRAM": {"hit_rate": 100},
     },
-    "0x7FF2D4B0" : {
+    "0x7ff2d4b0" : {
         "L1":   {"hit_rate": 25},
         "L2":   {"hit_rate": 50},
         "L3":   {"hit_rate": 75},
@@ -1579,18 +1568,17 @@ perf plot -t ecdf -- perf.data
 ```json
 # config.json
 {
-  "branch": {
-      "default":   "unpredcitable",
-      "0x1321321": "predictable",
-      ...
-  },
   "cache": {
     "L1d":  {
-        "default":   {"hit_rate": 100},
-        "0x1321321": {"hit_rate": 50}, # perf.data
+        "default":    {"hit_rate": 100},
+        "0x0048f2a0": {"hit_rate":  50}, # perf.data
         ...
     },
-    "L2d": {"hit_rate": 100},
+    "L2d": {
+        "default":    {"hit_rate": 100},
+        "0x0048f2a0": {"hit_rate": 100}, # perf.data
+        ...
+    }
     "L3d": {"hit_rate": 100},
     ...
   }
@@ -1606,7 +1594,8 @@ perf plot -t ecdf -- perf.data
 ```sh
 perf bench {func,region} ".*"       # any function/region
     --mode {latency,throughput}
-    --config {best,real,worst}
+    --config {best,real,worst}      # 'perf.data'
+    --data data.json                # 'trace.data'
     --event duration_time,          # seperate run
             instructions,
             cycles
