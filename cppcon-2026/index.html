@@ -1869,7 +1869,7 @@ for size in range(1, 2**10):
         for branch in ("predictable", "unpredictable"):
             perf.bench(
                 exec="libstdc++.so",
-                func="std::sort",
+                func="qsort",
                 mode="latency",
                 config={"branch": branch, "cache": cache},
                 data={"arg1": size},
