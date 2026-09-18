@@ -660,7 +660,7 @@ https://makelinux.github.io/kernel/map
 - **Microarchitectural Control** - "control" relevant hardware state (branch, cache, ...)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
-- **Statistical Robustness** - Capture statistically robust measurements (performance is not a number!)
+- **Statistical Robustness** - Central Limit Theorem (enough random samples will produce a normal distribution of their means)
 <!-- .element: class="fragment" data-fragment-index="0" style="text-align:left; font-size:22px;" -->
 
 - **Native execution** - Execute on real hardware (hardware performance counters)
@@ -933,7 +933,7 @@ if (value == 2) // cmp rdi, 2; je .Eq2
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
 ```cpp
-perf bench asm 'cmp rdi, 2; je .Eq2; nop; .Eq2 nop'  perf bench asm 'cmp rdi, 2; je .Eq2; nop; .Eq2 nop'
+perf bench asm 'cmp rdi, 2; je .Eq2; nop; .Eq2: nop' perf bench asm 'cmp rdi, 2; je .Eq2; nop; .Eq2: nop'
     --mode latency                                       --mode latency
     --event cycles                                       --event cycles
     --config.branch=predictable                          --config.branch=unpredictable
@@ -1248,7 +1248,7 @@ bench:
  ├─ Total number of operations
  ├  completed in a given amount of time
  ├─ ops/s, Gb/s, ...
- ├─ ns/ops - reciprocal throughput = inverse throughput
+ ├─ ns/ops - reciprocal (inverse) throughput
  └─ for (...) {
       func()
     }
@@ -1312,7 +1312,7 @@ perf plot -t ecdf -e duration_time/operations -- data/
 <img src="images/co.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
-duration_time/operations = latency | inverse throughput (reciprocal throughput)
+duration_time/operations = latency | inverse throughput
 <!-- .element: style="text-align:right; font-size: 16px;" -->
 
 ----
