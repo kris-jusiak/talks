@@ -1679,7 +1679,7 @@ bench() {
         --exec a.out
         --mode latency
         --event cycles,instructions,branch-misses
-        --output branch
+        --output branch_miss
         $@
 }
 ```
@@ -1742,21 +1742,21 @@ bench --config.branch=unpredictable                                   # uniform,
 ----
 
 ```
-perf plot -t bar -e cycles -- branch
+perf plot -t bar -e cycles -- branch_miss
 ```
 <!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/b1.png" style="width: 85%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b1.jpg" style="width: 85%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ```
-perf plot -t ecdf -e cycles -- branch
+perf plot -t ecdf -e cycles -- branch_miss
 ```
 <!-- .element: style="text-align:left; font-size: 16px; margin: 0 0;" -->
 
 <p align="left">
-<img src="images/b2.png" style="width: 85%; background:white; border:none; box-shadow:none; margin: 0 0;" />
+<img src="images/b2.jpg" style="width: 85%; background:white; border:none; box-shadow:none; margin: 0 0;" />
 </p>
 
 ----
@@ -1768,7 +1768,7 @@ perf plot -t ecdf -e cycles -- branch
 auto sum(const std::byte* data, std::size_t n) {
     auto sum = 0;
     for (auto i = 0; i < n; ++i) {
-        sum += data[i];
+        sum += data[i]; // memory access
     }
     return sum;
 }
@@ -1777,7 +1777,7 @@ auto sum(const std::byte* data, std::size_t n) {
 
 ```python
 for mode in ("latency", "throughput"):                                              # python
-    for size in [8, 16, 64, 128, 256, 512, 1024]:
+    for size in [32, 64, 128]:
         for branch in ("predictable", "unpredictable"):
             for hit_rate in [100, 50, 0]:  # hot → warm → cold
                 config = {
@@ -1806,7 +1806,7 @@ for mode in ("latency", "throughput"):                                          
 
 
 ```sh
-perf plot -t ecdf -- backend
+perf plot -t ecdf -- memory_bound
 ```
 <!-- .element: style="text-align:left; font-size: 20px;" -->
 
