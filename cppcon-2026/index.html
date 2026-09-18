@@ -669,7 +669,7 @@ https://makelinux.github.io/kernel/map
 ----
 
 ##### `Approach`
-<!-- .element: style="text-align:left; font-size:22px;" -->
+<!-- .element: style="text-align:left; font-size:26px;" -->
 
 ```python
 Machine Code                    # C++, Rust, Zig, Assembly, ...
@@ -678,37 +678,41 @@ Machine Code                    # C++, Rust, Zig, Assembly, ...
         → Benchmarking Harness  # setup, latency/throughput, teardown
            → Native Execution   # 0b010101010101100100010100111
 ```
-<!-- .element: style="text-align:left; font-size:18px;" -->
+<!-- .element: style="text-align:left; font-size:20px;" -->
 
 ```cpp
 [[gnu::hot, gnu::optimize("O3")]] auto func(const int key) -> int {
     static constexpr std::array lut = { ... };
 
-    if (key < lut.size()) [[unlikely]] {
+    if (key >= lut.size()) [[unlikely]] {
         // cmp rdi, 1024
-        // jb .L_out_of_range
+        // jae .L_out_of_range           # path0: rdi >= 1024, mem=[]
         return {};
     }
 
-    // mov eax, "func::lut"[0+rdi*4]    # path1: rdi < 1024, mem=[0+rdi*4]
+    // mov eax, "func::lut"[0+rdi*4]     # path1: rdi < 1024, mem=[0+rdi*4]
     return lut[key];
 
-    // .L_out_of_range:                 # path0: rdi >= 1024, mem=[]
-    //      xor eax, eax
-    //      ret
+    // .L_out_of_range:
+    //   xor eax, eax
+    //   ret
 }
-    // "func::lut":                     # .rodata
-    //     .long 1
-    //     ...
 ```
-<!-- .element: style="text-align:left; font-size:20px;" -->
+<!-- .element: style="text-align:left; font-size:18px;" -->
+
+```sh
+"func::lut": # .rodata
+    .long 1
+    ...
+```
+<!-- .element: style="text-align:left; font-size:18px;" -->
 
 ----
 
 #### `Symbolic Exploration`
 <!-- .element: style="text-align:left" -->
 
-VEX Intermediate Representation - https://github.com/angr/pyvex
+VEX (valgrind) Intermediate Representation - https://github.com/angr/pyvex
 <!-- .element: style="text-align:left; font-size:20px;" -->
 
 ----
@@ -759,7 +763,7 @@ _      -> Unknown (cmov)
 ----
 
 ```python
-def explore(begin, end):                                      # python
+def explore(begin, end):                                               # python
     state = blank_state(addr=begin)
     # state.solver.add(rdi <= 5)  # constraints
     # state.solver.add(rdi > 100) # constraints
@@ -840,7 +844,7 @@ explore(fizz_buzz, fizz_buzz+size)
 ----
 
 ```python
-solutions = explore(fizz_buzz, fizz_buzz+size)               # python
+solutions = explore(fizz_buzz, fizz_buzz+size)                 # python
 ```
 <!-- .element: style="text-align:left; font-size:22px;" -->
 
@@ -884,7 +888,7 @@ jmp .Lmiss
 ```asm
 - Modern branch predictor can learn ~10'000 taken/non-taken branches
 - BTFNT - Backward Taken, Forward Not Taken (no history)
-- NT - Never Taken (no Branch Target Buffer entry allocated)
+- NT    - Never Taken (no Branch Target Buffer (BTB) entry allocated)
 ```
 <!-- .element: style="text-align:left; font-size:18px;" -->
 
@@ -929,21 +933,21 @@ if (value == 2) // cmp rdi, 2; je .Eq2
 <!-- .element: style="text-align:left; font-size:17px;" -->
 
 ```cpp
-perf bench asm 'cmp rdi, 2; je +2; nop; nop'    perf bench asm 'cmp rdi, 2; je +1; nop; nop'
-    --mode latency                                  --mode latency
-    --event cycles                                  --event cycles
-    --config.branch=predictable                     --config.branch=unpredictable
-    --name predictable                              --name unpredictable
-    --output branch                                 --output branch
+perf bench asm 'cmp rdi, 2; je .Eq2; nop; .Eq2 nop'  perf bench asm 'cmp rdi, 2; je .Eq2; nop; .Eq2 nop'
+    --mode latency                                       --mode latency
+    --event cycles                                       --event cycles
+    --config.branch=predictable                          --config.branch=unpredictable
+    --name predictable                                   --name unpredictable
+    --output branch                                      --output branch
 ```
-<!-- .element: style="text-align:left; font-size:17px;" -->
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 <div style="margin: 50px 0px;" />
 
 ```cpp
 perf plot -t ecdf -e cycles -- branch
 ```
-<!-- .element: style="text-align:left; font-size:17px;" -->
+<!-- .element: style="text-align:left; font-size:15px;" -->
 
 <p align="left">
 <img src="images/bpu.png" style="width: 100%; background:white; border:none; box-shadow:none; margin: 0 0;" />
@@ -1096,9 +1100,6 @@ DRAM access   294</code></pre>
 
 ----
 
-##### `More...`
-<!-- .element: style="text-align:left;" -->
-
 ```cpp
 - Code alignment
 - Stack alignment/size
@@ -1107,8 +1108,10 @@ DRAM access   294</code></pre>
 - SIMD registers
 - Execution ports
 - Thread affinity/priority
-- ...
 ```
+
+##### `...`
+<!-- .element: style="text-align:left;" -->
 
 ----
 
