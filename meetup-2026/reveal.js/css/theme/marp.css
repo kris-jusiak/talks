@@ -1,0 +1,179 @@
+/* Reveal.js theme — Marpit-like "White"
+   Drop this in your project and load after reveal.css
+   Tested with Reveal 4/5 (uses --r-* CSS vars)
+*/
+
+:root {
+  /* Base */
+  --r-background-color: #ffffff;
+  --r-main-font: Inter, "Segoe UI", "Helvetica Neue", Arial, system-ui, -apple-system, sans-serif;
+  --r-main-font-size: 36px;
+  --r-main-color: #111111;
+  --r-block-margin: 18px;
+  --r-line-height: 1.6;
+
+  /* Headings */
+  --r-heading-font: var(--r-main-font);
+  --r-heading-color: #111111;
+  --r-heading-font-weight: 700;
+  --r-heading-text-transform: none;
+  --r-heading-letter-spacing: 0;
+  --r-heading-line-height: 1.25;
+  --r-heading-margin: 0 0 12px 0;
+
+  /* Links */
+  --r-link-color: #1a73e8;
+  --r-link-color-hover: #1558b0;
+  --r-selection-background: rgba(26, 115, 232, 0.25);
+
+  /* Code */
+  --r-code-font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --r-code-font-size: 0.80em;
+  --r-code-background: #f6f8fa;
+  --r-code-color: #0f172a;
+
+  /* Accents */
+  --r-border-color: #e5e7eb;
+  --r-soft-bg: #fafafa;
+}
+
+/* Page background */
+.reveal-viewport {
+  background: var(--r-background-color);
+  background-color: var(--r-background-color);
+}
+
+/* Body text */
+.reveal {
+  color: var(--r-main-color);
+}
+
+/* Left-align like Marpit default */
+.reveal .slides {
+  text-align: left;
+}
+
+/* Headings — tight, bold, not shouty */
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4 {
+  color: var(--r-heading-color);
+  font-weight: var(--r-heading-font-weight);
+  text-transform: var(--r-heading-text-transform);
+  letter-spacing: var(--r-heading-letter-spacing);
+  line-height: var(--r-heading-line-height);
+  margin: var(--r-heading-margin);
+}
+
+.reveal h1 { font-size: 2.0em; }
+.reveal h2 { font-size: 1.6em; }
+.reveal h3 { font-size: 1.25em; }
+.reveal h4 { font-size: 1.1em; }
+
+/* Paragraphs, lists */
+.reveal p,
+.reveal ul,
+.reveal ol,
+.reveal blockquote,
+.reveal pre,
+.reveal figure,
+.reveal table {
+  margin: var(--r-block-margin) 0;
+}
+
+.reveal ul,
+.reveal ol {
+  padding-left: 1.2em;
+}
+
+.reveal li {
+  margin: 0.25em 0;
+}
+
+/* Links — Marp-like blue with underline on hover */
+.reveal a {
+  color: var(--r-link-color);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(26,115,232,0.3);
+}
+.reveal a:hover {
+  color: var(--r-link-color-hover);
+  border-bottom-color: currentColor;
+}
+
+/* Emphasis */
+.reveal strong { font-weight: 700; }
+.reveal em { font-style: italic; }
+
+/* Blockquotes — subtle left bar */
+.reveal blockquote {
+  border-left: 4px solid var(--r-border-color);
+  padding: 0.6em 1em;
+  background: var(--r-soft-bg);
+  border-radius: 8px;
+}
+
+/* Code blocks & inline code */
+.reveal pre code {
+  display: block;
+  padding: 0.9em 1em;
+  font-family: var(--r-code-font);
+  font-size: var(--r-code-font-size);
+  background: var(--r-code-background);
+  color: var(--r-code-color);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+.reveal code:not(pre code) {
+  padding: 0.15em 0.35em;
+  border-radius: 6px;
+  background: var(--r-code-background);
+  color: var(--r-code-color);
+}
+
+/* Tables */
+.reveal table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9em;
+}
+.reveal th,
+.reveal td {
+  border: 1px solid var(--r-border-color);
+  padding: 0.5em 0.7em;
+}
+.reveal th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+/* Images */
+.reveal section img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* Slide numbers — small, quiet */
+.reveal .slide-number {
+  background: rgba(17,17,17,0.06);
+  color: #111;
+  font-size: 14px;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+/* Print/PDF */
+@media print {
+  .reveal a {
+    color: #000;
+    border-bottom: 1px solid #000;
+  }
+}
+
+/* Optional: tighter top padding for a "title then content" feel */
+.reveal section {
+  padding-top: 10px;
+}
+
