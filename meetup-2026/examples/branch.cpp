@@ -1,4 +1,4 @@
-#include <perf/perf.h>
+#include <perf/perf.hpp>
 #include <cstdio>
 #include <iostream>
 #include <cstdlib>
@@ -11,7 +11,7 @@
   } else if (n % 5 == 0) {
     return "Buzz";
   } else {
-    std::puts("unknown");
+    //std::puts("unknown");
     return "Unknown";
   }
 }
