@@ -56,7 +56,7 @@ Kris Jusiak
 <!-- .element: style="text-align:left" -->
 
 <p align="left">
-<img src="images/pnl.jpeg" style="width: 85%; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
+<img src="images/mm.jpeg" style="width: 88%; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
 </p>
 
 ```sh
@@ -122,12 +122,16 @@ for day in date_range(date(2020, 1, 1), date(2026, 10, 01)):
 ### Solutions / Hardware
 <!-- .element: style="text-align:left" -->
 
+```cpp
+<-- Latency / Throughput -->
+```
+<!-- .element: style="text-align:left; font-size:10px;" -->
 <p align="left">
-<img src="images/hw.png" style="width: 89%; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
+<img src="images/hw.jpeg" style="width: 80%; background:none; border:none; box-shadow:none; margin: 0px 0px;" />
 </p>
 
 ```cpp
-- Time to market (winner takes all, scaling law)
+- Time to market (winner takes 'all', scaling law)
 - Know your hardware (colocated, no users)
 - Easier to optimize (deterministic hardware, performance monitoring)
 ...
@@ -199,7 +203,7 @@ while (true) {
 <!-- .element: style="text-align:left; font-size:14px;" -->
 
 ```
- CPU                      Intel        Amd          Arm                         HFT friendly
+ CPU                      Intel        Amd          Arm                         HFT 'friendly'
   ├─ Timestamp Counter    RDTSC/RDTSCP RDTSC/RDTSCP CNTVCT_EL0/CNTPCT_EL0        ├─ ✅
   ├─ Performance Counters RDPMC        RDPMC        PMCCNTR_EL0/PMEVCNTRN_EL0    ├─ ✅
   ├─ Event sampling       PEBS         IBS          SPE                          ├─ ❌ (applies to PGO)
@@ -277,11 +281,11 @@ book:                                           402000                       // 
        float: right !important;
        position: relative !important;
        z-index: 999 !important;
-       width: 30%;
+       width: 35%;
        background: white;
        border: none;
        box-shadow: none;
-       margin: -25% 2% 20px 20px;
+       margin: -21.5% 0.2% 20px 20px;
      " />
 
 ```cpp
